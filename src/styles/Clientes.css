@@ -1,0 +1,68 @@
+/* General */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+  margin: 20px;
+}
+
+/* Contenedor principal */
+.clientes-container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Estilo para los botones de acción en la parte superior */
+.botones-acciones {
+  display: flex;
+  justify-content: center;
+  gap: 40px; /* Aumentar el espacio entre los botones */
+  margin-bottom: 20px;
+}
+
+/* Mover el buscador debajo del título */
+.lista-clientes-container {
+  margin-top: 20px;
+}
+
+/* Estilo para la lista de clientes */
+ul.lista-clientes {
+  list-style-type: none; /* Eliminar el marcador de lista */
+  padding: 0;
+  margin: 0;
+}
+
+li.cliente-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd; /* Línea divisoria para separar los elementos */
+  margin-bottom: 10px;
+}
+
+li.cliente-item span {
+  flex-grow: 1; /* Expandir el espacio de correo y fecha */
+  text-align: left;
+  padding-right: 20px;
+}
+
+/* Estilo para el contenedor de acciones (eliminar/suspender) */
+.action-container {
+  display: flex;
+  gap: 10px; /* Reducir el espacio entre botones */
+  flex-shrink: 0; /* Evitar que los botones se reduzcan demasiado */
+}
+
+/* Ajustes adicionales para los botones */
+button {
+  flex: 0 1 auto; /* Permitir que los botones se ajusten automáticamente */
+  white-space: nowrap; /* Evitar que el texto del botón se divida en dos líneas */
+}
+
+/* Estilo para el ID del cliente */
+.cliente-id {
+  font-weight: bold;
+  padding-right: 10px;
+  color: #333;
+}

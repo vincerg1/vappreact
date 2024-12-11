@@ -1,0 +1,24 @@
+/* Añadir en tu archivo CSS, por ejemplo, `Repartidores.css` */
+.button-container {
+    display: flex;
+    justify-content: center; /* Centrará los botones horizontalmente */
+    gap: 20px; /* Espacio entre los botones */
+    margin-bottom: 20px; /* Margen inferior para separar de otros elementos */
+}
+
+.button-container button {
+    width: 150px; /* Ancho fijo para ambos botones */
+    height: 50px; /* Altura fija para ambos botones */
+    padding: 10px;
+    font-size: 16px;
+    background-color: #5ed466;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button-container button:hover {
+    background-color: #218838; /* Cambia el color en hover para más interactividad */
+}

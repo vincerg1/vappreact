@@ -1,0 +1,667 @@
+{
+    "posts": [
+        {
+            "id": 1,
+            "title": "json-server",
+            "author": "typicode"
+        }
+    ],
+    "comments": [
+        {
+            "id": 1,
+            "body": "some comment",
+            "postId": 1
+        }
+    ],
+    "profile": {
+        "name": "typicode"
+    },
+    "inventario": [
+        {
+            "1001": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Lacteos",
+            "producto": "Queso Mozz Fresca",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+            }
+        },
+        {
+            "1002": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Lacteos",
+            "producto": "Queso Burrata",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+            }
+        },
+        {
+            "1003": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Fiambres y carnes",
+            "producto": "Peperonni",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+            }
+        },
+        {
+            "1004": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Fiambres y carnes",
+            "producto": "Chorizo",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+           }
+        },
+        {
+            "1005": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Verduras",
+            "producto": "Albahaca",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+           }
+        },
+        {
+            "1006": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Verduras",
+            "producto": "Rucula",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+           }
+        },
+        {
+            "1007": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Especias",
+            "producto": "Sal",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+            }
+        },
+        {
+            "1008": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Especias",
+            "producto": "Azucar",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Gramos",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+             }
+        },
+        {
+            "1009": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Salsas",
+            "producto": "Salsa Tomate Pizza",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Litros",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+           }
+        },
+        {
+            "1010": {
+            "categoria": "Ingredientes",
+            "subcategoria": "Salsas",
+            "producto": "Salsa Barbaca",
+            "fechaCaducidad": "2024-08-15",
+            "unidadMedida": "Litros",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "zonaRiesgo": 1,
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h",
+            "consumo": [
+                {
+                  "dia": "Lunes",
+                  "cantidad": 254
+                },
+                {
+                  "dia": "Martes",
+                  "cantidad": 581
+                },
+                {
+                  "dia": "Miércoles",
+                  "cantidad": 360
+                },
+                {
+                  "dia": "Jueves",
+                  "cantidad": 835
+                },
+                {
+                  "dia": "Viernes",
+                  "cantidad": 896
+                },
+                {
+                  "dia": "Sábado",
+                  "cantidad": 144
+                },
+                {
+                  "dia": "Domingo",
+                  "cantidad": 66
+                }
+              ]
+            }
+        },
+        {
+            "id": 1011,
+            "categoria": " Complementos",
+            "subcategoria": " Complementos",
+            "producto": "Pan de Ajo",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1012,
+            "categoria": " Complementos",
+            "subcategoria": " Complementos",
+            "producto": "Lasaña",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1013,
+            "categoria": "Bebidas",
+            "subcategoria": "Vinos",
+            "producto": "Lambrusco",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1014,
+            "categoria": "Bebidas",
+            "subcategoria": "Refrescos",
+            "producto": "Coca Cola Original",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1015,
+            "categoria": "Publicidad",
+            "subcategoria": "Branding",
+            "producto": "Bolsas de Papel",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1016,
+            "categoria": "Publicidad",
+            "subcategoria": "Branding",
+            "producto": "Carton Porciones",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1017,
+            "categoria": "Papeleria",
+            "subcategoria": "MaterialOficina",
+            "producto": "Boligrafos",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1018,
+            "categoria": "Seguridad y Emergencia",
+            "subcategoria": "Equipo de seguridad",
+            "producto": "Kits de primeros auxilios",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1019,
+            "categoria": "Limpeza",
+            "subcategoria": "Detergentes",
+            "producto": "FriegaSuelos",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1020,
+            "categoria": "Limpeza",
+            "subcategoria": "Herramientas de Limpieza",
+            "producto": "Esponjas",
+            "fechaCaducidad": "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1021,
+            "categoria": "Ropa de Trabajo y Protección",
+            "subcategoria": "Uniformes",
+            "producto": "Delantales y batas protectoras",
+            "fechaCaducidad": "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1022,
+            "categoria": "Herramientas",
+            "subcategoria": "Herramientas Menores",
+            "producto": "Pala de Horno",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1023,
+            "categoria": "Otro",
+            "subcategoria": "Cajas de Pizza",
+            "producto": "Cajas de Pizza S",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        },
+        {
+            "id": 1024,
+            "categoria": "Otro",
+            "subcategoria": "Cajas de Pizza",
+            "producto": "Cajas de Pizza XL",
+            "fechaCaducidad":  "NULL",
+            "unidadMedida": "Unidad(es)",
+            "disponible": 100,
+            "limite": 10,
+            "estado": true,
+            "accion1": "Modificar",
+            "estadoForzado": false,
+            "ultimaMod": "7d 2h"
+        }
+    ]
+}

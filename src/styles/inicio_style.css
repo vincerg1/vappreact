@@ -1,0 +1,87 @@
+/* Archivo: inicio_style.css */
+
+/* Estilos generales */
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Contenedor principal */
+.contenedorPC {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Título principal */
+h1.PDCRL {
+  text-align: center;
+  font-size: 2rem;
+  color: #333333;
+  margin-top: 20px;
+  font-weight: bold;
+}
+
+.PDCRL.t {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #555555;
+  margin-bottom: 20px;
+}
+
+/* Tarjetas de las opciones del backoffice */
+.background_icon_button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  border: none;
+  border-radius: 10px;
+  background-color: #82f89c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.background_icon_button span {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333333;
+  transition: color 0.3s ease;
+}
+
+/* Efectos interactivos */
+.background_icon_button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  background-color: #297a2b; /* Botón cambia al azul oscuro */
+}
+
+.background_icon_button:hover span {
+  color: #ffffff; /* Cambia el texto a blanco para más contraste */
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+  .contenedorPC {
+    padding: 20px;
+  }
+
+  .background_icon_button {
+    padding: 25px;
+  }
+
+  h1.PDCRL {
+    font-size: 1.5rem;
+  }
+
+  .PDCRL.t {
+    font-size: 1rem;
+  }
+}

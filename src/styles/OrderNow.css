@@ -1,0 +1,33 @@
+
+
+.order-now-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .order-now-container button {
+    background-color: black;
+    color: yellow;
+    margin: 10px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 900;
+    width: 250px;
+    height: 100px;
+    font-family: poppins;
+  }
+
+
+  
+  .order-now-container button:hover {
+    opacity: 0.75;
+  }
+
+  .tablaDetallesLote {
+
+    margin-left: 25%;
+  }
+  

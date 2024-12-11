@@ -1,0 +1,60 @@
+.seguimiento-container {
+    padding: 20px;
+    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-sizing: border-box;
+  }
+  
+  .filters-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .seguimiento-grid {
+    display: grid;
+    grid-template-areas:
+      "ventas ticket-promedio pizza-mas-vendida mis-zonas"
+      "segmentos segmentos segmentos mis-zonas";
+    grid-template-columns: 1fr 1fr 1fr 1.5fr;
+    grid-template-rows: auto 1fr;
+    grid-gap: 20px;
+    flex-grow: 1;
+    box-sizing: border-box;
+    height: calc(100vh - 150px); /* Ajustamos la altura total menos el espacio de los filtros y el padding */
+  }
+  
+  .seguimiento-item {
+    background-color: #f0f0f0;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  
+  .ventas {
+    grid-area: ventas;
+  }
+  
+  .ticket-promedio {
+    grid-area: ticket-promedio;
+  }
+  
+  .pizza-mas-vendida {
+    grid-area: pizza-mas-vendida;
+  }
+  
+  .mis-zonas {
+    grid-area: mis-zonas;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 88%;
+  }
+  
+  .segmentos {
+    grid-area: segmentos;
+    height: 85%;
+  }
+  

@@ -1,0 +1,209 @@
+/* FloatingCart.css */
+
+/* Ancho aumentado del carrito */
+.floating-cart {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 360px; /* Ancho para los incentivos */
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+/* Título y botón Deshacer alineados */
+.cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Espacio entre el título y el total */
+}
+
+.undo-button {
+  background-color: #f10000;
+  border: none;
+  color: white;
+  font-size: 14px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.undo-button:hover {
+  background-color: #ff4d4d;
+  color: white;
+}
+
+/* Texto de "Detalles de tu compra" */
+.detalles-compra p {
+  font-size: 12px;
+  color: #f8bf05;
+  text-align: left;
+}
+
+/* Incentivo con efecto de parpadeo */
+.incentivo-estado {
+  color: rgb(118, 231, 165);
+  font-size: 13px;
+  background-color: rgb(204, 237, 57);
+  padding: 5px;
+  border-radius: 4px;
+  text-align: center;
+  margin-top: 10px;
+  animation: blinkBackground 1.5s infinite;
+}
+
+@keyframes blinkBackground {
+  0% { background-color: rgb(204, 237, 57); }
+  50% { background-color: rgb(249, 250, 127); }
+  100% { background-color: rgb(204, 237, 57); }
+}
+.error-border {
+  border: 2px solid red;
+}
+
+/* Tooltip de error */
+.tooltip-error {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: red;
+  border: 1px solid red;
+  border-radius: 4px;
+  padding: 5px;
+  margin-top: 5px;
+  font-size: 12px;
+  width: fit-content;
+}
+
+.next-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.next-button {
+  background-color: #f5cf36;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 5px;
+  width: 100%;
+}
+
+.next-button:hover {
+  background-color: #0056b3;
+}
+
+.undo-button {
+  background-color: #f10000;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  color: white;
+  padding: 5px 10px;
+}
+
+.undo-button:hover {
+  background-color: #d40000;
+}
+
+.qr-with-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 20px; /* Agrega un margen alrededor del contenedor */
+  padding: 20px; /* Espacio interno dentro del contenedor */
+  border: 1px solid #ddd; /* Bordes suaves alrededor */
+  background-color: #ffffff; /* Fondo para resaltar el QR */
+  border-radius: 10px; /* Bordes redondeados */
+
+}
+
+.vertical-text {
+  transform: rotate(180deg);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 11px;
+  margin-right: 10px; /* Mueve el texto a la izquierda */
+  line-height: 1.2; /* Ajusta el espacio entre líneas */
+  white-space: pre-line; /* Permite el salto de línea */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 128px; /* Ajustamos la altura del texto al tamaño del QR */
+  overflow: hidden; /* Asegura que no se salga del contenedor */
+}
+
+.track-title {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.totals p{
+  text-align: start;
+}
+
+.additional-costs {
+  border: 1px solid #ccc;  /* Borde para resaltar la sección */
+  padding: 10px;           /* Espaciado interno para mejorar la legibilidad */
+  margin-bottom: 10px;     /* Espaciado inferior */
+  line-height: 1.4;        /* Ajuste del interlineado */
+  background-color: #f9f9f9;  /* Color de fondo para diferenciar la sección */
+  line-height: .75;
+}
+
+.edit-button, .delete-button {
+  background: none; /* Eliminar fondo */
+  border: none; /* Eliminar el borde */
+  cursor: pointer; /* Cambiar el cursor a mano */
+  padding: 2px; /* Añadir un pequeño margen interno */
+  margin-left: 1px; /* Reducir el espacio entre los íconos */
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  filter: grayscale(100%); 
+}
+
+.edit-button:hover, .delete-button:hover {
+  color: #575757; /* Cambiar el color al pasar el ratón */
+}
+
+.edit-button .icon, .delete-button .icon {
+  font-size: 12px; /* Ajustar el tamaño del ícono */
+  color: gray; /* Cambiar a escala de grises */
+}
+
+/* Ajustar los ingredientes extra en el FloatingCart */
+.extra-ingredients-list {
+  list-style: none; /* Eliminar viñetas */
+  padding-left: 0;  /* Eliminar sangría */
+}
+
+.extra-ingredient-item {
+  font-style: italic;  /* Texto en cursiva */
+  font-size: 1rem;    /* Reducir tamaño de fuente */
+
+}
+
+.extra-ingredient-item span {
+  margin-right: 5px; /* Espacio entre el nombre y el precio */
+}
+
+.additional-costs-name{
+  font-size: 12px;
+  color: #f8bf05;
+  text-align: left;
+
+}
+
+
+
+
+
+
+

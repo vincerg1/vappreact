@@ -1,0 +1,140 @@
+/* Ticket general */
+.ticket {
+  background-color: #fff;
+  color: #000;
+  width: 180px;
+  padding: 20px;
+  margin: 0 auto;
+  border: 2px dashed #000;
+  font-family: 'Arial', sans-serif;
+  line-height: 1.5;
+}
+
+/* Timestamp section */
+.timestamp {
+  text-align: center;
+  font-size: 14px;
+  border-bottom: 1px dashed #000;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+/* Detalles de la compra */
+.details {
+  margin-bottom: 10px;
+}
+
+.details h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.details ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.details ul li {
+  font-size: 14px;
+  margin-bottom: 5px;
+  text-align: left;
+}
+
+.details p {
+  text-align: right;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* QR Code */
+.qr-code {
+  text-align: center;
+  border-top: 1px dashed #000;
+  border-bottom: 1px dashed #000;
+  padding: 10px 0;
+  margin: 10px 0;
+}
+
+.qr-code p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+
+/* Ticket Express y Número de Compras */
+.express-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin: 10px 0;
+  text-align: center;
+}
+
+.express-info p {
+  width: 48%;
+  text-align: center;
+  border: 1px solid #000;
+  padding: 5px 0;
+}
+
+/* Información de la empresa */
+.company-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.company-info img {
+  max-width: 100%;  
+  /* border-radius: 10px;   */
+  filter: grayscale(100%);
+  transform: rotate(-2.5deg);
+  margin-bottom: 25px;
+}
+
+.timestamp p {
+  margin: 0;
+  line-height: 1.2;  /* Ajusta el valor según lo que necesites */
+}
+.day-and-date {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px; /* Espacio entre el día y la fecha */
+}
+
+/* Opcionalmente, puedes ajustar el tamaño de fuente o el espaciado */
+.day-and-date p {
+  margin: 0;
+}
+
+.producto-item {
+  padding: 10px 0; /* Espacio alrededor de cada elemento */
+  border-bottom: 1px solid #ccc; /* Línea divisoria */
+}
+
+.producto-item:last-child {
+  border-bottom: none; /* Quitar la línea del último elemento */
+}
+
+.details {
+  line-height: 1.2; /* Ajusta el interlineado a 1.2 para reducir el espacio entre líneas */
+  margin-bottom: 10px; /* Espaciado inferior si es necesario */
+}
+
+.producto-item {
+  margin-bottom: 5px; /* Espaciado entre cada producto */
+}
+
+.company-info {
+  line-height: 1.2; /* Ajusta el interlineado para que sea más compacto */
+  margin-top: 15px; 
+}
+
+.company-info p {
+  margin: 2px 0; 
+  font-size: 12px;
+}
+
+

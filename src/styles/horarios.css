@@ -1,0 +1,62 @@
+/* Ajustes generales */
+.horarios-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    width: 100%;
+  }
+  
+  .form-scroll-container {
+    max-height: 900px; 
+    width: 50%;
+    overflow-y: auto;  /* Habilitar scroll vertical */
+    padding-right: 15px; /* Añadir espacio a la derecha para que no se corte el contenido */
+  }
+  
+  .work-hours-form {
+    margin-top: 10px;
+  }
+  
+  /* Mejora del tamaño de los selectores de tiempo */
+  .time-selectors label {
+    margin-right: 10px;
+  }
+  
+  .time-selector, .shift-selector {
+    padding: 10px;
+    font-size: 1rem;
+    margin-right: 15px;
+    width: 140px;
+  }
+  
+  /* Botones de acción */
+  .action-buttons button {
+    margin-right: 10px;
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .action-buttons button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Botón para agregar otro turno */
+  .add-shift-button {
+    margin-top: 10px;
+    background-color: #28a745;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .add-shift-button:hover {
+    background-color: #218838;
+  }
+  

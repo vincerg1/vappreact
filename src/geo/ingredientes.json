@@ -1,0 +1,106 @@
+{
+    "ingredientes": [
+        {
+            "id_ing": 1005,
+            "nombre": "Queso Mozz Fresca",
+            "categoria": "Lacteos",
+            "disponible": 15000,
+            "limite": 1000,
+            "estado": "Activo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 1200},
+                {"dia": "Martes", "cantidad": 1100},
+                {"dia": "Miércoles", "cantidad": 1000},
+                {"dia": "Jueves", "cantidad": 1300},
+                {"dia": "Viernes", "cantidad": 1400},
+                {"dia": "Sábado", "cantidad": 900},
+                {"dia": "Domingo", "cantidad": 1100}
+            ]
+        },
+        {
+            "id_ing": 1006,
+            "nombre": "Queso Burrata",
+            "categoria": "Lacteos",
+            "disponible": 12000,
+            "limite": 2000,
+            "estado": "Activo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 200},
+                {"dia": "Martes", "cantidad": 100},
+                {"dia": "Miércoles", "cantidad": 10},
+                {"dia": "Jueves", "cantidad": 70},
+                {"dia": "Viernes", "cantidad": 80},
+                {"dia": "Sábado", "cantidad": 90},
+                {"dia": "Domingo", "cantidad": 100}
+            ]
+        },
+        {
+            "id_ing": 1007,
+            "nombre": "Peperonni",
+            "categoria": "Fiambres y carnes",
+            "disponible": 5000,
+            "limite": 3500,
+            "estado": "Activo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 12},
+                {"dia": "Martes", "cantidad": 11},
+                {"dia": "Miércoles", "cantidad": 10},
+                {"dia": "Jueves", "cantidad": 13},
+                {"dia": "Viernes", "cantidad": 14},
+                {"dia": "Sábado", "cantidad": 9},
+                {"dia": "Domingo", "cantidad": 11}
+            ]
+        },
+        {
+            "id_ing": 1008,
+            "nombre": "Chorizo",
+            "categoria": "Fiambres y carnes",
+            "disponible": 3000,
+            "limite": 3500,
+            "estado": "Activo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 200},
+                {"dia": "Martes", "cantidad": 100},
+                {"dia": "Miércoles", "cantidad": 100},
+                {"dia": "Jueves", "cantidad": 300},
+                {"dia": "Viernes", "cantidad": 400},
+                {"dia": "Sábado", "cantidad": 500},
+                {"dia": "Domingo", "cantidad": 1100}
+            ]
+        },
+        {
+            "id_ing": 1009,
+            "nombre": "Albahaca",
+            "categoria": "Verduras",
+            "disponible": 200,
+            "limite": 500,
+            "estado": "Activo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 20},
+                {"dia": "Martes", "cantidad": 10},
+                {"dia": "Miércoles", "cantidad": 10},
+                {"dia": "Jueves", "cantidad": 30},
+                {"dia": "Viernes", "cantidad": 40},
+                {"dia": "Sábado", "cantidad": 50},
+                {"dia": "Domingo", "cantidad": 70}
+            ]
+        },
+        {
+            "id_ing": 1020,
+            "nombre": "Rúcula",
+            "categoria": "Verduras",
+            "disponible": 0,
+            "limite": 500,
+            "estado": "Inactivo",
+            "consumo": [
+                {"dia": "Lunes", "cantidad": 20},
+                {"dia": "Martes", "cantidad": 10},
+                {"dia": "Miércoles", "cantidad": 10},
+                {"dia": "Jueves", "cantidad": 30},
+                {"dia": "Viernes", "cantidad": 40},
+                {"dia": "Sábado", "cantidad": 50},
+                {"dia": "Domingo", "cantidad": 70}
+            ]
+        }
+    ]
+}

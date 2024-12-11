@@ -1,0 +1,18 @@
+[
+    {
+      "provincia": "Alicante",
+      "comunidad_autonoma": "Comunidad Valenciana",
+      "capital": "Alicante"
+    },
+    {
+      "provincia": "Barcelona",
+      "comunidad_autonoma": "Cataluña",
+      "capital": "Barcelona"
+    },
+    {
+      "provincia": "Madrid",
+      "comunidad_autonoma": "Comunidad de Madrid",
+      "capital": "Madrid"
+    }
+  ]
+  

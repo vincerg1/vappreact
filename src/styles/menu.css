@@ -1,0 +1,485 @@
+.menu-container {
+    display: flex;
+    flex-wrap: wrap;
+   
+  }
+
+  .modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content:  flex-start;
+    padding-top: 40px;
+    background-color: rgba(0, 0, 0, 0.5); 
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000; 
+  }
+  
+  .menu-Modalcontainer {
+    display: flex;
+    flex-wrap: wrap;
+    background-color: white;
+    padding: 100px;
+    border-radius: 5px;
+    position: relative; 
+    margin: 0 auto;
+  }
+  .menu-Modalcontainer  .close-button{
+    width: 25px;
+    height: 25px;
+    position: absolute;
+    top: -20px;
+    right: 10px;
+    background: transparent;
+    font-size: 1.75rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .menu-Modalcontainer  .close-button:hover, .close-button:focus{
+    background: transparent; 
+    color: red; 
+    text-decoration: none; 
+  }
+
+ .tituloModal {
+    position: absolute; 
+    top: 20px; 
+    left: 50%;
+    transform: translateX(-50%); 
+    background: #fff; 
+    padding: 0 20px; 
+  }
+  
+  .botonSeleccionarMenu{
+    background-color: orange; 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    cursor: pointer; 
+    border-radius: 5px; 
+    font-weight: bold; 
+  }
+
+  h2 {
+    margin-bottom: 20px;
+  }
+  
+  
+  .menu-item {
+    width: 250px;
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 20px;
+    padding: 20px;
+    border: 1px solid #ccc; /* Bordes para visualizar los límites del contenedor */
+    background: #fff;
+    border-radius: 10px;
+  }
+
+  .menu-item-cm {
+    width: 250px;
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 20px;
+    padding: 20px;
+    border: 1px solid #ccc; /* Bordes para visualizar los límites del contenedor */
+    background: #fff;
+    border-radius: 10px;
+  }
+
+  .menu-image-cm {
+    width: 250px;
+    height: 350px;
+    overflow: hidden;
+  }
+
+  .TempMsj{
+    background-color: rgb(255, 185, 33);
+    border-radius: 10px;
+    animation: blinking 3s infinite;
+  }
+
+  .notificacion-default {
+    background-color: rgb(242, 255, 0);
+    border-radius: 10px;
+
+  }
+
+  .ImgCm img{
+    background-color: red;
+    border-radius: 10px;
+    width: 250px;
+    height: 250px;
+  }
+
+  .menu-item ul {
+    list-style-type:none; 
+    padding: 0; 
+    margin: 0; 
+  }
+  .menu-item ul li {
+    text-align: center;
+    font-weight: bold;
+  }
+  
+  .menu-image {
+    width: 250px;
+    height: 250px;
+    overflow: hidden;
+  }
+
+  .notificacion-container {
+    position: relative;
+    margin-bottom: -25px; 
+    
+  }
+
+
+.Descripcion{
+  font-style: italic;
+  background-color: yellowgreen;
+}
+  
+  .menu-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .menu-details {
+    margin-top: 10px;
+  }
+  
+  .menu-buttons {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .menu-buttons button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+  } 
+  .menu-buttons button.delete {
+    background-color: #ff0000;
+  }
+  .h1m{
+    margin-top: -2.5rem;
+  }  
+
+  .menu-image img {
+    width: 250px; /* o el ancho que desees */
+    height: 250px; /* o el alto que desees */
+    object-fit: cover; /* Esto asegura que la imagen cubra el área sin distorsionarse */
+    border-radius: 10px; /* Opcional: si quieres bordes redondeados */
+  }
+  
+  .customer-menu-image .pizza-image {
+    width: 200px; /* Cambia el tamaño según tus necesidades */
+    height: auto; /* Esto mantiene la proporción original de la imagen */
+  }
+  .customer-menu-image {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: 10px; /* Esto separará los elementos uniformemente */
+  }
+
+  .form-container {
+    position: fixed; /* Posicionamiento fijo respecto a la ventana del navegador */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8); /* Fondo semitransparente */
+    z-index: 1000; /* Asegura que se muestre por encima de otros elementos */
+  }
+
+  .formulario-pizza {
+    background: linear-gradient(to right, #facf8e, #f7f7f7);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+    padding: 40px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 700px; /* Ancho máximo para dispositivos más grandes */
+  }
+
+  .form{
+    background-color: #faf2f2;
+    border: 2.5px solid black; 
+    height: 50%;
+    width: auto;
+  }
+.payment-details .payment-form {
+  height: auto;
+  width: 250px;
+  background-color: #f7c9c9;
+}
+
+  label {
+  text-align: center;
+  font-weight: 900;
+  margin: 0;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .form-group label, .form-group p {
+    margin: 0;
+  }
+  
+  .form-actions {
+    display: flex; /* Habilita Flexbox */
+    flex-direction: column; /* Alinea los elementos en una columna */
+    justify-content: center; /* Centra los elementos verticalmente */
+    align-items: center; /* Centra los elementos horizontalmente */
+    gap: -1px; /* Espacio entre los botones */
+  }
+  .form-actions button {
+    background-color: orange; 
+    color: white;
+    border: none; 
+    padding: 10px 20px; 
+    cursor: pointer; 
+    border-radius: 5px; 
+    font-weight: bold; 
+  
+  }
+  
+  .form-actions button:first-child {
+    margin-top: 50px; 
+  }
+  
+  .form-actions button:hover {
+    background-color: darkorange;
+  }
+  
+  .highlighted {
+    background-image: url('../vapp-img/marcador-removebg-preview.png');
+    background-repeat: no-repeat;
+    background-size: cover; 
+    background-position: center center; 
+    padding: 0.5em 0; 
+    display: block; 
+  }
+  
+
+  @keyframes blinker {
+    50% {
+      background-color: #ff0000; 
+    }
+  }
+.AgregaOtraPizza{
+  animation: blinker 2s linear infinite;
+  background-color: #ff0000; 
+  color: white; 
+  border: none; 
+  padding: 10px 20px; 
+  font-size: 1em; 
+  cursor: pointer; 
+  border-radius: 5px; 
+  transition: background-color 0.3s; 
+  }
+
+  .AgregaOtraPizza:hover {
+    background-color: #ff4d4d; 
+  }
+
+  .table-container {
+    margin-top: 20px;
+    overflow-x: auto; 
+  }
+  
+  table {
+    width: 100%; 
+    border-collapse: collapse; 
+  }
+  
+  table, th, td {
+    border: 1px solid #ddd; 
+  }
+  
+  th, td {
+    text-align: left;
+    padding: 8px; 
+  }
+  
+  th {
+    background-color: #f2f2f2; 
+  }
+  
+  tr:nth-child(even) {
+    background-color: #f9f9f9; 
+  }
+  
+  tr:hover {
+    background-color: #eaeaea; 
+  }
+  
+  .labelPartnerbox{
+    background-color: blueviolet;
+    color: #f2f2f2;
+    font-weight: 900;
+    font-style: italic;
+    font-size: 16px;
+    padding: .5rem;
+    margin-top: -2rem;
+  }
+
+  .menu-item {
+    position: relative;
+    padding-top: 50px;
+  }
+  
+  .menu-image img {
+    display: block;
+    max-width: 100%; 
+  }
+  
+  .cupones-disponibles {
+    position: absolute;
+    top: 0px; 
+    background-color: rgba(255, 255, 0, 0.7); 
+    width: 95%;
+    border-radius: 10px;
+    color: black;
+    font-weight: bold;
+    animation: blinking 1.5s infinite;
+    text-align: center;
+  }
+  
+  .alerta {
+    background-color: rgba(255, 0, 0, 0.7); 
+    color: #ccc;
+  }
+  
+  @keyframes blinking {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  
+  .botonSeleccionarMenu {
+    margin-top: 5px; /* Espacio sobre el botón */
+  }
+  
+  .menu-item .menu-image img {
+    width: 250px; /* Ancho fijo para la imagen */
+    height: 250px; /* Altura fija para la imagen */
+    object-fit: cover; /* Esto asegurará que la imagen cubra todo el espacio asignado sin distorsionarse */
+  }
+
+  @keyframes blinker {
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+
+  .tadescuentos h2 {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2); /* Sombra ligera */
+    background-image: linear-gradient(to right, #f8ffd6, #ffea00); 
+    border-radius: 10px;
+    color: #000000;
+    font-style: italic
+    ;
+  }
+
+  .Daplicados h2 {
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2); /* Sombra ligera */
+    background-image: linear-gradient(to right, #ffe3b8, #ff7e38); 
+    border-radius: 10px;
+    color: #000000;
+    font-style: italic
+  }
+/* Estilo para el método de entrega */
+.metodo-entrega {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+/* Esconde los inputs de radio */
+.metodo-entrega input[type="radio"] {
+  display: none;
+}
+
+/* Estilo para las etiquetas cuando el radio está seleccionado */
+.metodo-entrega input[type="radio"]:checked + label {
+  background-color: #2196F3;
+  color: white;
+}
+
+/* Estilo general para las etiquetas */
+.metodo-entrega label {
+  padding: 10px 20px;
+  border: 1px solid #2196F3;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Cambia el fondo al pasar el ratón */
+.metodo-entrega label:hover {
+  background-color: #f1f1f1;
+}
+
+.pickup-time-selector h2 {
+  background-color: #011831;
+  font-size: 18px;
+  color: white;
+  font-style: italic;
+}
+
+.pickup-time-selector {
+  background-color: #011831;
+  font-size: 14px;
+  color: white;
+  padding: .5rem;
+}
+
+.btn-guardar-tiempo {
+  background-color: #3554ef; /* Color Verde */
+  color: white;
+  padding: 5px 10px;
+  margin-left: 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-guardar-tiempo:hover {
+  background-color: #20afd7; /* Color Verde Oscuro para Hover */
+}
+
+
+.totalPagar h2{
+  background-color: #000000;
+  color: white;
+  text-transform: uppercase;
+  padding: 1.5rem;
+}

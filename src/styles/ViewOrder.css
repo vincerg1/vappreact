@@ -1,0 +1,93 @@
+/* styles/ViewOrder.css */
+.table-container {
+  max-height: 800px; /* Ajusta la altura máxima según tus necesidades */
+  overflow-y: auto;  /* Activa el scroll vertical */
+  scrollbar-width: thin; /* Estilo fino para el scrollbar en Firefox */
+}
+
+.table-container::-webkit-scrollbar {
+  width: 8px;  /* Ancho del scrollbar */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3); /* Color del scrollbar */
+  border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background-color: #f4f4f4;  /* Fondo del scrollbar */
+}
+
+/* Ajustes para la tabla */
+.table-container table {
+  width: 100%; /* La tabla usa todo el ancho disponible */
+  table-layout: auto; /* Ajustar automáticamente el tamaño de las columnas */
+}
+
+.table-container th, .table-container td {
+  padding: 8px; /* Espaciado interno */
+  text-align: left; /* Alineación del texto */
+  min-width: 50px; /* Establecer un ancho mínimo */
+}
+
+/* Especificar anchos para columnas específicas */
+.table-container th:nth-child(1), /* Primera columna: ID Orden */
+.table-container td:nth-child(1) {
+  width: 80px;  /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(2), /* Segunda columna: Fecha */
+.table-container td:nth-child(2) {
+  width: 100px;  /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(3), /* Tercera columna: Hora */
+.table-container td:nth-child(3) {
+  width: 80px;  /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(4), /* Cuarta columna: Cliente */
+.table-container td:nth-child(4) {
+  width: 150px; /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(5), /* Quinta columna: Productos */
+.table-container td:nth-child(5) {
+  width: 200px; /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(6), /* Sexta columna: Total */
+.table-container td:nth-child(6) {
+  width: 80px; /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(7), /* Séptima columna: TicketExpress */
+.table-container td:nth-child(7) {
+  width: 50px; /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(8), /* Octava columna: Incentivos */
+.table-container td:nth-child(8) {
+  width: 50px; /* Ajusta según sea necesario */
+}
+
+.table-container th:nth-child(9), /* Novena columna: Acciones */
+.table-container td:nth-child(9) {
+  width: 100px; /* Ajusta según sea necesario */
+}
+
+button {
+  padding: 5px 10px; /* Ajustar el espaciado */
+  margin: 2px; /* Espacio entre botones */
+  border: none; /* Sin borde */
+  border-radius: 4px; /* Bordes redondeados */
+  background-color: #4CAF50; /* Color de fondo */
+  color: white; /* Color del texto */
+  cursor: pointer; /* Cambiar el cursor al pasar el ratón */
+  font-size: 14px; /* Tamaño de fuente */
+  transition: background-color 0.3s; /* Transición para el hover */
+}
+
+button:hover {
+  background-color: #45a049; /* Cambiar color en hover */
+}

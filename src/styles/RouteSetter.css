@@ -1,0 +1,74 @@
+/* Contenedor principal */
+.route-setter-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    gap: 20px;
+  }
+  
+  /* Título central */
+  .route-setter-layout h1 {
+    text-align: center;
+    font-size: 2rem;
+    color: #333;
+    margin-bottom: 20px;
+  }
+  
+  /* Contenedor para las dos columnas */
+  .columns-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    gap: 20px;
+  }
+  
+  /* Columna izquierda */
+  .left-column {
+    flex: 1;
+    max-width: 50%;
+  }
+  
+  /* Columna derecha */
+  .right-column {
+    flex: 1;
+    max-width: 50%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* Estilo de widgets (Radar, Crear Ruta, Repartidores Activos) */
+  .widget {
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .widget h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    color: #333;
+  }
+
+  /* Resaltar filas Express */
+.express-row {
+  background-color: #fff3cd; /* Amarillo claro */
+  font-weight: bold;
+}
+
+/* Columna de Express */
+.table-section th:nth-child(4),
+.table-section td:nth-child(4) {
+  text-align: center;
+}
+
+.routes-container{
+  background-color: yellowgreen;
+}
+  

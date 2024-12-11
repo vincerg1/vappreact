@@ -1,0 +1,329 @@
+{
+  "posts": [
+    {
+      "id": 1,
+      "title": "json-server",
+      "author": "typicode"
+    }
+  ],
+  "comments": [
+    {
+      "id": 1,
+      "body": "some comment",
+      "postId": 1
+    }
+  ],
+  "profile": {
+    "name": "typicode"
+  },
+  "inventario": [
+    {
+      "categoria": "Bebidas",
+      "subcategoria": "Vinos",
+      "producto": "Lambrusco",
+      "disponible": 7,
+      "limite": 4,
+      "unidadMedida": "Litros",
+      "id": "74123299-0969-4b17-9602-8130a0f1a9e2",
+      "estado": true,
+      "zonaRiesgo": 1,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 575
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 940
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 265
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 201
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 113
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 155
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 76
+        }
+      ],
+      "fechaCaducidad": "2023-11-15T13:48:34.408Z",
+      "ultimaModificacion": "2023-11-15T13:48:55.380Z"
+    },
+    {
+      "categoria": "Ingredientes",
+      "subcategoria": "Lacteos",
+      "producto": "Queso Mozz Fresca",
+      "disponible": 5000,
+      "limite": 4800,
+      "unidadMedida": "Gramos",
+      "id": "7ddca1ac-3f6a-4c41-b5a9-65eed864b88a",
+      "estado": false,
+      "zonaRiesgo": 2,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 269
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 285
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 658
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 14
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 672
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 162
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 280
+        }
+      ],
+      "fechaCaducidad": "2023-11-15T13:48:34.408Z",
+      "ultimaModificacion": "2023-11-15T13:52:27.101Z"
+    },
+    {
+      "categoria": "Ingredientes",
+      "subcategoria": "Lacteos",
+      "producto": "Queso Burrata",
+      "disponible": 20,
+      "limite": 48,
+      "unidadMedida": "Gramos",
+      "id": "3764c524-fba6-46e3-9c84-2676f3218faa",
+      "estado": false,
+      "zonaRiesgo": 4,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 757
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 742
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 232
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 992
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 879
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 210
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 255
+        }
+      ],
+      "fechaCaducidad": "2024-02-15T13:52:53.000Z",
+      "ultimaModificacion": "2023-11-15T13:53:23.380Z"
+    },
+    {
+      "categoria": "Ingredientes",
+      "subcategoria": "Fiambres y carnes",
+      "producto": "Peperonni",
+      "disponible": 1000,
+      "limite": 500,
+      "unidadMedida": "Gramos",
+      "id": "d16b8c21-4e21-418f-b229-e3386c44f4f0",
+      "estado": true,
+      "zonaRiesgo": 1,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 455
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 377
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 919
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 763
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 100
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 954
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 850
+        }
+      ],
+      "fechaCaducidad": "2024-04-18T12:54:26.000Z",
+      "ultimaModificacion": "2023-11-15T13:57:46.797Z"
+    },
+    {
+      "categoria": "Herramientas",
+      "subcategoria": "Herramientas Menores",
+      "producto": "Palas de Pizza",
+      "disponible": 2,
+      "limite": 0,
+      "unidadMedida": "Unidad(es)",
+      "id": "483ec87d-e879-4bd4-98a7-e7aabd3ac5b2",
+      "estado": true,
+      "zonaRiesgo": 0,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 691
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 685
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 210
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 253
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 965
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 756
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 205
+        }
+      ],
+      "fechaCaducidad": "2023-11-15T14:31:56.717Z",
+      "ultimaModificacion": "2023-11-15T14:45:19.977Z"
+    },
+    {
+      "categoria": "Ingredientes",
+      "subcategoria": "Verduras",
+      "producto": "Albahaca",
+      "disponible": 5000,
+      "limite": 300,
+      "unidadMedida": "Gramos",
+      "id": "d5f994d2-4a91-4037-ac55-f2bb0874f2b7",
+      "estado": true,
+      "zonaRiesgo": 0,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 755
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 44
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 846
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 969
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 956
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 229
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 510
+        }
+      ],
+      "fechaCaducidad": "2023-12-16T11:48:18.000Z",
+      "ultimaModificacion": "2023-11-16T11:48:50.670Z"
+    },
+    {
+      "categoria": "Bebidas",
+      "subcategoria": "Refrescos",
+      "producto": "Coca Cola Original",
+      "disponible": 67,
+      "limite": 20,
+      "unidadMedida": "Unidad(es)",
+      "id": "6203068a-9551-4ce2-851b-0ecd0327314b",
+      "estado": true,
+      "zonaRiesgo": 0,
+      "estadoForzado": false,
+      "consumo": [
+        {
+          "dia": "Lunes",
+          "cantidad": 130
+        },
+        {
+          "dia": "Martes",
+          "cantidad": 702
+        },
+        {
+          "dia": "Miércoles",
+          "cantidad": 703
+        },
+        {
+          "dia": "Jueves",
+          "cantidad": 60
+        },
+        {
+          "dia": "Viernes",
+          "cantidad": 147
+        },
+        {
+          "dia": "Sábado",
+          "cantidad": 771
+        },
+        {
+          "dia": "Domingo",
+          "cantidad": 79
+        }
+      ],
+      "fechaCaducidad": "2023-11-16T11:51:08.928Z",
+      "ultimaModificacion": "2023-11-16T11:51:44.410Z"
+    }
+  ]
+}
