@@ -10,6 +10,7 @@ const RouteSetter = () => {
   const [generatedRoutes, setGeneratedRoutes] = useState([]); 
   const [rutasDisponibles, setRutasDisponibles] = useState(false);
   const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
+  const coordinateCache = {}; 
 
   const fetchOrders = async () => {
     try {
@@ -97,6 +98,34 @@ const RouteSetter = () => {
         return 0;
     }
   };
+  const geocodeAddressWithCache = async (address) => {
+    if (coordinateCache[address]) {
+      console.log(`Coordenadas obtenidas del caché para: ${address}`);
+      return coordinateCache[address];
+    }
+  
+    try {
+      const response = await axios.get(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleMapsApiKey}`
+      );
+      const results = response.data.results;
+      if (results.length > 0) {
+        const { lat, lng } = results[0].geometry.location;
+        const coords = { lat, lng };
+        coordinateCache[address] = coords; // Guardar en caché
+        console.log(`Coordenadas obtenidas de la API para: ${address}`, coords);
+        return coords;
+      } else {
+        console.warn(`No se encontraron coordenadas para la dirección: ${address}`);
+        coordinateCache[address] = null; // Guardar como null para evitar solicitudes futuras
+        return null;
+      }
+    } catch (error) {
+      console.error("Error al geocodificar la dirección:", error);
+      coordinateCache[address] = null; // Guardar como null para evitar solicitudes futuras
+      return null;
+    }
+  };
   const generateRoute = async () => {
     const precioPorKm = await fetchPrecioDelivery(); // Obtener el precio por km
     console.log("Precio por km:", precioPorKm);
@@ -143,7 +172,7 @@ const RouteSetter = () => {
                     pedido.puntoSalidaCoordinates
                 );
 
-                if (distanceToLast <= 2 && currentRoute.length < 3) {
+                if (distanceToLast <= 3 && currentRoute.length < 3) {
                     currentRoute.push(pedido);
                 } else {
                     if (currentRoute.length > 1) currentRoutes.push([...currentRoute]);
@@ -156,60 +185,71 @@ const RouteSetter = () => {
             currentRoutes.push([...currentRoute]);
         }
 
-        rutas.push(
-            ...currentRoutes.map((ruta) => {
-                const costoTotalDelivery = ruta.reduce((total, pedido) => {
-                    return total + (pedido.costoDelivery || 0);
-                }, 0);
+        // Procesar cada ruta generada
+        for (const ruta of currentRoutes) {
+            const enrichedAddresses = await Promise.all(
+                ruta.map(async (pedido) => {
+                    const coordinates = await geocodeAddressWithCache(pedido.address);
+                    return {
+                        address: pedido.address,
+                        coordinates,
+                    };
+                })
+            );
 
-                const tiemposEstimados = ruta.map((pedido) => {
-                    const timeLeft = pedido.timeLeft;
-                    if (timeLeft && timeLeft !== "Tiempo agotado") {
-                        const match = timeLeft.match(/(\d+)h\s*(\d+)m\s*(\d+)s?/);
-                        if (match) {
-                            const [_, hours, minutes, seconds] = match.map(Number);
-                            return hours * 3600 + minutes * 60 + seconds; // Convertir a segundos
-                        }
+            const costoTotalDelivery = ruta.reduce((total, pedido) => {
+                return total + (pedido.costoDelivery || 0);
+            }, 0);
+
+            const tiemposEstimados = ruta.map((pedido) => {
+                const timeLeft = pedido.timeLeft;
+                if (timeLeft && timeLeft !== "Tiempo agotado") {
+                    const match = timeLeft.match(/(\d+)h\s*(\d+)m\s*(\d+)s?/);
+                    if (match) {
+                        const [_, hours, minutes, seconds] = match.map(Number);
+                        return hours * 3600 + minutes * 60 + seconds; // Convertir a segundos
                     }
-                    return 0; // Usar 0 si no hay tiempo válido
-                });
+                }
+                return 0; // Usar 0 si no hay tiempo válido
+            });
 
-                const tiempoEstimadoEnSegundos =
-                    tiemposEstimados.length > 0
-                        ? tiemposEstimados.reduce((total, tiempo) => total + tiempo, 0) / tiemposEstimados.length
-                        : 0;
+            const tiempoEstimadoEnSegundos =
+                tiemposEstimados.length > 0
+                    ? tiemposEstimados.reduce((total, tiempo) => total + tiempo, 0) / tiemposEstimados.length
+                    : 0;
 
-                const horas = Math.floor(tiempoEstimadoEnSegundos / 3600);
-                const minutos = Math.floor((tiempoEstimadoEnSegundos % 3600) / 60);
-                const segundos = Math.round(tiempoEstimadoEnSegundos % 60);
+            const horas = Math.floor(tiempoEstimadoEnSegundos / 3600);
+            const minutos = Math.floor((tiempoEstimadoEnSegundos % 3600) / 60);
+            const segundos = Math.round(tiempoEstimadoEnSegundos % 60);
 
-                const tiempoEstimadoFormateado =
-                    tiempoEstimadoEnSegundos === 0
-                        ? "Tiempo Agotado"
-                        : `${horas}h ${minutos}m ${segundos}s`;
+            const tiempoEstimadoFormateado =
+                tiempoEstimadoEnSegundos === 0
+                    ? "Tiempo Agotado"
+                    : `${horas}h ${minutos}m ${segundos}s`;
 
-                console.log("Tiempo estimado calculado:", tiempoEstimadoFormateado);
+            console.log("Tiempo estimado calculado:", tiempoEstimadoFormateado);
 
-                const distanciaEnKm = costoTotalDelivery / precioPorKm;
+            const distanciaEnKm = parseFloat((costoTotalDelivery / precioPorKm).toFixed(2));
 
-                return {
-                    idRuta: `R${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                    pedidos: ruta.map((pedido) => pedido.id_order),
-                    direcciones: ruta.map((pedido) => pedido.address),
-                    costoTotalDelivery: parseFloat(costoTotalDelivery.toFixed(2)),
-                    express: ruta.some((pedido) => pedido.isExpress),
-                    numeroDeParadas: ruta.length,
-                    repartidorAsignado: "No asignado",
-                    estado: "Pendiente",
-                    tiempoEstimado: tiempoEstimadoFormateado,
-                    distanciaEnKm: parseFloat(distanciaEnKm.toFixed(2)),
-                    tiendaSalida: {
-                        nombre_empresa: puntoSalida,
-                        coordenadas: puntoSalidaCoordinates,
-                    },
-                };
-            })
-        );
+            const rutaFinal = {
+                idRuta: `R${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+                pedidos: ruta.map((pedido) => pedido.id_order),
+                direcciones: enrichedAddresses,
+                costoTotalDelivery: parseFloat(costoTotalDelivery.toFixed(2)),
+                express: ruta.some((pedido) => pedido.isExpress),
+                numeroDeParadas: ruta.length,
+                repartidorAsignado: "No asignado",
+                estado: "Pendiente",
+                tiempoEstimado: tiempoEstimadoFormateado,
+                distanciaEnKm: distanciaEnKm,
+                tiendaSalida: {
+                    nombre_empresa: puntoSalida,
+                    coordenadas: puntoSalidaCoordinates,
+                },
+            };
+
+            rutas.push(rutaFinal);
+        }
     }
 
     console.log("Rutas generadas:", rutas);

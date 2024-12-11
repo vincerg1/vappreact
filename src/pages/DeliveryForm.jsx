@@ -20,9 +20,9 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const [addressInfo, setAddressInfo] = useState({
     postalCode: '',
     address: '',
-    lat: 42.7550800, // Coordenadas por defecto para España
+    lat: 42.7550800, 
     lng: -7.8662100,
-    observations: '' // No obligatorio
+    observations: '' 
   });
   const [mapZoom, setMapZoom] = useState(11);
   const [deliveryTimeOption, setDeliveryTimeOption] = useState('');

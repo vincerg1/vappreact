@@ -31,72 +31,63 @@ const DeliveryPanel = () => {
   
 
     const calculateTimeLeft = (fechaYHoraPrometida) => {
-        if (!fechaYHoraPrometida) {
-            console.error("Fecha y hora prometida no definida");
-            return "Fecha inválida";
-        }
-
-        const deliveryTime = moment(fechaYHoraPrometida, "YYYY-MM-DD HH:mm", true); // Validación estricta
-        if (!deliveryTime.isValid()) {
-            console.error("Formato de fecha inválido:", fechaYHoraPrometida);
-            return "Formato de fecha inválido";
-        }
-
-        const now = moment();
-        const diff = deliveryTime.diff(now, "seconds");
-
+        if (!fechaYHoraPrometida) return "Datos insuficientes";
+    
+        const deliveryTime = moment(fechaYHoraPrometida, "YYYY-MM-DD HH:mm", true);
+        if (!deliveryTime.isValid()) return "Fecha inválida";
+    
+        const diff = deliveryTime.diff(moment(), "seconds");
         if (diff <= 0) return "Tiempo agotado";
-
+    
         const hours = Math.floor(diff / 3600);
         const minutes = Math.floor((diff % 3600) / 60);
         const seconds = diff % 60;
-
+    
         return `${hours}h ${minutes}m ${seconds}s`;
     };
-
-
+    
     useEffect(() => {
         const interval = setInterval(() => {
-            // console.log("Pedidos antes de actualizar:", pedidos);
-    
-            setPedidos(prevPedidos => {
-                const actualizados = prevPedidos.map(pedido => {
-                    const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
-    
-                    if (!deliveryInfo || !deliveryInfo.fechaYHoraPrometida) {
-                        console.error("Fecha y hora prometida no definida para el pedido:", pedido.id_order);
-                    }                    
-    
-                    const tiempoRestante = calculateTimeLeft(deliveryInfo.fechaYHoraPrometida);
-                    // console.log(`Tiempo restante para pedido ${pedido.id_order}:`, tiempoRestante);
-    
-                    return {
-                        ...pedido,
-                        tiempoRestante,
-                    };
-                });
-    
-                // console.log("Pedidos después de actualizar:", actualizados);
-                return actualizados;
-            });
+          setPedidos((prevPedidos) =>
+            prevPedidos.map((pedido) => {
+              const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
+              if (!deliveryInfo || !deliveryInfo.fechaYHoraPrometida) {
+                console.error("Fecha y hora prometida no definida para el pedido:", pedido.id_order);
+                return pedido;
+              }
+              return {
+                ...pedido,
+                tiempoRestante: calculateTimeLeft(deliveryInfo.fechaYHoraPrometida),
+              };
+            })
+          );
         }, 1000);
-    
-        return () => clearInterval(interval); // Limpiar el intervalo al desmontar
-    }, [pedidos]);    
+      
+        return () => clearInterval(interval);
+      }, []); 
+      
     useEffect(() => {
         if (showWallet) {
             fetchWallet(filtro); // Cargar wallet con el filtro predeterminado
         }
     }, [showWallet]);
     useEffect(() => {
+        const loadData = async () => {
+            try {
+                await Promise.all([fetchPedidos(), fetchRutas()]);
+            } catch (error) {
+                console.error("Error al cargar pedidos y rutas:", error);
+            }
+        };
+    
         if (loggedIn) {
-            fetchPedidos();
+            loadData();
             fetchWallet();
             fetchMontoWallet();
             fetchPrecioDelivery();
-            fetchRutas();
+            fetchGraficaData();
         }
-    }, [loggedIn, repartidor]);
+    }, [loggedIn, repartidor]);    
     useEffect(() => {
         if (loggedIn) {
             fetchGraficaData();
@@ -490,49 +481,68 @@ const DeliveryPanel = () => {
     const generateRouteLink = (ruta) => {
         if (!ruta || !ruta.tiendaSalida || !ruta.tiendaSalida.coordenadas || !ruta.direcciones) {
             console.warn("Datos incompletos para generar la ruta:", ruta);
-            return "#"; // Enlace vacío si faltan datos
+            return "#";
         }
     
         const tiendaSalidaCoords = ruta.tiendaSalida.coordenadas;
-        console.log(`Punto de salida (coordenadas): lat: ${tiendaSalidaCoords.lat}, lng: ${tiendaSalidaCoords.lng}`);
-    
         const paradasCoords = ruta.direcciones
-            .map((direccionObj, index) => {
-                const { coordenadas } = direccionObj;
-                if (!coordenadas || !coordenadas.lat || !coordenadas.lng) {
-                    console.warn(`Coordenadas de la parada ${index + 1} no disponibles:`, direccionObj);
-                    return null;
-                }
-                console.log(`Parada ${index + 1} (coordenadas): lat: ${coordenadas.lat}, lng: ${coordenadas.lng}`);
-                return `${coordenadas.lat},${coordenadas.lng}`;
-            })
-            .filter(Boolean); // Filtrar valores nulos
+            .map((direccionObj) => direccionObj.coordinates && `${direccionObj.coordinates.lat},${direccionObj.coordinates.lng}`)
+            .filter(Boolean);
     
         if (paradasCoords.length === 0) {
             console.warn("No se encontraron paradas válidas para la ruta:", ruta.idRuta);
-            return "#"; // Enlace vacío si no hay paradas
+            return "#";
         }
     
         const baseUrl = "https://www.google.com/maps/dir/";
         const tiendaCoords = `${tiendaSalidaCoords.lat},${tiendaSalidaCoords.lng}`;
         return `${baseUrl}${tiendaCoords}/${paradasCoords.join("/")}`;
     };
+    const generateSingleLink = (deliveryInfo) => {
+        if (!deliveryInfo || !deliveryInfo.address || !deliveryInfo.tiendaSalida?.lat || !deliveryInfo.tiendaSalida?.lng) {
+            console.warn("Datos incompletos para generar la ruta del pedido individual:", deliveryInfo);
+            return "#";
+        }
     
+        const baseUrl = "https://www.google.com/maps/dir/";
+        const tiendaCoords = `${deliveryInfo.tiendaSalida.lat},${deliveryInfo.tiendaSalida.lng}`;
+        const encodedDestination = encodeURIComponent(deliveryInfo.address);
     
-    
+        return `${baseUrl}${tiendaCoords}/${encodedDestination}`;
+    };
     
     const fetchRutas = async () => {
         try {
             const response = await axios.get("http://localhost:3001/rutas");
             if (response.data.success) {
-                const rutas = response.data.data.map((ruta) => ({
-                    ...ruta,
-                    tiendaSalida: JSON.parse(ruta.tienda_salida), // Deserializar tiendaSalida
-                    id_pedidos: JSON.parse(ruta.id_pedidos), // Deserializar pedidos
-                    direcciones: JSON.parse(ruta.direcciones), // Deserializar direcciones
-                }));
-                console.log("Rutas obtenidas:", rutas);
-                setRutas(rutas); // Actualizar el estado de rutas en el Delivery Panel
+                const rutas = response.data.data.map((ruta) => {
+                    let tiendaSalida, direcciones;
+    
+                    try {
+                        tiendaSalida = JSON.parse(ruta.tienda_salida || "{}");
+                    } catch {
+                        tiendaSalida = { nombre_empresa: "Desconocido", direccion: "No definida" };
+                    }
+    
+                    try {
+                        direcciones = JSON.parse(ruta.direcciones || "[]").map((direccion) => ({
+                            address: direccion?.address || "Sin dirección",
+                            coordinates: direccion?.coordinates || null,
+                        }));
+                    } catch {
+                        direcciones = [];
+                    }
+    
+                    return {
+                        ...ruta,
+                        tiendaSalida,
+                        id_pedidos: JSON.parse(ruta.id_pedidos || "[]"),
+                        direcciones,
+                    };
+                });
+    
+                console.log("Rutas obtenidas y procesadas:", rutas);
+                setRutas(rutas);
             } else {
                 console.error("Error al obtener rutas:", response.data.message);
             }
@@ -710,76 +720,62 @@ const DeliveryPanel = () => {
                 </tr>
             </thead>
             <tbody>
-                {/* Pedidos Individuales */}
-                {pedidos.map((pedido, index) => {
-                const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
-                console.log(`Procesando pedido ${pedido.id_order}:`, deliveryInfo);
-                const costoDelivery = deliveryInfo?.costoReal
-                    ? deliveryInfo.costoReal.toFixed(2)
-                    : "N/A";
+{/* Pedidos Individuales */}
+{pedidos.map((pedido, index) => {
+    const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
+    console.log(`Procesando pedido ${pedido.id_order}:`, deliveryInfo);
 
-                const distancia = deliveryInfo?.costoReal
-                    ? (deliveryInfo.costoReal / precioDelivery).toFixed(2)
-                    : "N/A";
+    const routeLink = generateSingleLink(deliveryInfo);
 
-                const repartidorAsignado =
-                    pedido.id_repartidor === repartidor?.id_repartidor
-                    ? "Tú"
-                    : `Repartidor ${pedido.id_repartidor}`;
+    return (
+        <tr key={pedido.id_order}>
+            <td>{index + 1}</td>
+            <td>Single</td>
+            <td>{pedido.id_order}</td>
+            <td>{deliveryInfo?.address || "N/A"}</td>
+            <td>{pedido.tiempoRestante || "Calculando..."}</td>
+            <td>{deliveryInfo?.costoReal ? `${deliveryInfo.costoReal.toFixed(2)} €` : "N/A"}</td>
+            <td>{deliveryInfo?.costoReal ? `${(deliveryInfo.costoReal / precioDelivery).toFixed(2)} km` : "N/A"}</td>
+            <td>
+                {deliveryInfo?.tiendaSalida?.nombre_empresa
+                    ? `${deliveryInfo.tiendaSalida.nombre_empresa} - ${deliveryInfo.tiendaSalida.direccion}`
+                    : "N/A"}
+            </td>
+            <td>{pedido.estado_entrega}</td>
+            <td>{pedido.id_repartidor === repartidor?.id_repartidor ? "Tú" : `Repartidor ${pedido.id_repartidor}`}</td>
+            <td>
+                <a href={routeLink} target="_blank" rel="noopener noreferrer">
+                    Ver Ruta
+                </a>
+            </td>
+            <td>
+                {pedido.estado_entrega === "Pendiente" && (
+                    <button onClick={() => handleTakePedido(pedido.id_order)}>
+                        Tomar Pedido
+                    </button>
+                )}
+                {pedido.estado_entrega === "Asignado" && (
+                    <button onClick={() => handleCompletePedido(pedido.id_order)}>
+                        Confirmar Entrega
+                    </button>
+                )}
+            </td>
+        </tr>
+    );
+})}
 
-                    const routeLink = generateRouteLink({
-                        tiendaSalida: deliveryInfo?.tiendaSalida,
-                        pedidos: [pedido.id_order],
-                    });
 
-                return (
-                    <tr key={pedido.id_order}>
-                    <td>{index + 1}</td>
-                    <td>Single</td>
-                    <td>{pedido.id_order}</td>
-                    <td>{deliveryInfo?.address || "N/A"}</td>
-                    <td>{pedido.tiempoRestante || "Calculando..."}</td>
-                    <td>{costoDelivery} €</td>
-                    <td>{distancia} km</td>
-                    <td>
-                        {deliveryInfo?.tiendaSalida?.nombre_empresa
-                        ? `${deliveryInfo.tiendaSalida.nombre_empresa} - ${deliveryInfo.tiendaSalida.direccion}`
-                        : "N/A"}
-                    </td>
-                    <td>{pedido.estado_entrega}</td>
-                    <td>
-                        {pedido.estado_entrega === "Asignado"
-                        ? repartidorAsignado
-                        : "No asignado"}
-                    </td>
-                    <td>
-                        <a href={routeLink} target="_blank" rel="noopener noreferrer">
-                        Ver Ruta
-                        </a>
-                    </td>
-                    <td>
-                        {pedido.estado_entrega === "Pendiente" && (
-                        <button onClick={() => handleTakePedido(pedido.id_order)}>
-                            Tomar Pedido
-                        </button>
-                        )}
-                        {pedido.estado_entrega === "Asignado" && (
-                        <button onClick={() => handleCompletePedido(pedido.id_order)}>
-                            Confirmar Entrega
-                        </button>
-                        )}
-                    </td>
-                    </tr>
-                );
-                })}
 
-                {/* Rutas */}
-                {rutas.map((ruta, index) => {
+
+
+{/* Rutas */}
+{rutas.map((ruta, index) => {
     const routeLink = generateRouteLink(ruta);
+
     const coordenadasTienda = ruta.tiendaSalida?.coordenadas;
     const tiendaLat = coordenadasTienda?.lat || "Coordenadas no disponibles";
     const tiendaLng = coordenadasTienda?.lng || "Coordenadas no disponibles";
-    
+
     return (
         <tr key={ruta.idRuta}>
             <td>{index + 1}</td>
@@ -787,19 +783,19 @@ const DeliveryPanel = () => {
             <td>{Array.isArray(ruta.id_pedidos) ? ruta.id_pedidos.join(", ") : "Sin pedidos"}</td>
             <td>
                 {Array.isArray(ruta.direcciones) ? (
-                    ruta.direcciones.map((direccion, idx) => <div key={idx}>{direccion}</div>)
+                    <ul style={{ padding: 0, margin: 0, listStyleType: "disc", marginLeft: "1rem" }}>
+                        {ruta.direcciones.map((direccionObj, idx) => (
+                            <li key={idx}>{direccionObj.address}</li>
+                        ))}
+                    </ul>
                 ) : (
                     "Sin direcciones"
                 )}
             </td>
-            <td>{ruta.tiempo_estimado || "Calculando..."}</td>
+            <td>{ruta.tiempoEstimado || "Calculando..."}</td>
             <td>{(ruta.costo_total || 0).toFixed(2)} €</td>
-            <td>{(ruta.distancia_total || 0).toFixed(2)} km</td>
-            <td>
-                {ruta.tiendaSalida?.nombre_empresa
-                    ? `${ruta.tiendaSalida.nombre_empresa} (${tiendaLat}, ${tiendaLng})`
-                    : "Desconocido"}
-            </td>
+            <td>{ruta.distanciaEnKm ? `${ruta.distanciaEnKm.toFixed(2)} km` : "Calculando..."}</td>
+            <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocido"}</td>
             <td>{ruta.estado}</td>
             <td>{ruta.repartidorAsignado || "No asignado"}</td>
             <td>
@@ -819,9 +815,7 @@ const DeliveryPanel = () => {
             </td>
         </tr>
     );
-                })}
-
-
+})}
 
             </tbody>
           </table>
