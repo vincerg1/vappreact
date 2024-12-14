@@ -26,9 +26,7 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
-
 const upload = multer({ storage: storage });
-
 
 // const determinarZonaRiesgo = (disponible, limite, fechaCaducidad) => {
 //   const fechaCaducidadParsed = parseISO(fechaCaducidad);
@@ -253,7 +251,6 @@ cron.schedule('59 23 * * *', () => {
       }
   );
 });
-
 
 // the get zone
 app.get("/rutas/:id", (req, res) => {
@@ -1225,11 +1222,6 @@ app.get('/ubicaciones', (req, res) => {
     res.json(rows);
   });
 });
-
-
-
-
-
 //the post zone // 
 app.post("/rutas", (req, res) => {
   const {
@@ -2305,9 +2297,6 @@ app.post('/limites', async (req, res) => {
   });
 });
 
-
-
-
 // the patch zone //
 app.patch("/rutas/:id", (req, res) => {
   const { id } = req.params;
@@ -3115,13 +3104,6 @@ app.patch('/limites/:IDI', (req, res) => {
   });
 });
 
-
-
-
-
-
-
-
 // the drop zone //
 
 app.delete("/rutas/:id", (req, res) => {
@@ -3313,9 +3295,6 @@ app.delete('/clientes/:id_cliente', (req, res) => {
 //   });
 // });
 
-
-
-
 app.put('/clientes/:id_cliente', (req, res) => {
   const { name, phone, address_1 } = req.body;
   const { id_cliente } = req.params;
@@ -3333,9 +3312,6 @@ app.put('/clientes/:id_cliente', (req, res) => {
     }
   );
 });
-
-
-
 app.put('/DetallesLote/:InventarioID', (req, res) => {
   const { InventarioID } = req.params;
   const { IDing, Producto, Disponible, TiempoUso, PorcentajeXLote, referencia } = req.body;
@@ -3366,8 +3342,6 @@ app.put('/DetallesLote/:InventarioID', (req, res) => {
     });
   });
 });
-
-
 app.put('/clientes/suspender/:id_cliente', (req, res) => {
   const { id_cliente } = req.params;
   const { suspensionPeriod } = req.body;
@@ -3404,9 +3378,6 @@ app.put('/clientes/suspender/:id_cliente', (req, res) => {
     res.json({ message: 'Cliente suspendido con éxito' });
   });
 });
-
-
-
 app.put('/clientes/reactivar/:id_cliente', (req, res) => {
   const { id_cliente } = req.params;
 
@@ -3433,11 +3404,6 @@ app.put('/clientes/reactivar/:id_cliente', (req, res) => {
     }
   });
 });
-
-
-
-
-
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

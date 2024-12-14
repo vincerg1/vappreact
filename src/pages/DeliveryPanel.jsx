@@ -27,14 +27,20 @@ const DeliveryPanel = () => {
     const [filtro, setFiltro] = useState('diario'); 
     const [rutas, setRutas] = useState([]);
     const [precioDelivery, setPrecioDelivery] = useState(0);
-    const [estadosRuta, setEstadosRuta] = useState({});
+    const [fetchPedidosEnRuta, setPedidosEnRuta] = useState({});
   
 
     const calculateTimeLeft = (fechaYHoraPrometida) => {
-        if (!fechaYHoraPrometida) return "Datos insuficientes";
+        if (!fechaYHoraPrometida) {
+            console.warn("Fecha de entrega no definida o inválida:", fechaYHoraPrometida);
+            return "Datos insuficientes";
+        }
     
         const deliveryTime = moment(fechaYHoraPrometida, "YYYY-MM-DD HH:mm", true);
-        if (!deliveryTime.isValid()) return "Fecha inválida";
+        if (!deliveryTime.isValid()) {
+            console.warn("Formato de fecha inválido:", fechaYHoraPrometida);
+            return "Fecha inválida";
+        }
     
         const diff = deliveryTime.diff(moment(), "seconds");
         if (diff <= 0) return "Tiempo agotado";
@@ -48,24 +54,19 @@ const DeliveryPanel = () => {
     
     useEffect(() => {
         const interval = setInterval(() => {
-          setPedidos((prevPedidos) =>
-            prevPedidos.map((pedido) => {
-              const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
-              if (!deliveryInfo || !deliveryInfo.fechaYHoraPrometida) {
-                console.error("Fecha y hora prometida no definida para el pedido:", pedido.id_order);
-                return pedido;
-              }
-              return {
-                ...pedido,
-                tiempoRestante: calculateTimeLeft(deliveryInfo.fechaYHoraPrometida),
-              };
-            })
-          );
+            setPedidos((prevPedidos) =>
+                prevPedidos.map((pedido) => {
+                    const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
+                    return {
+                        ...pedido,
+                        tiempoRestante: calculateTimeLeft(deliveryInfo?.fechaYHoraPrometida),
+                    };
+                })
+            );
         }, 1000);
-      
+    
         return () => clearInterval(interval);
-      }, []); 
-      
+    }, []); 
     useEffect(() => {
         if (showWallet) {
             fetchWallet(filtro); // Cargar wallet con el filtro predeterminado
@@ -93,7 +94,99 @@ const DeliveryPanel = () => {
             fetchGraficaData();
         }
     }, [loggedIn]);
-
+    useEffect(() => {
+        const fetchPedidosEnRuta = async () => {
+            try {
+                const response = await axios.get("http://localhost:3001/registro_ventas");
+                const pedidosEnRuta = response.data.data.filter(
+                    (pedido) => pedido.enRuta && pedido.estado_entrega === "Pendiente"
+                );
+    
+                console.log("Pedidos en ruta y pendientes encontrados:", pedidosEnRuta);
+    
+                const detallesPedidos = pedidosEnRuta.map((pedido) => {
+                    const metodoEntrega = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
+    
+                    if (!metodoEntrega || !metodoEntrega.fechaYHoraPrometida) {
+                        console.warn(`Pedido ${pedido.id_order} tiene datos insuficientes en metodo_entrega`);
+                        return {
+                            id_order: pedido.id_order,
+                            fechaYHoraPrometida: "Datos insuficientes",
+                            tiempoRestante: "N/A",
+                        };
+                    }
+    
+                    const fechaYHoraPrometida = metodoEntrega.fechaYHoraPrometida;
+                    const ahora = moment();
+                    const fechaPrometida = moment(fechaYHoraPrometida, "YYYY-MM-DD HH:mm");
+    
+                    if (!fechaPrometida.isValid()) {
+                        console.warn(`Pedido ${pedido.id_order} tiene una fecha inválida: ${fechaYHoraPrometida}`);
+                        return {
+                            id_order: pedido.id_order,
+                            fechaYHoraPrometida,
+                            tiempoRestante: "Fecha inválida",
+                        };
+                    }
+    
+                    const diferenciaSegundos = fechaPrometida.diff(ahora, "seconds");
+                    const horas = Math.floor(diferenciaSegundos / 3600);
+                    const minutos = Math.floor((diferenciaSegundos % 3600) / 60);
+                    const segundos = diferenciaSegundos % 60;
+    
+                    const tiempoRestante =
+                        diferenciaSegundos <= 0 ? "Tiempo agotado" : `${horas}h ${minutos}m ${segundos}s`;
+    
+                    return {
+                        id_order: pedido.id_order,
+                        id_ruta: pedido.enRuta,
+                        fechaYHoraPrometida,
+                        tiempoRestante,
+                        tiempoRestanteSegundos: diferenciaSegundos > 0 ? diferenciaSegundos : 0, // Aseguramos valores positivos
+                    };
+                });
+    
+                console.log("Detalles de pedidos con tiempo restante calculado:", detallesPedidos);
+    
+                // Calcular promedio de tiempo restante en segundos
+                const tiemposSegundos = detallesPedidos
+                    .map((pedido) => pedido.tiempoRestanteSegundos)
+                    .filter((segundos) => segundos > 0);
+    
+                let tiempoPromedioGeneral = "Tiempo agotado";
+    
+                if (tiemposSegundos.length > 0) {
+                    const promedioSegundos =
+                        tiemposSegundos.reduce((sum, segundos) => sum + segundos, 0) / tiemposSegundos.length;
+    
+                    const horas = Math.floor(promedioSegundos / 3600);
+                    const minutos = Math.floor((promedioSegundos % 3600) / 60);
+                    const segundos = Math.floor(promedioSegundos % 60);
+    
+                    tiempoPromedioGeneral = `${horas}h ${minutos}m ${segundos}s`;
+                }
+    
+                // Actualizar el estado `pedidosEnRuta` con los tiempos calculados
+                setPedidosEnRuta({
+                    detallesPedidos,
+                    tiempoPromedioGeneral,
+                });
+    
+                console.log("Tiempo promedio general para la tabla:", tiempoPromedioGeneral);
+            } catch (error) {
+                console.error("Error al cargar pedidos en ruta:", error);
+            }
+        };
+    
+        fetchPedidosEnRuta(); // Llamar al cargar el componente
+    
+        // Intervalo para actualizar dinámicamente
+        const interval = setInterval(() => {
+            fetchPedidosEnRuta(); // Volver a calcular cada segundo
+        }, 1000);
+    
+        return () => clearInterval(interval); // Limpiar intervalo al desmontar
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -145,79 +238,21 @@ const DeliveryPanel = () => {
     };
     const fetchPedidos = async () => {
         try {
-          const response = await axios.get("http://localhost:3001/registro_ventas");
-          console.log("Respuesta completa de registro_ventas:", response.data);
+            const response = await axios.get("http://localhost:3001/registro_ventas");
+            console.log("Respuesta completa de registro_ventas:", response.data);
     
-          // Filtrar pedidos pendientes
-          const pedidosPendientes = response.data.data.filter(
-            (pedido) =>
-              (pedido.estado_entrega === "Pendiente" ||
-                pedido.estado_entrega === "Asignado") &&
-              JSON.parse(pedido.metodo_entrega || "{}").Delivery &&
-              !pedido.enRuta
-          );
-          console.log("Pedidos pendientes filtrados:", pedidosPendientes);
-          setPedidos(pedidosPendientes);
+            // Filtrar pedidos pendientes o asignados que aún no están en una ruta
+            const pedidosPendientes = response.data.data.filter(
+                (pedido) =>
+                    (pedido.estado_entrega === "Pendiente" || pedido.estado_entrega === "Asignado") &&
+                    JSON.parse(pedido.metodo_entrega || "{}").Delivery &&
+                    !pedido.enRuta // Excluir los pedidos que ya tienen ruta
+            );
+            console.log("Pedidos pendientes filtrados:", pedidosPendientes);
     
-          // Filtrar rutas activas
-          const rutasActivas = response.data.data.filter((pedido) => pedido.enRuta);
-          console.log("Rutas activas filtradas:", rutasActivas);
-    
-          // Reconstruir las rutas completas
-          const rutasAgrupadas = rutasActivas.reduce((acc, pedido) => {
-            const rutaId = pedido.enRuta;
-    
-            if (!acc[rutaId]) {
-              const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}").Delivery;
-    
-              acc[rutaId] = {
-                idRuta: rutaId,
-                pedidos: [],
-                direcciones: [],
-                estado: pedido.estado_entrega || "Pendiente",
-                express: false, // Puedes calcular o traer esto si es necesario
-                numeroDeParadas: 0,
-                repartidorAsignado: pedido.id_repartidor
-                  ? `Repartidor ${pedido.id_repartidor}`
-                  : "No asignado",
-                tiendaSalida: deliveryInfo?.tiendaSalida || {
-                  nombre_empresa: "Desconocido",
-                  direccion: "No definida",
-                },
-                totalDistancia: 0,
-              };
-            }
-    
-            // Agregar información de los pedidos a la ruta
-            acc[rutaId].pedidos.push(pedido.id_order);
-    
-            // Agregar direcciones
-            const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}").Delivery;
-            if (deliveryInfo?.address) {
-              acc[rutaId].direcciones.push(deliveryInfo.address);
-            }
-    
-            // Calcular distancia total
-            if (deliveryInfo?.costoReal) {
-              acc[rutaId].totalDistancia += deliveryInfo.costoReal;
-            } else {
-              console.warn(
-                `Información incompleta para calcular la distancia del pedido ${pedido.id_order}`
-              );
-            }
-    
-            acc[rutaId].numeroDeParadas += 1;
-            return acc;
-          }, {});
-    
-          console.log(
-            "Rutas agrupadas reconstruidas antes de establecer estado:",
-            Object.values(rutasAgrupadas)
-          );
-    
-          setRutas(Object.values(rutasAgrupadas));
+            setPedidos(pedidosPendientes); // Actualizar solo los pedidos individuales pendientes
         } catch (error) {
-          console.error("Error al cargar pedidos:", error);
+            console.error("Error al cargar pedidos:", error);
         }
     };
     const fetchWallet = async (filtroSeleccionado = 'diario') => {
@@ -407,40 +442,48 @@ const DeliveryPanel = () => {
     };
     const handleTakeRuta = async (ruta) => {
         try {
+            console.log("Pedidos asociados a la ruta antes de la validación:", ruta.pedidos);
+    
             // Validar si todos los pedidos de la ruta están disponibles
             const pedidosNoDisponibles = [];
             for (let pedidoId of ruta.pedidos) {
                 const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/disponibilidad/${pedidoId}`);
                 const { estado_entrega, enRuta } = checkResponse.data.data;
     
+                console.log(`Pedido ID: ${pedidoId}, Estado: ${estado_entrega}, En Ruta: ${enRuta}`);
+    
                 if (estado_entrega !== 'Pendiente' || enRuta) {
                     pedidosNoDisponibles.push(pedidoId);
                 }
             }
     
-            // Si hay pedidos no disponibles, mostrar un mensaje de error y detener el proceso
             if (pedidosNoDisponibles.length > 0) {
+                console.warn("Pedidos no disponibles:", pedidosNoDisponibles);
                 alert(`No se puede tomar la ruta. Los siguientes pedidos ya están asignados o en otra ruta: ${pedidosNoDisponibles.join(', ')}`);
-                fetchPedidos(); // Actualizar la lista de pedidos en caso de cambios
+                fetchPedidos();
                 return;
             }
     
+            console.log("Todos los pedidos de la ruta están disponibles. Procediendo a tomarlos...");
+    
             // Tomar todos los pedidos de la ruta si están disponibles
             for (let pedidoId of ruta.pedidos) {
-                await axios.patch(`http://localhost:3001/registro_ventas/tomar_pedido/${pedidoId}`, {
+                const patchResponse = await axios.patch(`http://localhost:3001/registro_ventas/tomar_pedido/${pedidoId}`, {
                     estado_entrega: 'Asignado',
                     id_repartidor: repartidor.id_repartidor,
                     enRuta: ruta.idRuta
                 });
+    
+                console.log(`Pedido ID: ${pedidoId}, Respuesta del parcheo:`, patchResponse.data);
             }
-
-            fetchPedidos();
+    
+            await fetchPedidos();
             alert('Ruta tomada con éxito y actualizada en las órdenes pendientes.');
         } catch (error) {
             console.error('Error al tomar la ruta:', error);
             alert('Error al tomar la ruta. Verifica el servidor y los datos.');
         }
-    };     
+    };
     const handleCompleteRuta = async (ruta) => {
         try {
             for (let pedidoId of ruta.pedidos) {
@@ -510,20 +553,21 @@ const DeliveryPanel = () => {
     
         return `${baseUrl}${tiendaCoords}/${encodedDestination}`;
     };
-    
     const fetchRutas = async () => {
         try {
             const response = await axios.get("http://localhost:3001/rutas");
             if (response.data.success) {
                 const rutas = response.data.data.map((ruta) => {
-                    let tiendaSalida, direcciones;
+                    let tiendaSalida, direcciones, idPedidos;
     
+                    // Parse tiendaSalida
                     try {
                         tiendaSalida = JSON.parse(ruta.tienda_salida || "{}");
                     } catch {
                         tiendaSalida = { nombre_empresa: "Desconocido", direccion: "No definida" };
                     }
     
+                    // Parse direcciones
                     try {
                         direcciones = JSON.parse(ruta.direcciones || "[]").map((direccion) => ({
                             address: direccion?.address || "Sin dirección",
@@ -533,11 +577,27 @@ const DeliveryPanel = () => {
                         direcciones = [];
                     }
     
+                    // Parse id_pedidos
+                    try {
+                        idPedidos = JSON.parse(ruta.id_pedidos || "[]");
+                        if (!Array.isArray(idPedidos)) {
+                            console.warn(`Formato inesperado en id_pedidos de la ruta ${ruta.idRuta}:`, ruta.id_pedidos);
+                            idPedidos = [];
+                        }
+                    } catch (error) {
+                        console.warn(`Error al procesar id_pedidos en ruta ${ruta.idRuta}:`, error);
+                        idPedidos = [];
+                    }
+    
+                    // Log para depuración
+                    console.log(`Ruta procesada: ${ruta.idRuta}`, { idPedidos, direcciones, tiendaSalida });
+    
                     return {
                         ...ruta,
                         tiendaSalida,
-                        id_pedidos: JSON.parse(ruta.id_pedidos || "[]"),
+                        id_pedidos: idPedidos,
                         direcciones,
+                        tiempo_estimado: ruta.tiempo_estimado || "Calculando...",
                     };
                 });
     
@@ -550,34 +610,6 @@ const DeliveryPanel = () => {
             console.error("Error al cargar rutas:", error);
         }
     };
-    const geocodeAddress = async (address) => {
-        try {
-            const apiKey = "";
-            const response = await axios.get("https://maps.googleapis.com/maps/api/geocode/json", {
-                params: {
-                    address,
-                    key: apiKey,
-                },
-            });
-    
-            if (response.data.status === "OK") {
-                const location = response.data.results[0].geometry.location;
-                return {
-                    lat: location.lat,
-                    lng: location.lng,
-                };
-            } else {
-                console.error(`Error al geocodificar la dirección: ${address}`, response.data);
-                return null;
-            }
-        } catch (error) {
-            console.error("Error en la función geocodeAddress:", error);
-            return null;
-        }
-    };
-    
-    
-
     
     return (
         <div>
@@ -723,8 +755,6 @@ const DeliveryPanel = () => {
 {/* Pedidos Individuales */}
 {pedidos.map((pedido, index) => {
     const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
-    console.log(`Procesando pedido ${pedido.id_order}:`, deliveryInfo);
-
     const routeLink = generateSingleLink(deliveryInfo);
 
     return (
@@ -732,17 +762,21 @@ const DeliveryPanel = () => {
             <td>{index + 1}</td>
             <td>Single</td>
             <td>{pedido.id_order}</td>
-            <td>{deliveryInfo?.address || "N/A"}</td>
+            <td>{deliveryInfo?.address || "Sin dirección"}</td>
             <td>{pedido.tiempoRestante || "Calculando..."}</td>
             <td>{deliveryInfo?.costoReal ? `${deliveryInfo.costoReal.toFixed(2)} €` : "N/A"}</td>
             <td>{deliveryInfo?.costoReal ? `${(deliveryInfo.costoReal / precioDelivery).toFixed(2)} km` : "N/A"}</td>
             <td>
-                {deliveryInfo?.tiendaSalida?.nombre_empresa
-                    ? `${deliveryInfo.tiendaSalida.nombre_empresa} - ${deliveryInfo.tiendaSalida.direccion}`
-                    : "N/A"}
+                {deliveryInfo?.tiendaSalida?.nombre_empresa || "Desconocida"}
             </td>
             <td>{pedido.estado_entrega}</td>
-            <td>{pedido.id_repartidor === repartidor?.id_repartidor ? "Tú" : `Repartidor ${pedido.id_repartidor}`}</td>
+            <td>
+                {pedido.id_repartidor
+                    ? pedido.id_repartidor === repartidor?.id_repartidor
+                        ? "Tú"
+                        : `Repartidor ${pedido.id_repartidor}`
+                    : "No asignado"}
+            </td>
             <td>
                 <a href={routeLink} target="_blank" rel="noopener noreferrer">
                     Ver Ruta
@@ -764,58 +798,79 @@ const DeliveryPanel = () => {
     );
 })}
 
-
-
-
-
 {/* Rutas */}
 {rutas.map((ruta, index) => {
     const routeLink = generateRouteLink(ruta);
-
-    const coordenadasTienda = ruta.tiendaSalida?.coordenadas;
-    const tiendaLat = coordenadasTienda?.lat || "Coordenadas no disponibles";
-    const tiendaLng = coordenadasTienda?.lng || "Coordenadas no disponibles";
 
     return (
         <tr key={ruta.idRuta}>
             <td>{index + 1}</td>
             <td>Route</td>
-            <td>{Array.isArray(ruta.id_pedidos) ? ruta.id_pedidos.join(", ") : "Sin pedidos"}</td>
             <td>
-                {Array.isArray(ruta.direcciones) ? (
-                    <ul style={{ padding: 0, margin: 0, listStyleType: "disc", marginLeft: "1rem" }}>
-                        {ruta.direcciones.map((direccionObj, idx) => (
-                            <li key={idx}>{direccionObj.address}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    "Sin direcciones"
-                )}
+                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
+                    ? ruta.id_pedidos.join(", ")
+                    : "Sin pedidos"}
             </td>
-            <td>{ruta.tiempoEstimado || "Calculando..."}</td>
+            <td>
+                {ruta.direcciones.map((direccion, idx) => (
+                    <li key={idx}>{direccion.address || "Sin dirección"}</li>
+                ))}
+            </td>
+            <td>
+                {fetchPedidosEnRuta?.id_ruta === ruta.idRuta
+                    ? fetchPedidosEnRuta.tiempoPromedioGeneral || "Calculando..."
+                    : "N/A"}
+            </td>
             <td>{(ruta.costo_total || 0).toFixed(2)} €</td>
-            <td>{ruta.distanciaEnKm ? `${ruta.distanciaEnKm.toFixed(2)} km` : "Calculando..."}</td>
-            <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocido"}</td>
-            <td>{ruta.estado}</td>
-            <td>{ruta.repartidorAsignado || "No asignado"}</td>
+            <td>
+                {ruta.distancia_total
+                    ? `${ruta.distancia_total.toFixed(2)} km`
+                    : "Calculando..."}
+            </td>
+            <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocida"}</td>
+            <td>
+                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
+                    ? "Pendiente" // Puedes reemplazar con un estado calculado si es necesario
+                    : "Sin pedidos"}
+            </td>
+            <td>
+                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
+                    ? "No asignado" // Igual, puedes usar una lógica para asignar repartidor
+                    : "N/A"}
+            </td>
             <td>
                 <a href={routeLink} target="_blank" rel="noopener noreferrer">
                     Ver Ruta
                 </a>
             </td>
             <td>
-                {ruta.estado === "Pendiente" && (
-                    <button onClick={() => handleTakeRuta(ruta)}>Tomar Ruta</button>
-                )}
-                {ruta.estado === "Asignado" && (
-                    <button onClick={() => handleCompleteRuta(ruta)}>
-                        Confirmar Entrega
-                    </button>
-                )}
-            </td>
+  {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0 ? (
+      ruta.id_pedidos.every((pedidoId) => {
+          const pedido = pedidos.find((p) => p.id_order === pedidoId);
+          return pedido && pedido.estado_entrega === "Pendiente";
+      }) ? (
+          <button onClick={() => handleTakeRuta(ruta)}>
+              Tomar Ruta
+          </button>
+      ) : ruta.id_pedidos.every((pedidoId) => {
+          const pedido = pedidos.find((p) => p.id_order === pedidoId);
+          return pedido && pedido.estado_entrega === "Asignado";
+      }) ? (
+          <button onClick={() => handleCompleteRuta(ruta)}>
+              Confirmar Entrega
+          </button>
+      ) : (
+          "Acción no disponible"
+      )
+  ) : (
+      "Sin pedidos válidos"
+  )}
+</td>
+
         </tr>
     );
 })}
+
 
             </tbody>
           </table>

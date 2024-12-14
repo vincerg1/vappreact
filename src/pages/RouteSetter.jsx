@@ -33,9 +33,9 @@ const RouteSetter = () => {
                     isExpress: metodoEntrega.Delivery.TicketExpress || false,
                     estadoEntrega: order.estado_entrega || "Sin estado",
                     enRuta: order.enRuta || false,
-                    repartidorAsignado: order.id_repartidor
-                        ? `Repartidor ${order.id_repartidor}`
-                        : "No asignado",
+                    repartidorAsignado: order.id_repartidor && order.id_repartidor !== "null"
+                  ? `Repartidor ${order.id_repartidor}`
+                  : "No asignado",
                     puntoSalida: tiendaSalida.nombre_empresa || "Desconocido",
                     puntoSalidaCoordinates:
                         tiendaSalida.lat && tiendaSalida.lng
@@ -416,7 +416,9 @@ const RouteSetter = () => {
               isExpress: metodoEntrega.Delivery.TicketExpress || false,
               estadoEntrega: order.estado_entrega,
               enRuta: order.enRuta || false,
-              repartidorAsignado: order.id_repartidor ? order.id_repartidor : "No asignado",
+              repartidorAsignado: order.id_repartidor && order.id_repartidor !== "null"
+            ? `Repartidor ${order.id_repartidor}`
+            : "No asignado",
             };
           });
     
@@ -440,19 +442,19 @@ const RouteSetter = () => {
       );
     }, 1000);
   
-    return () => clearInterval(interval); // Limpiar el intervalo al desmontar
+    return () => clearInterval(interval); 
   }, []);
   useEffect(() => {
-    fetchOrders(); // Cargar las órdenes inicialmente
+    fetchOrders(); 
 
     const interval = setInterval(() => {
       setOrders((prevOrders) =>
         originalOrders.map((order) => ({
           ...order,
-          timeLeft: calculateTimeLeft(order.fechaYHoraPrometida), // Recalcular desde la fecha original
+          timeLeft: calculateTimeLeft(order.fechaYHoraPrometida), 
         }))
       );
-    }, 1000); // Actualizar cada segundo
+    }, 1000); 
 
     return () => clearInterval(interval); // Limpiar el intervalo al desmontar
   }, [originalOrders]); 
