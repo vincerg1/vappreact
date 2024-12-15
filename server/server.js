@@ -2347,7 +2347,7 @@ app.post('/limites', async (req, res) => {
 
 // the patch zone //
 
-app.patch("/registro_ventas/finalizar_pedido/:enRuta", async (req, res) => {
+app.patch("/registro_ventas/finalizar_ruta/:enRuta", async (req, res) => {
   const { enRuta } = req.params;
 
   try {
@@ -2362,7 +2362,35 @@ app.patch("/registro_ventas/finalizar_pedido/:enRuta", async (req, res) => {
       res.status(500).json({ success: false, message: "Error al actualizar los pedidos." });
   }
 });
+app.patch('/registro_ventas/finalizar_pedido/:pedidoId', (req, res) => {
+  const { pedidoId } = req.params;
+  const { estado_entrega } = req.body;
 
+  console.log('PATCH recibido:');
+  console.log('Pedido ID:', pedidoId);
+  console.log('Estado Entrega:', estado_entrega);
+
+  if (estado_entrega !== 'Entregado') {
+      console.error('Estado no válido:', estado_entrega);
+      return res.status(400).json({ success: false, message: 'Estado no válido para finalizar el pedido.' });
+  }
+
+  const query = `UPDATE registro_ventas SET estado_entrega = ? WHERE id_order = ?`;
+  db.run(query, [estado_entrega, pedidoId], function (err) {
+      if (err) {
+          console.error('Error al finalizar el pedido:', err.message);
+          return res.status(500).json({ success: false, message: 'Error al finalizar el pedido.' });
+      }
+
+      console.log('Filas actualizadas:', this.changes);
+      if (this.changes > 0) {
+          res.json({ success: true, message: 'Pedido finalizado con éxito.' });
+      } else {
+          console.warn('Pedido no encontrado con ID:', pedidoId);
+          res.status(404).json({ success: false, message: 'Pedido no encontrado.' });
+      }
+  });
+});
 app.patch('/registro_ventas/tomar_ruta/:enRuta', (req, res) => {
   const { enRuta } = req.params;
   const { id_repartidor } = req.body;
@@ -2382,34 +2410,6 @@ app.patch('/registro_ventas/tomar_ruta/:enRuta', (req, res) => {
       res.json({ success: true });
   });
 });
-
-// app.patch('/registro_ventas/finalizar_ruta/:enRuta', (req, res) => {
-//   const { enRuta } = req.params;
-//   const { estado_entrega } = req.body;
-
-//   if (!estado_entrega) {
-//       return res.status(400).json({ success: false, message: 'Se requiere estado_entrega para finalizar la ruta' });
-//   }
-
-//   db.run(
-//       'UPDATE registro_ventas SET estado_entrega = ? WHERE enRuta = ? AND estado_entrega = "Asignado"',
-//       [estado_entrega, enRuta],
-//       function (err) {
-//           if (err) {
-//               console.error('Error al finalizar la ruta:', err);
-//               return res.status(500).json({ success: false, message: 'Error al finalizar la ruta' });
-//           }
-
-//           if (this.changes === 0) {
-//               return res.status(404).json({ success: false, message: 'No se encontraron pedidos asignados para esta ruta' });
-//           }
-
-//           res.json({ success: true, message: 'Ruta finalizada con éxito' });
-//       }
-//   );
-// });
-
-
 app.patch("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -2473,25 +2473,6 @@ app.patch('/registro_ventas', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-// app.patch('/registro_ventas/complete', (req, res) => {
-//   const { idReparto } = req.body;
-
-//   const sql = `
-//     UPDATE registro_ventas
-//     SET estado_entrega = 'Entregado'
-//     WHERE id_order IN (
-//       SELECT id_order FROM ordenes_pendientes WHERE idReparto = ? AND enRuta = 1
-//     );
-//   `;
-
-//   db.run(sql, [idReparto], function (err) {
-//     if (err) {
-//       res.status(500).json({ error: err.message });
-//     } else {
-//       res.json({ success: true });
-//     }
-//   });
-// });
 app.patch('/registro_ventas/tomar_pedido/:pedidoId', (req, res) => {
   const { pedidoId } = req.params;
   const { estado_entrega, id_repartidor } = req.body;
@@ -2499,18 +2480,6 @@ app.patch('/registro_ventas/tomar_pedido/:pedidoId', (req, res) => {
       if (err) {
           console.error('Error al tomar el pedido:', err);
           res.status(500).json({ success: false, message: 'Error al tomar el pedido' });
-      } else {
-          res.json({ success: true });
-      }
-  });
-});
-app.patch('/registro_ventas/finalizar_pedido/:pedidoId', (req, res) => {
-  const { pedidoId } = req.params;
-  const { estado_entrega } = req.body;
-  db.run('UPDATE registro_ventas SET estado_entrega = ? WHERE id_order = ?', [estado_entrega, pedidoId], (err) => {
-      if (err) {
-          console.error('Error al finalizar el pedido:', err);
-          res.status(500).json({ success: false, message: 'Error al finalizar el pedido' });
       } else {
           res.json({ success: true });
       }
@@ -2569,30 +2538,6 @@ app.patch('/wallet/pago/:id_repartidor', (req, res) => {
       res.json({ success: true });
     }
   );
-});
-app.patch('/registro_ventas/finalizar_pedido/:id_order', (req, res) => {
-  const { id_order } = req.params;
-  const { estado_entrega } = req.body;
-
-  if (estado_entrega !== 'Entregado') {
-      return res.status(400).json({ success: false, message: 'Estado no válido para finalizar el pedido.' });
-  }
-
-  const sql = `UPDATE registro_ventas SET estado_entrega = ? WHERE id_order = ?`;
-  const params = [estado_entrega, id_order];
-
-  db.run(sql, params, function (err) {
-      if (err) {
-          console.error('Error al actualizar el estado del pedido:', err.message);
-          res.status(500).json({ success: false, message: 'Error al finalizar el pedido.' });
-      } else {
-          if (this.changes > 0) {
-              res.json({ success: true, message: 'Pedido finalizado con éxito.' });
-          } else {
-              res.status(404).json({ success: false, message: 'Pedido no encontrado.' });
-          }
-      }
-  });
 });
 app.patch('/registro_ventas/tomar_pedido/:id', (req, res) => {
   const idOrder = req.params.id;

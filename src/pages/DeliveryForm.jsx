@@ -791,14 +791,14 @@ const DeliveryForm = ({ setCompra, compra }) => {
                 onLoad={(autocomplete) => (autocompleteRef.current = autocomplete)}
                 onPlaceChanged={handleAddressChange}
               > */}
-                <input
-                  type="text"
-                  placeholder="Ingresa tu dirección"
-                  value={addressInfo.address}
-                  onChange={(e) => setAddressInfo({ ...addressInfo, address: e.target.value })}
-                  style={{ width: '100%' }}
-                  className={missingFields.includes('address') ? 'input-error' : ''}
-                />
+                 <input
+                type="text"
+                placeholder="Dirección seleccionada"
+                value={addressInfo.address}
+                readOnly // Evita que el usuario escriba manualmente
+                style={{ width: '100%', backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                className={missingFields.includes('address') ? 'input-error' : ''}
+              />
               {/* </Autocomplete> */}
             </label>
 

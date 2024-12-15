@@ -16,15 +16,21 @@ const RouteSetter = () => {
     try {
         const response = await axios.get("http://localhost:3001/registro_ventas");
         const registroVentas = response.data.data || [];
+
+        // Filtrar pedidos pendientes o pedidos no procesados (venta_procesada !== 1)
         const filteredOrders = registroVentas
             .filter((order) => {
                 const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
-                return metodoEntrega.Delivery && order.estado_entrega === "Pendiente";
+                return (
+                    metodoEntrega.Delivery &&
+                    (order.estado_entrega === "Pendiente" || order.venta_procesada !== 1)
+                );
             })
             .map((order) => {
                 const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
                 const tiendaSalida = metodoEntrega.Delivery.tiendaSalida || {};
                 const costoDelivery = metodoEntrega.Delivery.costoReal || 0;
+
                 return {
                     id_order: order.id_order,
                     address: metodoEntrega.Delivery.address || "Sin dirección",
@@ -32,24 +38,28 @@ const RouteSetter = () => {
                     timeLeft: calculateTimeLeft(metodoEntrega.Delivery.fechaYHoraPrometida),
                     isExpress: metodoEntrega.Delivery.TicketExpress || false,
                     estadoEntrega: order.estado_entrega || "Sin estado",
+                    ventaProcesada: order.venta_procesada || 0, // Indicar si fue procesada
                     enRuta: order.enRuta || false,
-                    repartidorAsignado: order.id_repartidor && order.id_repartidor !== "null"
-                  ? `Repartidor ${order.id_repartidor}`
-                  : "No asignado",
+                    repartidorAsignado:
+                        order.id_repartidor && order.id_repartidor !== "null"
+                            ? `Repartidor ${order.id_repartidor}`
+                            : "No asignado",
                     puntoSalida: tiendaSalida.nombre_empresa || "Desconocido",
                     puntoSalidaCoordinates:
                         tiendaSalida.lat && tiendaSalida.lng
                             ? { lat: tiendaSalida.lat, lng: tiendaSalida.lng }
                             : null,
-                    costoDelivery: parseFloat(costoDelivery.toFixed(2)), // Incluir costo del delivery y redondear
+                    costoDelivery: parseFloat(costoDelivery.toFixed(2)),
                 };
             });
-        setOrders(filteredOrders);
-        setOriginalOrders(filteredOrders);
+
+        setOrders(filteredOrders); // Actualizar estado de orders
+        setOriginalOrders(filteredOrders); // Mantener referencia estática
     } catch (error) {
         console.error("Error al sincronizar las órdenes desde registro_ventas:", error);
     }
   };
+
   const geocodeAddress = async (address) => {
     try {
       const response = await axios.get(
@@ -482,22 +492,26 @@ return (
   </thead>
   <tbody>
     {orders.map((order) => (
-      <tr key={order.id_order} className={order.isExpress ? "express-row" : ""}>
-        <td>{order.id_order}</td>
-        <td>{order.address}</td>
-        <td>{order.timeLeft}</td>
-        <td>{order.isExpress ? "⭐" : "No"}</td>
-        <td>{order.enRuta ? order.enRuta : "No"}</td> {/* Mostrar el ID Reparto si existe */}
-        <td>{order.estadoEntrega}</td>
-        <td>{order.repartidorAsignado}</td>
-        <td>
-          {order.estadoEntrega === "Pendiente" && !order.enRuta && (
-            <button onClick={() => console.log("Asignar pedido", order.id_order)}>Asignar</button>
-          )}
-        </td>
-      </tr>
+        <tr key={order.id_order} className={order.isExpress ? "express-row" : ""}>
+            <td>{order.id_order}</td>
+            <td>{order.address}</td>
+            <td>{order.timeLeft}</td>
+            <td>{order.isExpress ? "⭐" : "No"}</td>
+            <td>{order.enRuta ? order.enRuta : "No"}</td>
+            <td>{order.estadoEntrega}</td>
+            <td>{order.repartidorAsignado}</td>
+            <td>
+                {order.ventaProcesada
+                    ? "Procesado"
+                    : order.estadoEntrega === "Pendiente" && !order.enRuta && (
+                          <button onClick={() => console.log("Asignar pedido", order.id_order)}>
+                              Asignar
+                          </button>
+                      )}
+            </td>
+        </tr>
     ))}
-  </tbody>
+</tbody>
 </table>
 
         </div>

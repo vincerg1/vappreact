@@ -102,7 +102,7 @@ const DeliveryPanel = () => {
                     (pedido) => pedido.enRuta && pedido.estado_entrega === "Pendiente"
                 );
     
-                console.log("Pedidos en ruta y pendientes encontrados:", pedidosEnRuta);
+                // console.log("Pedidos en ruta y pendientes encontrados:", pedidosEnRuta);
     
                 const detallesPedidos = pedidosEnRuta.map((pedido) => {
                     const metodoEntrega = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
@@ -146,7 +146,7 @@ const DeliveryPanel = () => {
                     };
                 });
     
-                console.log("Detalles de pedidos con tiempo restante calculado:", detallesPedidos);
+                // console.log("Detalles de pedidos con tiempo restante calculado:", detallesPedidos);
     
                 // Calcular promedio de tiempo restante en segundos
                 const tiemposSegundos = detallesPedidos
@@ -172,7 +172,7 @@ const DeliveryPanel = () => {
                     tiempoPromedioGeneral,
                 });
     
-                console.log("Tiempo promedio general para la tabla:", tiempoPromedioGeneral);
+                // console.log("Tiempo promedio general para la tabla:", tiempoPromedioGeneral);
             } catch (error) {
                 console.error("Error al cargar pedidos en ruta:", error);
             }
@@ -342,21 +342,46 @@ const DeliveryPanel = () => {
         }
     };
     const handleCompletePedido = async (pedidoId) => {
+        console.log("Valor recibido en handleCompletePedido:", pedidoId);
+    
         try {
             const pedido = pedidos.find(p => p.id_order === pedidoId);
+            console.log("Pedido encontrado:", pedido);
+    
+            if (!pedido) {
+                console.error("No se encontró el pedido. Verifica el valor de pedidoId.");
+                return;
+            }
+            if (!pedido?.venta_procesada || pedido.venta_procesada !== 1) {
+                alert("No se puede confirmar la entrega. La venta aún no está procesada.");
+                console.warn("La venta aún no está procesada:", pedidoId);
+                return;
+            }
+    
             const deliveryInfo = JSON.parse(pedido.metodo_entrega).Delivery;
             const costoDelivery = deliveryInfo.costoReal;
-
-            await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${pedidoId}`, {
-                estado_entrega: 'Entregado'
-            });
-
+    
+            console.log("Cargando patch para finalizar pedido con ID:", pedidoId);
+    
+            try {
+                const response = await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${pedidoId}`, {
+                    estado_entrega: "Entregado",
+                });
+                console.log("Respuesta del servidor:", response.data);
+                console.log("Patch exitoso para pedido:", pedidoId);
+            } catch (error) {
+                console.error('Error en la petición PATCH:', error.response || error.message);
+            }
+            // POST a la wallet
             await axios.post('http://localhost:3001/wallet/guardar_precio_delivery', {
                 id_order: pedidoId,
                 id_repartidor: repartidor.id_repartidor,
                 monto_por_cobrar: costoDelivery
             });
-
+    
+            console.log("Post exitoso para wallet con ID:", pedidoId);
+    
+            // Actualizar estados
             setPedidos(prevPedidos => prevPedidos.filter(pedido => pedido.id_order !== pedidoId));
             setMontoPorCobrar(prevMonto => prevMonto + costoDelivery);
             fetchPedidos();
@@ -381,7 +406,7 @@ const DeliveryPanel = () => {
             const costoTotalDelivery = rutaSeleccionada.costo_total || 0;
     
             // Actualizar el estado de entrega a "Entregado" en la base de datos
-            await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${enRuta}`, {
+            await axios.patch(`http://localhost:3001/registro_ventas/finalizar_ruta/${enRuta}`, {
                 estado_entrega: "Entregado",
             });
     
@@ -812,6 +837,7 @@ const DeliveryPanel = () => {
 {pedidos.map((pedido, index) => {
     const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
     const routeLink = generateSingleLink(deliveryInfo);
+    
 
     return (
         <tr key={pedido.id_order}>
@@ -857,9 +883,7 @@ const DeliveryPanel = () => {
 {/* Rutas */}
 {rutas.map((ruta, index) => {
     const routeLink = generateRouteLink(ruta);
-    const rutaListaParaConfirmar = ruta.id_pedidos.every((pedidoId) =>
-        pedidos.some((pedido) => pedido.id_order === pedidoId && pedido.estado_entrega === "Asignado")
-    );
+
 
 
     return (
