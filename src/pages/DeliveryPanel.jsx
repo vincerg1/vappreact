@@ -178,16 +178,17 @@ const DeliveryPanel = () => {
             }
         };
     
-        fetchPedidosEnRuta(); // Llamar al cargar el componente
+        fetchPedidosEnRuta(); 
     
-        // Intervalo para actualizar dinámicamente
+       
         const interval = setInterval(() => {
-            fetchPedidosEnRuta(); // Volver a calcular cada segundo
+            fetchPedidosEnRuta(); 
         }, 1000);
     
-        return () => clearInterval(interval); // Limpiar intervalo al desmontar
+        return () => clearInterval(interval); 
     }, []);
 
+    
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
@@ -310,6 +311,36 @@ const DeliveryPanel = () => {
             alert('Error al tomar el pedido');
         }
     };
+    const handleTakeRuta = async (enRuta) => {
+        try {
+            // Validar la disponibilidad de los pedidos en la ruta
+            const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/ruta_disponibilidad/${enRuta}`);
+            const pedidosNoDisponibles = checkResponse.data.filter(pedido => pedido.estado_entrega !== "Pendiente");
+    
+            if (pedidosNoDisponibles.length > 0) {
+                alert(`No se puede tomar la ruta. Hay pedidos no disponibles: ${pedidosNoDisponibles.map(p => p.id_order).join(', ')}`);
+                return;
+            }
+    
+            // Actualizar el estado de entrega de todos los pedidos en la ruta
+            const response = await axios.patch(`http://localhost:3001/registro_ventas/tomar_ruta/${enRuta}`, {
+                estado_entrega: 'Asignado',
+                id_repartidor: repartidor.id_repartidor
+            });
+    
+            if (response.data.success) {
+                // Forzar actualización de rutas y pedidos
+                await Promise.all([fetchRutas(), fetchPedidos()]);
+    
+                alert(`Ruta ${enRuta} tomada con éxito`);
+            } else {
+                alert('Error al tomar la ruta. Inténtalo nuevamente.');
+            }
+        } catch (error) {
+            console.error('Error al tomar la ruta:', error);
+            alert('Error al tomar la ruta.');
+        }
+    };
     const handleCompletePedido = async (pedidoId) => {
         try {
             const pedido = pedidos.find(p => p.id_order === pedidoId);
@@ -333,6 +364,45 @@ const DeliveryPanel = () => {
         } catch (error) {
             console.error('Error al finalizar el pedido:', error);
             alert('Error al finalizar el pedido');
+        }
+    };
+    const handleCompleteRuta = async (enRuta) => {
+        try {
+            // Obtener la ruta seleccionada
+            const rutaSeleccionada = rutas.find((ruta) => ruta.id_ruta === enRuta);
+    
+            // Verificar si la ruta está procesada (ventaProcesada)
+            if (!rutaSeleccionada?.ventaProcesada) {
+                alert("No se puede confirmar la entrega. La ruta aún no está procesada.");
+                return;
+            }
+    
+            // Tomar el costo total de la ruta
+            const costoTotalDelivery = rutaSeleccionada.costo_total || 0;
+    
+            // Actualizar el estado de entrega a "Entregado" en la base de datos
+            await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${enRuta}`, {
+                estado_entrega: "Entregado",
+            });
+    
+            // Guardar el precio total del delivery en la wallet
+            await axios.post("http://localhost:3001/wallet/guardar_precio_delivery", {
+                id_order: enRuta, // Usamos el id_ruta como identificador en la wallet
+                id_repartidor: repartidor.id_repartidor,
+                monto_por_cobrar: costoTotalDelivery,
+            });
+    
+            // Actualizar las rutas y remover las rutas entregadas del estado local
+            await fetchRutas();
+            setRutas((prevRutas) => prevRutas.filter((ruta) => ruta.id_ruta !== enRuta));
+    
+            // Actualizar el monto por cobrar localmente
+            setMontoPorCobrar((prevMonto) => prevMonto + costoTotalDelivery);
+    
+            alert(`Ruta ${enRuta} finalizada con éxito.`);
+        } catch (error) {
+            console.error("Error al finalizar la ruta:", error);
+            alert("Error al finalizar la ruta.");
         }
     };
     const toggleWallet = () => {
@@ -440,74 +510,6 @@ const DeliveryPanel = () => {
             console.error("Error al obtener la información de la wallet:", error);
         }
     };
-    const handleTakeRuta = async (ruta) => {
-        try {
-            console.log("Pedidos asociados a la ruta antes de la validación:", ruta.pedidos);
-    
-            // Validar si todos los pedidos de la ruta están disponibles
-            const pedidosNoDisponibles = [];
-            for (let pedidoId of ruta.pedidos) {
-                const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/disponibilidad/${pedidoId}`);
-                const { estado_entrega, enRuta } = checkResponse.data.data;
-    
-                console.log(`Pedido ID: ${pedidoId}, Estado: ${estado_entrega}, En Ruta: ${enRuta}`);
-    
-                if (estado_entrega !== 'Pendiente' || enRuta) {
-                    pedidosNoDisponibles.push(pedidoId);
-                }
-            }
-    
-            if (pedidosNoDisponibles.length > 0) {
-                console.warn("Pedidos no disponibles:", pedidosNoDisponibles);
-                alert(`No se puede tomar la ruta. Los siguientes pedidos ya están asignados o en otra ruta: ${pedidosNoDisponibles.join(', ')}`);
-                fetchPedidos();
-                return;
-            }
-    
-            console.log("Todos los pedidos de la ruta están disponibles. Procediendo a tomarlos...");
-    
-            // Tomar todos los pedidos de la ruta si están disponibles
-            for (let pedidoId of ruta.pedidos) {
-                const patchResponse = await axios.patch(`http://localhost:3001/registro_ventas/tomar_pedido/${pedidoId}`, {
-                    estado_entrega: 'Asignado',
-                    id_repartidor: repartidor.id_repartidor,
-                    enRuta: ruta.idRuta
-                });
-    
-                console.log(`Pedido ID: ${pedidoId}, Respuesta del parcheo:`, patchResponse.data);
-            }
-    
-            await fetchPedidos();
-            alert('Ruta tomada con éxito y actualizada en las órdenes pendientes.');
-        } catch (error) {
-            console.error('Error al tomar la ruta:', error);
-            alert('Error al tomar la ruta. Verifica el servidor y los datos.');
-        }
-    };
-    const handleCompleteRuta = async (ruta) => {
-        try {
-            for (let pedidoId of ruta.pedidos) {
-                const pedido = pedidos.find(p => p.id_order === pedidoId);
-                const deliveryInfo = JSON.parse(pedido.metodo_entrega).Delivery;
-                const costoDelivery = deliveryInfo.costoReal;
-
-                await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${pedidoId}`, {
-                    estado_entrega: 'Entregado'
-                });
-
-                await axios.post('http://localhost:3001/wallet/guardar_precio_delivery', {
-                    id_order: pedidoId,
-                    id_repartidor: repartidor.id_repartidor,
-                    monto_por_cobrar: costoDelivery
-                });
-            }
-            fetchPedidos();
-            alert('Ruta completada con éxito');
-        } catch (error) {
-            console.error('Error al finalizar la ruta:', error);
-            alert('Error al finalizar la ruta');
-        }
-    };
     const fetchPrecioDelivery = async () => {
         try {
             const response = await axios.get('http://localhost:3001/delivery/price');
@@ -533,7 +535,7 @@ const DeliveryPanel = () => {
             .filter(Boolean);
     
         if (paradasCoords.length === 0) {
-            console.warn("No se encontraron paradas válidas para la ruta:", ruta.idRuta);
+            console.warn("No se encontraron paradas válidas para la ruta:", ruta.id_ruta);
             return "#";
         }
     
@@ -555,56 +557,110 @@ const DeliveryPanel = () => {
     };
     const fetchRutas = async () => {
         try {
-            const response = await axios.get("http://localhost:3001/rutas");
-            if (response.data.success) {
-                const rutas = response.data.data.map((ruta) => {
-                    let tiendaSalida, direcciones, idPedidos;
+            const [rutasResponse, pedidosResponse] = await Promise.all([
+                axios.get("http://localhost:3001/rutas"),
+                axios.get("http://localhost:3001/registro_ventas"),
+            ]);
     
-                    // Parse tiendaSalida
-                    try {
-                        tiendaSalida = JSON.parse(ruta.tienda_salida || "{}");
-                    } catch {
-                        tiendaSalida = { nombre_empresa: "Desconocido", direccion: "No definida" };
-                    }
+            if (rutasResponse.data.success && pedidosResponse.data.message === "success") {
+                const pedidos = pedidosResponse.data.data; // Lista completa de pedidos
+                const rutas = rutasResponse.data.data
+                    .map((ruta) => {
+                        let tiendaSalida, direcciones, idPedidos, costoTotal;
     
-                    // Parse direcciones
-                    try {
-                        direcciones = JSON.parse(ruta.direcciones || "[]").map((direccion) => ({
-                            address: direccion?.address || "Sin dirección",
-                            coordinates: direccion?.coordinates || null,
-                        }));
-                    } catch {
-                        direcciones = [];
-                    }
+                        // Parse tiendaSalida
+                        try {
+                            tiendaSalida = JSON.parse(ruta.tienda_salida || "{}");
+                        } catch {
+                            tiendaSalida = { nombre_empresa: "Desconocido", direccion: "No definida" };
+                        }
     
-                    // Parse id_pedidos
-                    try {
-                        idPedidos = JSON.parse(ruta.id_pedidos || "[]");
-                        if (!Array.isArray(idPedidos)) {
-                            console.warn(`Formato inesperado en id_pedidos de la ruta ${ruta.idRuta}:`, ruta.id_pedidos);
+                        // Parse direcciones
+                        try {
+                            direcciones = JSON.parse(ruta.direcciones || "[]").map((direccion) => ({
+                                address: direccion?.address || "Sin dirección",
+                                coordinates: direccion?.coordinates || null,
+                            }));
+                        } catch {
+                            direcciones = [];
+                        }
+    
+                        // Parse id_pedidos
+                        try {
+                            idPedidos = JSON.parse(ruta.id_pedidos || "[]");
+                            if (!Array.isArray(idPedidos)) {
+                                console.warn(`Formato inesperado en id_pedidos de la ruta ${ruta.id_ruta}:`, ruta.id_pedidos);
+                                idPedidos = [];
+                            }
+                        } catch (error) {
+                            console.warn(`Error al procesar id_pedidos en ruta ${ruta.id_ruta}:`, error);
                             idPedidos = [];
                         }
-                    } catch (error) {
-                        console.warn(`Error al procesar id_pedidos en ruta ${ruta.idRuta}:`, error);
-                        idPedidos = [];
-                    }
     
-                    // Log para depuración
-                    console.log(`Ruta procesada: ${ruta.idRuta}`, { idPedidos, direcciones, tiendaSalida });
+                        // Obtener pedidos asociados a esta ruta
+                        const pedidosDeRuta = pedidos.filter((pedido) => pedido.enRuta === ruta.id_ruta);
     
-                    return {
-                        ...ruta,
-                        tiendaSalida,
-                        id_pedidos: idPedidos,
-                        direcciones,
-                        tiempo_estimado: ruta.tiempo_estimado || "Calculando...",
-                    };
-                });
+                        // Calcular el estado general de la ruta
+                        const estadoRuta = (() => {
+                            if (pedidosDeRuta.length === 0) {
+                                return "Sin Pedidos";
+                            }
+    
+                            const estadosPedidos = pedidosDeRuta.map((pedido) => pedido.estado_entrega);
+    
+                            if (estadosPedidos.every((estado) => estado === "Entregado")) {
+                                return "Entregado";
+                            }
+    
+                            if (estadosPedidos.some((estado) => estado === "Asignado")) {
+                                return "Asignado";
+                            }
+    
+                            if (estadosPedidos.every((estado) => estado === "Pendiente")) {
+                                return "Pendiente";
+                            }
+    
+                            return "Estado Desconocido";
+                        })();
+    
+                        // Consolidar información del repartidor asignado
+                        const idRepartidorAsignado = pedidosDeRuta.find((pedido) => pedido.id_repartidor)?.id_repartidor || null;
+    
+                        // Validar si todos los pedidos de la ruta están procesados
+                        const ventaProcesada = pedidosDeRuta.every((pedido) => pedido.venta_procesada === 1);
+    
+                        // Agregar el costo_total de la ruta
+                        costoTotal = ruta.costo_total || 0;
+    
+                        // Log para depuración
+                        console.log(`Ruta procesada: ${ruta.id_ruta}`, {
+                            idPedidos,
+                            direcciones,
+                            tiendaSalida,
+                            estadoRuta,
+                            idRepartidorAsignado,
+                            ventaProcesada,
+                            costoTotal,
+                        });
+    
+                        return {
+                            ...ruta,
+                            tiendaSalida,
+                            id_pedidos: idPedidos,
+                            direcciones,
+                            tiempo_estimado: ruta.tiempo_estimado || "Calculando...",
+                            estadoRuta,
+                            idRepartidorAsignado,
+                            ventaProcesada,
+                            costo_total: costoTotal, // Agregar costo_total
+                        };
+                    })
+                    .filter((ruta) => ruta.estadoRuta !== "Entregado"); // Filtrar rutas entregadas
     
                 console.log("Rutas obtenidas y procesadas:", rutas);
-                setRutas(rutas);
+                setRutas(rutas); // Actualizar el estado con las rutas procesadas
             } else {
-                console.error("Error al obtener rutas:", response.data.message);
+                console.error("Error al obtener rutas o pedidos:", rutasResponse.data.message, pedidosResponse.data.message);
             }
         } catch (error) {
             console.error("Error al cargar rutas:", error);
@@ -801,9 +857,13 @@ const DeliveryPanel = () => {
 {/* Rutas */}
 {rutas.map((ruta, index) => {
     const routeLink = generateRouteLink(ruta);
+    const rutaListaParaConfirmar = ruta.id_pedidos.every((pedidoId) =>
+        pedidos.some((pedido) => pedido.id_order === pedidoId && pedido.estado_entrega === "Asignado")
+    );
+
 
     return (
-        <tr key={ruta.idRuta}>
+        <tr key={ruta.id_ruta}>
             <td>{index + 1}</td>
             <td>Route</td>
             <td>
@@ -829,14 +889,14 @@ const DeliveryPanel = () => {
             </td>
             <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocida"}</td>
             <td>
-                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
-                    ? "Pendiente" // Puedes reemplazar con un estado calculado si es necesario
-                    : "Sin pedidos"}
+                <strong>{ruta.estadoRuta}</strong>
             </td>
             <td>
-                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
-                    ? "No asignado" // Igual, puedes usar una lógica para asignar repartidor
-                    : "N/A"}
+                {ruta.idRepartidorAsignado
+                    ? ruta.idRepartidorAsignado === repartidor?.id_repartidor
+                        ? "Tú"
+                        : `Repartidor ${ruta.idRepartidorAsignado}`
+                    : "No asignado"}
             </td>
             <td>
                 <a href={routeLink} target="_blank" rel="noopener noreferrer">
@@ -844,32 +904,27 @@ const DeliveryPanel = () => {
                 </a>
             </td>
             <td>
-  {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0 ? (
-      ruta.id_pedidos.every((pedidoId) => {
-          const pedido = pedidos.find((p) => p.id_order === pedidoId);
-          return pedido && pedido.estado_entrega === "Pendiente";
-      }) ? (
-          <button onClick={() => handleTakeRuta(ruta)}>
-              Tomar Ruta
-          </button>
-      ) : ruta.id_pedidos.every((pedidoId) => {
-          const pedido = pedidos.find((p) => p.id_order === pedidoId);
-          return pedido && pedido.estado_entrega === "Asignado";
-      }) ? (
-          <button onClick={() => handleCompleteRuta(ruta)}>
-              Confirmar Entrega
-          </button>
-      ) : (
-          "Acción no disponible"
-      )
-  ) : (
-      "Sin pedidos válidos"
-  )}
-</td>
-
+            {ruta.id_pedidos && ruta.id_pedidos.length > 0 ? (
+                ruta.estadoRuta === "Asignado" ? (
+                    <button onClick={() => handleCompleteRuta(ruta.id_ruta)}>
+                        Confirmar Entrega
+                    </button>
+                ) : ruta.estadoRuta === "Pendiente" ? (
+                    <button onClick={() => handleTakeRuta(ruta.id_ruta)}>
+                        Tomar Ruta
+                    </button>
+                ) : (
+                    "Acción no disponible"
+                )
+            ) : (
+                "Sin Pedidos"
+            )}
+        </td>
         </tr>
     );
 })}
+
+
 
 
             </tbody>

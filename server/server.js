@@ -253,6 +253,29 @@ cron.schedule('59 23 * * *', () => {
 });
 
 // the get zone
+app.get('/registro_ventas/ruta_disponibilidad/:enRuta', (req, res) => {
+  const enRuta = req.params.enRuta;
+
+  const query = `
+      SELECT id_order, estado_entrega, id_repartidor 
+      FROM registro_ventas 
+      WHERE enRuta = ?
+  `;
+
+  db.all(query, [enRuta], (err, rows) => {
+    if (err) {
+      console.error('Error al consultar la disponibilidad de la ruta:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No se encontraron pedidos para la ruta proporcionada' });
+    }
+
+    // Enviar la lista de pedidos con sus estados de entrega
+    res.json(rows);
+  });
+});
 app.get("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const query = "SELECT * FROM rutas WHERE id_ruta = ?";
@@ -1223,6 +1246,31 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post("/registro_ventas/finalizar_ruta", async (req, res) => {
+  const { id_repartidor, id_ruta, pedidos } = req.body;
+
+  try {
+      // Actualizar el estado de los pedidos a "Entregado"
+      for (const pedido of pedidos) {
+          await db.run(
+              `UPDATE registro_ventas SET estado_entrega = 'Entregado' WHERE id_order = ?`,
+              [pedido.id_order]
+          );
+
+          // Insertar en la wallet consolidada
+          await db.run(
+              `INSERT INTO wallet (id_order, id_repartidor, monto_por_cobrar, estado) 
+               VALUES (?, ?, ?, 'Por Cobrar')`,
+              [pedido.id_order, id_repartidor, pedido.costoDelivery]
+          );
+      }
+
+      res.json({ success: true, message: "Ruta finalizada y wallet actualizada." });
+  } catch (error) {
+      console.error("Error al finalizar la ruta:", error);
+      res.status(500).json({ success: false, message: "Error al finalizar la ruta." });
+  }
+});
 app.post("/rutas", (req, res) => {
   const {
       id_ruta,
@@ -2298,6 +2346,70 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+
+app.patch("/registro_ventas/finalizar_pedido/:enRuta", async (req, res) => {
+  const { enRuta } = req.params;
+
+  try {
+      await db.run(
+          `UPDATE registro_ventas SET estado_entrega = 'Entregado' WHERE enRuta = ?`,
+          [enRuta]
+      );
+
+      res.json({ success: true, message: "Pedidos de la ruta actualizados a 'Entregado'." });
+  } catch (error) {
+      console.error("Error al finalizar los pedidos de la ruta:", error);
+      res.status(500).json({ success: false, message: "Error al actualizar los pedidos." });
+  }
+});
+
+app.patch('/registro_ventas/tomar_ruta/:enRuta', (req, res) => {
+  const { enRuta } = req.params;
+  const { id_repartidor } = req.body;
+
+  const query = `
+      UPDATE registro_ventas
+      SET estado_entrega = 'Asignado', id_repartidor = ?
+      WHERE enRuta = ?
+  `;
+
+  db.run(query, [id_repartidor, enRuta], function (err) {
+      if (err) {
+          console.error("Error al tomar la ruta:", err.message);
+          return res.status(500).json({ success: false, message: "Error al tomar la ruta" });
+      }
+
+      res.json({ success: true });
+  });
+});
+
+// app.patch('/registro_ventas/finalizar_ruta/:enRuta', (req, res) => {
+//   const { enRuta } = req.params;
+//   const { estado_entrega } = req.body;
+
+//   if (!estado_entrega) {
+//       return res.status(400).json({ success: false, message: 'Se requiere estado_entrega para finalizar la ruta' });
+//   }
+
+//   db.run(
+//       'UPDATE registro_ventas SET estado_entrega = ? WHERE enRuta = ? AND estado_entrega = "Asignado"',
+//       [estado_entrega, enRuta],
+//       function (err) {
+//           if (err) {
+//               console.error('Error al finalizar la ruta:', err);
+//               return res.status(500).json({ success: false, message: 'Error al finalizar la ruta' });
+//           }
+
+//           if (this.changes === 0) {
+//               return res.status(404).json({ success: false, message: 'No se encontraron pedidos asignados para esta ruta' });
+//           }
+
+//           res.json({ success: true, message: 'Ruta finalizada con éxito' });
+//       }
+//   );
+// });
+
+
 app.patch("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const updates = req.body;
