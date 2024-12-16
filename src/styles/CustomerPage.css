@@ -11,7 +11,8 @@
 /* Contenedor principal del contenido con desplazamiento */
 .content-container {
   max-height: calc(100vh - 150px); /* Ajusta la altura según sea necesario */
-  overflow-y: auto; /* Habilita desplazamiento vertical */
+  overflow-y: auto; 
+  overflow-x: hidden;
   width: 100%;
   max-width: 1200px;
   padding: 20px;
@@ -278,35 +279,47 @@
 /* Importamos los estilos de slick-carousel */
 
 .pizza-carousel {
-  width: 100%;
+  width: 100%; /* Ancho completo */
   margin: 20px 0;
   text-align: center;
+  overflow: hidden; /* Evita desbordamientos */
 }
-
 .pizza-carousel h2 {
-  font-size: 1.8rem;
-  margin-bottom: 15px;
+  font-size: 2rem;
+  text-align: center;
+  color: #ff6600;
+  text-shadow: 0 0 5px #ffcc00;
+  animation: pulseMoveShadow 3s infinite alternate ease-in-out;
+  margin-top: -.25rem;
 }
 
-.slick-slide {
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-}
-
-.carousel-image {
-  max-width: 100%; /* Se ajusta a la pantalla del carrusel */
-  max-height: 350px;
-  
-  object-fit: cover; /* Hace que la imagen mantenga sus proporciones al recortarse */
-  border-radius: 10px; /* Le da bordes redondeados a la imagen */
+@keyframes pulseMoveShadow {
+  0% {
+    text-shadow: 0 0 5px #ffcc00, 2px 2px 10px #ffcc00;
+  }
+  100% {
+    text-shadow: 0 0 10px #ffcc00, -2px -2px 15px #ffcc00;
+  }
 }
 
 .pizza-carousel p {
   font-size: 1.2rem;
   margin-top: 10px;
-  color: #333;
+  color: #000000;
 }
+
+
+
+.carousel-image {
+  flex-shrink: 0;
+  width: 100%; /* Ocupar todo el ancho del contenedor */
+  height: 100%; /* Ocupar toda la altura del contenedor */
+  object-fit: cover; /* Mantiene las proporciones */
+  border-radius: 10px; /* Bordes redondeados */
+  margin-top: 10px; /* Agrega un pequeño margen superior */
+}
+
+
 
 /* Efectos de transición para hacer el carrusel más fluido */
 .slick-slide {
@@ -327,10 +340,23 @@
 
 /* Estilo para el contenedor del carrusel */
 .slick-slider {
-  padding: 20px;
-  border-radius: 10px;
-  background-color: #f8f8f8;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  height: 450px; /* Define una altura fija */
+  display: flex;
+  flex-direction: column; /* Alinear la imagen y el texto verticalmente */
+  justify-content: center; /* Centrar verticalmente */
+  overflow: hidden; /* Oculta el contenido que excede verticalmente */
+  display: flex; /* Alinea el contenido horizontalmente */
+  align-items: center; /* Centra las imágenes verticalmente */
+}
+.slick-list {
+  height: 100%; 
+ 
+}
+.slick-slide {
+  display: inline-block !important; /* Mantén los slides en línea */
+  text-align: center;
+  margin-right: 20px; /* Espacio entre las imágenes */
+  box-sizing: border-box;
 }
 
 /*ORDER NOW*/

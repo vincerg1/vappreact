@@ -8,12 +8,12 @@ import DeliveryForm from './DeliveryForm';
 import '../styles/CustomerMenu.css';
 import { v4 as uuidv4 } from 'uuid';
 
+
 const CustomerMenu = () => {
   const { activePizzas, sessionData, updateSessionData } = useContext(_PizzaContext);
   const location = useLocation();
   const { compra: initialCompra, setCompra: initialSetCompra } = location.state || {};  
   const [incentivos, setIncentivos] = useState([]);
-
   const [compra, setCompra] = useState(initialCompra || {
     observaciones: '',
     id_orden: '',
@@ -31,16 +31,13 @@ const CustomerMenu = () => {
     origen: '',
     observaciones: ''
   });
-  
-
   const [clienteInfo, setClienteInfo] = useState(sessionData?.cliente || null); 
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);  
   const [ingredientesActivos, setIngredientesActivos] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  
+ 
 
-  // Generar la lista de ingredientes activos a partir de activePizzas
   useEffect(() => {
     if (activePizzas && activePizzas.length > 0) {
       let allIngredients = [];
@@ -55,8 +52,6 @@ const CustomerMenu = () => {
       console.log('Ingredientes Activos calculados desde activePizzas:', uniqueIngredients);
     }
   }, [activePizzas]);
-
-  // Cargar datos del cliente si no están en sessionData
   useEffect(() => {
     const loadClienteInfo = async () => {
       try {
@@ -73,12 +68,9 @@ const CustomerMenu = () => {
     };
     loadClienteInfo();
   }, [sessionData, clienteInfo, updateSessionData]);
-
   useEffect(() => {
     console.log('Estado de compra actualizado:', compra);
   }, [compra]);
-
- 
   useEffect(() => {
 
 
@@ -132,16 +124,10 @@ const CustomerMenu = () => {
     compra.Entrega?.Delivery?.costoTicketExpress,
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
-  
-  
 
   
-  
-  
-  
-
   const [isFormVisible, setFormVisible] = useState(false);
-  const [selectedPizza, setSelectedPizza] = useState(null);
+  const [selectedPizza, setSelectedPizza] = useState(location.state?.selectedPizza || null);
   const [pizzaDetails, setPizzaDetails] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -149,6 +135,14 @@ const CustomerMenu = () => {
   const [sizeError, setSizeError] = useState('');  
   const [extraIngredients, setExtraIngredients] = useState([]);
   const [showIngredientSelect, setShowIngredientSelect] = useState(false);
+
+
+  useEffect(() => {
+    if (selectedPizza) {
+      console.log("Pizza seleccionada recibida:", selectedPizza);
+      handleSelectPizza(selectedPizza); // Abre el modal automáticamente
+    }
+  }, [selectedPizza]);
 
   const fetchPizzaDetails = async (pizzaId) => {
     try {
@@ -169,7 +163,6 @@ const CustomerMenu = () => {
       console.error('Error al obtener los detalles de la pizza:', error);
     }
   };
-
   const handleSelectPizza = (pizza) => {
     setSelectedPizza(pizza);
     fetchPizzaDetails(pizza.id);
@@ -180,7 +173,6 @@ const CustomerMenu = () => {
     setSizeError('');  
     setExtraIngredients([]); // Resetear los ingredientes extras
   };
-
   const handleCloseForm = () => {
     setFormVisible(false);
     setSelectedPizza(null);
@@ -189,7 +181,6 @@ const CustomerMenu = () => {
     setQuantity(1);
     setExtraIngredients([]); // Resetear los ingredientes extras
   };
-
   const handleSizeChange = (e) => {
     const size = e.target.value;
     setSelectedSize(size);
@@ -200,7 +191,6 @@ const CustomerMenu = () => {
       setTotalPrice(basePrice + extraIngredientsPrice);
     }
   };
-
   const handleQuantityChange = (e) => {
     const value = parseInt(e.target.value, 10);
     setQuantity(value > 0 ? value : 1);
@@ -210,7 +200,6 @@ const CustomerMenu = () => {
       setTotalPrice(basePrice + extraIngredientsPrice);
     }
   };
-
   const handleAddExtraIngredient = (selectedIngredientIDI) => {
     if (!selectedIngredientIDI) return;
 
@@ -236,9 +225,7 @@ const CustomerMenu = () => {
             return updatedExtras;
         });
     }
-};
-
-  
+  };
   const handleRemoveExtraIngredient = (ingredientIDI) => {
     setExtraIngredients((prevExtras) => {
       // Filtramos los ingredientes actualizando el array de extras
@@ -250,8 +237,6 @@ const CustomerMenu = () => {
       return updatedExtras;
     });
   };
-  
-  // Nueva función para actualizar el precio total del producto y el estado `compra`
   const actualizarPrecioTotal = (updatedExtras) => {
     // Calcular el precio base de la pizza y el precio de los ingredientes extra
     const basePrice = pizzaDetails.PriceBySize[selectedSize] * quantity;
@@ -295,8 +280,6 @@ const CustomerMenu = () => {
       };
     });
   };
-  
-  
   const handleAddAnotherPizza = () => {
     if (!selectedSize) {
       setSizeError('Debes seleccionar un tamaño para continuar');
@@ -343,7 +326,6 @@ const CustomerMenu = () => {
     setSizeError('');
     console.log('Pizza añadida al carrito:', pizzaToAdd);
   };
-  
   const renderIngredientDescription = () => {
     if (pizzaDetails && pizzaDetails.ingredientes.length > 0) {
       const ingredientes = pizzaDetails.ingredientes.map((ing) => ing.ingrediente);
@@ -421,16 +403,6 @@ const CustomerMenu = () => {
     setIsEditing(false);
     setEditingProductId(null);
   };
-
-  
- 
-  
-  
-  
-  
-  
-  
-  
 
   return (
     <>
@@ -570,12 +542,6 @@ const CustomerMenu = () => {
     </li>
   ))}
 </ul>
-
-
-
-
-
-
             <div className="modal-actions">
               {isEditing ? (
                 <button className="botonSeleccionarMenu" onClick={handleUpdateProduct}>

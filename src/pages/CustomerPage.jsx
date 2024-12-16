@@ -4,15 +4,15 @@ import { _PizzaContext } from './_PizzaContext';
 import ReviewForm from '../components/ReviewForm';
 import DailyChallengeCard from '../pages/DailyChallengeCard';
 import axios from 'axios';
-import '../styles/CustomerPage.css';
-import moment from 'moment';
-import 'moment/locale/es';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
+// import '../styles/CustomerPage.css';
+// import 'slick-carousel/slick/slick.css';
+// import 'slick-carousel/slick/slick-theme.css';
 import Slider from 'react-slick';
 import CustomerMenu from './CustomerMenu';
 import { Tooltip } from 'react-tooltip';
-
+import moment from 'moment';
+import 'moment/locale/es';
+import PizzaCarousel from './PizzaCarousel';
 
 
 const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, compra }) => {
@@ -435,38 +435,6 @@ if (sessionData.nivelSatisfaccion > 0) {
     </div>
   );
 };
-const PizzaCarousel = () => {
-  const { activePizzas } = useContext(_PizzaContext);
-
-  const settings = {
-    dots: true,
-    infinite: true,
-    speed: 500,
-    slidesToShow: 3,
-    slidesToScroll: 1,
-    autoplay: true,
-    autoplaySpeed: 3000,
-  };
-
-  return (
-    <div className="pizza-carousel">
-      <h2>Pizzas Disponibles Hoy</h2>
-      
-      <Slider {...settings}>
-        {activePizzas.map((pizza) => (
-          <div key={pizza.id}>
-            <img
-              src={`http://localhost:3001/${pizza.imagen}`} // Asegúrate de que esta URL es correcta
-              alt={pizza.nombre}  // Asegúrate de usar el campo correcto para el nombre
-              className="carousel-image"
-            />
-            <p>{pizza.nombre}</p>
-          </div>
-        ))}
-      </Slider>
-    </div>
-  );
-};
 const CustomerPage = (offer) => {
   const { sessionData, activePizzas, isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -483,7 +451,7 @@ const CustomerPage = (offer) => {
   const [loadingPizzas, setLoadingPizzas] = useState(true);
   const [hasCoupon, setHasCoupon] = useState(false);
   const [cuponesUsados, setCuponesUsados] = useState([]);
-  const navigate = useNavigate();
+  const [selectedPizza, setSelectedPizza] = useState(null);
   const [compra, setCompra] = useState({
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -499,6 +467,7 @@ const CustomerPage = (offer) => {
   });
 
 
+  const navigate = useNavigate();
   const renderSuspensionMessage = () => {
     if (isServiceSuspended && suspensionEndTime) {
       const endTimeMoment = moment(suspensionEndTime);
@@ -532,9 +501,6 @@ const CustomerPage = (offer) => {
 
 
 
-
-
-  
   useEffect(() => {
   const checkSuspensionStatus = async () => {
     try {
@@ -581,7 +547,6 @@ const CustomerPage = (offer) => {
   useEffect(() => {
     // console.log('Estado de la compra actualizado:', compra);
   }, [compra]);
-
   useEffect(() => {
     axios
       .get('http://localhost:3001/api/reviews')
@@ -596,14 +561,12 @@ const CustomerPage = (offer) => {
         console.error('Error al obtener los reviews:', error);
       });
   }, []);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentReviewIndex((prevIndex) => (prevIndex + 1) % reviews.length);
     }, 5000);
     return () => clearInterval(interval);
   }, [reviews]);
-
   useEffect(() => {
     const obtenerOfertas = async () => {
       if (sessionData?.segmento) {
@@ -638,13 +601,17 @@ const CustomerPage = (offer) => {
     };
     obtenerOfertas();
   }, [sessionData]);
-
   useEffect(() => {
     if (activePizzas.length > 0) {
       setLoadingPizzas(false);
     }
   }, [activePizzas]);
 
+  const handlePizzaSelect = (pizza) => {
+    setSelectedPizza(pizza); 
+    navigate('/customerMenu', { state: { selectedPizza: pizza } }); 
+    // console.log('Pizza seleccionada:', pizza);
+  };
   const handleApplyCoupon = (offer) => {
     const descuentoAleatorio = Math.floor(Math.random() * (offer.Max_Descuento_Percent - offer.Min_Descuento_Percent + 1)) + offer.Min_Descuento_Percent;
 
@@ -688,7 +655,6 @@ const CustomerPage = (offer) => {
     //   PrecioCupon: precioCupon
     // });
   };
-
   const handleClaimCoupon = ({ igLink, igUsername }) => {
     if (!dailyChallenge || !sessionData || !sessionData.id_cliente) {
       setErrorMessage('Datos incompletos para reclamar el cupón.');
@@ -738,7 +704,6 @@ const CustomerPage = (offer) => {
         setErrorMessage('Lo sentimos, no hay cupones disponibles o hubo un error.');
       });
   };
-
   const handleAddProductToCart = (product, cantidad, size, price) => {
     setCompra((prevCompra) => {
       const newProduct = {
@@ -760,9 +725,7 @@ const CustomerPage = (offer) => {
       };
     });
   };
-
   const removeDiacritics = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
   const closeDailyChallenge = () => setShowDailyChallenge(false);
   const handleDailyChallengeClick = () => {
     setShowDailyChallenge(!showDailyChallenge);
@@ -776,7 +739,6 @@ const CustomerPage = (offer) => {
       });
     }
   };
-
   const handleContactButtonClick = () => {
     setShowContactInfo(!showContactInfo);
     if (!companyInfo) {
@@ -785,7 +747,6 @@ const CustomerPage = (offer) => {
       });
     }
   };
-
   const handleReviewButtonClick = () => setShowReviewForm(!showReviewForm);
   const handleCloseReviewForm = () => setShowReviewForm(false);
   const handleOrderNowClick = () => {
@@ -860,7 +821,13 @@ const CustomerPage = (offer) => {
             </div>
 
             <NotificationTicker />
-            {!loadingPizzas && <PizzaCarousel />}
+
+            {!loadingPizzas && 
+            <PizzaCarousel 
+            onPizzaSelect={handlePizzaSelect}
+              />
+            }
+
             <div className="order-now-button-container">
               <button onClick={handleOrderNowClick} className="order-now-button">Order Now</button>
             </div>
