@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import Ticket from './Ticket'; // Asegúrate de importar el componente Ticket
-import '../styles/ViewOrder.css';  // Asegúrate de crear este archivo de estilos
+import Ticket from './Ticket'; 
+import '../styles/ViewOrder.css'; 
 
 const ViewOrder = () => {
   const [orders, setOrders] = useState([]);
@@ -11,7 +11,7 @@ const ViewOrder = () => {
   const [locations, setLocations] = useState([]); // Para almacenar las ubicaciones extraídas de las órdenes
   const [selectedLocation, setSelectedLocation] = useState(''); // Ubicación seleccionada para filtrar
 
-  // Obtener las órdenes y extraer las ubicaciones
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -63,31 +63,32 @@ const ViewOrder = () => {
     fetchPizzas();
   }, []);
 
-  // Función para marcar una venta como procesada
   const markOrderAsProcessed = async (id_venta) => {
     try {
+      // Primero, marcar la orden como procesada
       await axios.patch(`http://localhost:3001/registro_ventas/${id_venta}/procesar`);
-      setOrders(orders.filter(order => order.id_venta !== id_venta));
       alert('Orden marcada como completada.');
+
+      // Luego, actualizar los pedidos en cola por ubicación
+      await axios.patch('http://localhost:3001/api/update-pedidos-en-cola');
+      alert('Pedidos en cola actualizados correctamente.');
+
+      // Actualizar el estado local para reflejar los cambios
+      setOrders(orders.filter(order => order.id_venta !== id_venta));
     } catch (error) {
-      console.error('Error al procesar la orden:', error);
-      alert('Hubo un error al procesar la orden.');
+      console.error('Error en la actualización:', error);
+      alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
     }
   };
-
-  // Función para mostrar el modal con el ticket
   const showTicketModal = (order) => {
     setSelectedOrder(order);
     setShowModal(true);
   };
-
-  // Función para cerrar el modal
   const closeModal = () => {
     setShowModal(false);
     setSelectedOrder(null);
   };
 
-  // Ordenar las órdenes, primero los Ticket Express
   const sortedOrders = orders.sort((a, b) => {
     const metodoEntregaA = JSON.parse(a.metodo_entrega);
     const metodoEntregaB = JSON.parse(b.metodo_entrega);
@@ -97,8 +98,6 @@ const ViewOrder = () => {
     
     return isTicketExpressB - isTicketExpressA; // Primero los express
   });
-
-  // Filtrar las órdenes por la ubicación seleccionada
   const filteredOrders = selectedLocation
     ? sortedOrders.filter(order => {
         const metodoEntrega = JSON.parse(order.metodo_entrega);

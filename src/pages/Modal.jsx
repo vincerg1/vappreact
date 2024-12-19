@@ -24,15 +24,12 @@ const Modal = ({
     if (editingItem) {
     }
   }, [editingItem]);
-
   useEffect(() => {
     console.log('esElegiblePara2x1 en Modal:', esElegiblePara2x1 );
   }, [esElegiblePara2x1]);
-
   useEffect(() => {
     // console.log('pizzasSugeridasPara2x1 en Modal:', pizzasSugeridasPara2x1);
   }, [pizzasSugeridasPara2x1]);
-
 
   useEffect(() => {
     if (ofertaPizzaMasCompradaDisponible !== true) {
@@ -41,8 +38,6 @@ const Modal = ({
       console.log('ofertaPizzaMasCompradaDisponible sigue siendo true');
     }
   }, [ofertaPizzaMasCompradaDisponible]);
-  
-
   const handleItemClick = (item, event) => {
     event.stopPropagation();
     
@@ -60,9 +55,6 @@ const Modal = ({
     // Si es elegible o si es cualquier otra oferta u ítem, procede normalmente
     onItemSelect(item);
   };
-
-
-
   const handleItemSelect = (item) => {
     // Suponiendo que item es el objeto seleccionado en el modal
     if (editingItem) {

@@ -12,21 +12,21 @@ import { v4 as uuidv4 } from 'uuid';
 const CustomerMenu = () => {
   const { activePizzas, sessionData, updateSessionData } = useContext(_PizzaContext);
   const location = useLocation();
-  const { compra: initialCompra, setCompra: initialSetCompra } = location.state || {};  
   const [incentivos, setIncentivos] = useState([]);
-  const [compra, setCompra] = useState(initialCompra || {
+  const initialCompra = location.state?.compra || {};
+  const [compra, setCompra] = useState({
     observaciones: '',
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
     DescuentosDailyChallenge: 0,
-    cupones: [],  
-    venta: [],
-    Entrega: {},
-    total_productos: 0.0, 
-    total_descuentos: 0.0, 
-    total_a_pagar_con_descuentos: 0.0, 
+    cupones: initialCompra.cupones || [], // Usa los cupones pasados si existen
+    venta: initialCompra.venta || [],
+    Entrega: initialCompra.Entrega || {},
+    total_productos: initialCompra.total_productos || 0.0,
+    total_descuentos: initialCompra.total_descuentos || 0.0,
+    total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
     venta_procesada: 0,
     origen: '',
     observaciones: ''

@@ -22,17 +22,14 @@ const DailyChallengeCard = ({ dailyChallenge, handleClaimCoupon, userCoupon, clo
     console.error('setCompra no está definido o no es una función');
     return null;  // Evitamos continuar si no tenemos la función setCompra
   }
-
   const validateLink = (link) => {
     const regex = /^(https?:\/\/)?(www\.)?instagram\.com\/[A-Za-z0-9._]+(\/p\/[A-Za-z0-9-_]+\/?)?(\/)?(\?.*)?$/;
     return regex.test(link);
   };
-  
   const validateUsername = (username) => {
     const regex = /^[a-zA-Z0-9._]{1,30}$/;
     return regex.test(username);
   };
-  
   const handleParticipation = () => {
     if (!igUsername || !igLink) {
       setErrorMessage('Por favor, completa todos los campos antes de participar.');
@@ -74,8 +71,6 @@ const DailyChallengeCard = ({ dailyChallenge, handleClaimCoupon, userCoupon, clo
         setIsSubmitting(false);
       });
   };
-  
-
   const handleClaimCouponWrapper = () => {
     if (!isParticipated) {
       setShowAlert(true); 
@@ -123,7 +118,6 @@ const DailyChallengeCard = ({ dailyChallenge, handleClaimCoupon, userCoupon, clo
         setErrorMessage('Lo sentimos, no hay cupones disponibles o hubo un error. Inténtalo más tarde.');
       });
   };
-
   const closeAllModals = () => {
     setShowFinalModal(false); 
     setIsConfettiVisible(false); 

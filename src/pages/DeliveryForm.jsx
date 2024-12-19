@@ -155,10 +155,13 @@ const DeliveryForm = ({ setCompra, compra }) => {
       try {
         const response = await axios.get(`http://localhost:3001/pedidos_en_cola/${ubicacionId}`);
         if (response.data.success) {
-          setPedidosEnCola(response.data.pedidosEnCola); // Actualizar el estado con los pedidos en cola para la ubicación específica
+          setPedidosEnCola(response.data.pedidosEnCola);
+        } else {
+          setPedidosEnCola(0); // Predeterminado si no hay pedidos en cola
         }
       } catch (error) {
         console.error('Error al obtener los pedidos en cola para la ubicación:', error);
+        setPedidosEnCola(0); // Predeterminado en caso de error
       }
     };
   
@@ -171,6 +174,8 @@ const DeliveryForm = ({ setCompra, compra }) => {
   
   
 
+
+  
   const handleOptionChange = (option) => {
     setSelectedOption(option);
     setLoadGoogleMaps(option === 'delivery' || option === 'pickup');
@@ -215,7 +220,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
     }, 500),
     []
   );
-  
   const geocodeAddress = async () => {
     try {
       const response = await axios.get(
@@ -401,7 +405,8 @@ const DeliveryForm = ({ setCompra, compra }) => {
     if (!selectedPickupLocation && !storeLocation) {
       return 0;
     }
-    return pedidosEnCola * costoPorPedido;
+  
+    return pedidosEnCola > 0 ? pedidosEnCola * costoPorPedido : 0;
   };
   const handleTicketExpress = () => {
     const costo = calcularCostoTicketExpress();
@@ -578,7 +583,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
   };
-  
   const handleSaveAddress = (direccion) => {
     console.log("Datos recibidos desde el modal:", direccion);
     setAddressInfo((prevInfo) => ({
@@ -591,7 +595,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
     }));
     console.log("Estado de addressInfo después de actualizar:", addressInfo);
   };
-  
   const validateAddressFields = () => {
     return (
       addressInfo.address &&
@@ -600,9 +603,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
       addressInfo.lng
     );
   };
-
- 
-
 
   return (
     <div className="delivery-form-container">
@@ -957,8 +957,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
       <div className="save-delivery-section"></div>
     </div>
   );
-
-
 };
 
 export default DeliveryForm;

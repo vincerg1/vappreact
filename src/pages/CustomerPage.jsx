@@ -4,7 +4,7 @@ import { _PizzaContext } from './_PizzaContext';
 import ReviewForm from '../components/ReviewForm';
 import DailyChallengeCard from '../pages/DailyChallengeCard';
 import axios from 'axios';
-// import '../styles/CustomerPage.css';
+import '../styles/CustomerPage.css';
 // import 'slick-carousel/slick/slick.css';
 // import 'slick-carousel/slick/slick-theme.css';
 import Slider from 'react-slick';
@@ -212,7 +212,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   const renderTimeLeft = () => {
     const { hours, minutes, seconds } = calculateTimeLeft(timeLeft);
     if (isTimeBlocked && nextAvailableDay) {
-      return `Disponible el próximo ${nextAvailableDay}`;
+      return `Availab Next ${nextAvailableDay}`;
     }
     return `${hours}h ${minutes}m ${seconds}s`;
   };
@@ -609,8 +609,12 @@ const CustomerPage = (offer) => {
 
   const handlePizzaSelect = (pizza) => {
     setSelectedPizza(pizza); 
-    navigate('/customerMenu', { state: { selectedPizza: pizza } }); 
-    // console.log('Pizza seleccionada:', pizza);
+    navigate('/customerMenu', { 
+      state: { 
+        selectedPizza: pizza, 
+        compra: compra // Pasar el estado completo de la compra
+      } 
+    }); 
   };
   const handleApplyCoupon = (offer) => {
     const descuentoAleatorio = Math.floor(Math.random() * (offer.Max_Descuento_Percent - offer.Min_Descuento_Percent + 1)) + offer.Min_Descuento_Percent;
@@ -743,7 +747,10 @@ const CustomerPage = (offer) => {
     setShowContactInfo(!showContactInfo);
     if (!companyInfo) {
       axios.get('http://localhost:3001/api/info-empresa').then((response) => {
-        setCompanyInfo(response.data);
+        const data = response.data;
+        if (Array.isArray(data) && data.length > 0) {
+          setCompanyInfo(data[0]); // Selecciona el primer registro (sede principal)
+        }
       });
     }
   };
@@ -781,21 +788,19 @@ const CustomerPage = (offer) => {
             )}
 
             <div className="buttons-container">
-              <button onClick={handleReviewButtonClick}>{showReviewForm ? 'Ocultar Review' : 'Dejar un Review'}</button>
-              <button onClick={handleContactButtonClick}>{showContactInfo ? 'Ocultar' : 'Contactos'}</button>
-              <button onClick={handleDailyChallengeClick}>{showDailyChallenge ? 'Ocultar Challenge' : 'Daily Challenge'}</button>
-            </div>
+              <button onClick={handleReviewButtonClick}>{showReviewForm ? 'Go Back' : 'Reviews'}</button>
+              <button onClick={handleDailyChallengeClick}>{showDailyChallenge ? 'Go Back' : 'Daily Challenge'}</button>
+              <button onClick={handleContactButtonClick}>{showContactInfo ? 'Go Back' : 'Contacts'}</button>
+           </div>
 
-            {showReviewForm && <ReviewForm onClose={handleCloseReviewForm} email={sessionData.email} />}
-            {showContactInfo && companyInfo && (
-              <div>
-                <h3>Información de Contacto</h3>
-                <p><strong>Teléfono:</strong> {companyInfo.telefono_contacto}</p>
-                <p><strong>Correo:</strong> {companyInfo.correo_contacto}</p>
+            {showReviewForm && (
+              <div className="review-form-container">
+                <ReviewForm onClose={handleCloseReviewForm} email={sessionData.email} />
               </div>
             )}
-
+            
             {showDailyChallenge && dailyChallenge && (
+              <div className="review-form-container">
               <DailyChallengeCard
                 dailyChallenge={dailyChallenge}
                 handleClaimCoupon={handleClaimCoupon}
@@ -803,7 +808,20 @@ const CustomerPage = (offer) => {
                 closeDailyChallenge={closeDailyChallenge}
                 setCompra={setCompra}
               />
+            </div>
             )}
+            
+            {showContactInfo && companyInfo && (
+              <div className="review-form-container">
+                <div className="contact-info">
+                  <h3>Información de Contacto</h3>
+                  <p><strong>Teléfono:</strong> {companyInfo.telefono_contacto}</p>
+                  <p><strong>Correo:</strong> {companyInfo.correo_contacto}</p>
+                </div>
+              </div>
+            )}
+
+ 
 
             <div className="offers-section">
               {offers.length > 0 ? (
@@ -829,7 +847,7 @@ const CustomerPage = (offer) => {
             }
 
             <div className="order-now-button-container">
-              <button onClick={handleOrderNowClick} className="order-now-button">Order Now</button>
+              <button onClick={handleOrderNowClick} className="order-now-button"> <span>Order Now</span></button>
             </div>
           </div>
         </>

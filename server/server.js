@@ -391,9 +391,9 @@ app.get('/pedidos_en_cola/:ubicacionId', async (req, res) => {
 
       if (row) {
         res.json({ success: true, pedidosEnCola: row.pedidos_en_cola });
-      } else {
-        res.json({ success: false, pedidosEnCola: 0 });
-      }
+    } else {
+        res.json({ success: true, pedidosEnCola: 0 }); // Cambia success a true
+    }
     });
 
   } catch (error) {
@@ -1442,21 +1442,24 @@ app.post('/fill_pedidos_encola', async (req, res) => {
 
     registros.forEach((registro) => {
       let ubicacionId;
-      
+
       // Parsear el campo `metodo_entrega` para obtener el `id_ubicacion`
-      const metodoEntrega = JSON.parse(registro.metodo_entrega);
-      if (metodoEntrega.Delivery) {
-        ubicacionId = metodoEntrega.Delivery.tiendaSalida?.id;
-      } else if (metodoEntrega.PickUp) {
-        ubicacionId = metodoEntrega.PickUp.puntoRecogida?.id;
+      try {
+        const metodoEntrega = JSON.parse(registro.metodo_entrega);
+        
+        if (metodoEntrega.Delivery && metodoEntrega.Delivery.tiendaSalida?.id) {
+          ubicacionId = metodoEntrega.Delivery.tiendaSalida.id;
+        } else if (metodoEntrega.PickUp && metodoEntrega.PickUp.puntoRecogida?.id) {
+          ubicacionId = metodoEntrega.PickUp.puntoRecogida.id;
+        }
+      } catch (error) {
+        console.warn(`Error al parsear metodo_entrega para registro ID ${registro.id_order}:`, error);
       }
 
       if (ubicacionId) {
-        if (conteoPedidos[ubicacionId]) {
-          conteoPedidos[ubicacionId] += 1;
-        } else {
-          conteoPedidos[ubicacionId] = 1;
-        }
+        conteoPedidos[ubicacionId] = (conteoPedidos[ubicacionId] || 0) + 1;
+      } else {
+        console.warn(`No se encontró id_ubicacion válido para el registro ID ${registro.id_order}`);
       }
     });
 
@@ -1478,6 +1481,8 @@ app.post('/fill_pedidos_encola', async (req, res) => {
           }
         });
       });
+
+      console.log(`PedidosEnCola actualizado para id_ubicacion ${ubicacionId} con ${pedidosCount} pedidos.`);
     }
 
     console.log("PedidosEnCola actualizado con éxito.");
@@ -2004,7 +2009,7 @@ app.post('/registro_ventas', (req, res) => {
           } = venta;
 
           const parsedMetodoEntrega = JSON.parse(metodo_entrega || '{}');
-          const estado_entrega = parsedMetodoEntrega.PickUp ? 'Entregado' : 'Pendiente';
+          const estado_entrega = 'Pendiente';
           const id_repartidor = parsedMetodoEntrega.PickUp ? 0 : null; // 0 para PickUp, NULL para Delivery
 
           const insertVentaSql = `
@@ -2347,6 +2352,95 @@ app.post('/limites', async (req, res) => {
 
 // the patch zone //
 
+
+app.patch('/api/update-pedidos-en-cola', (req, res) => {
+  console.log('Iniciando actualización de PedidosEnCola...');
+
+  const queryCount = `
+    SELECT 
+      COALESCE(
+        json_extract(metodo_entrega, '$.Delivery.tiendaSalida.id'),
+        json_extract(metodo_entrega, '$.PickUp.puntoRecogida.id')
+      ) AS id_ubicacion,
+      COUNT(*) AS pedidos_en_cola
+    FROM registro_ventas
+    WHERE venta_procesada = 0
+    GROUP BY id_ubicacion
+  `;
+
+  db.all(queryCount, [], (err, rows) => {
+    if (err) {
+      console.error('Error al contar pedidos en cola:', err);
+      return res.status(500).json({ error: 'Error al contar pedidos en cola' });
+    }
+
+    console.log('Resultado de la consulta SQL (pedidos en cola):', rows);
+
+    const updatePromises = [];
+
+    if (rows.length > 0) {
+      // Actualizar ubicaciones con pedidos pendientes
+      rows.forEach(row => {
+        const updateQuery = `
+          INSERT INTO PedidosEnCola (id_ubicacion, pedidos_en_cola)
+          VALUES (?, ?)
+          ON CONFLICT(id_ubicacion) DO UPDATE SET
+            pedidos_en_cola = excluded.pedidos_en_cola;
+        `;
+        updatePromises.push(
+          new Promise((resolve, reject) => {
+            db.run(updateQuery, [row.id_ubicacion, row.pedidos_en_cola], function (updateErr) {
+              if (updateErr) reject(updateErr);
+              else resolve();
+            });
+          })
+        );
+      });
+    }
+
+    // Manejar ubicaciones sin pedidos pendientes (actualizar a 0)
+    const allUbicacionesQuery = `SELECT id_ubicacion FROM PedidosEnCola`;
+    db.all(allUbicacionesQuery, [], (allErr, ubicaciones) => {
+      if (allErr) {
+        console.error('Error al obtener todas las ubicaciones:', allErr);
+        return res.status(500).json({ error: 'Error al obtener todas las ubicaciones' });
+      }
+
+      // Crear un Set con ubicaciones con pedidos
+      const ubicacionesConPedidos = new Set(rows.map(row => row.id_ubicacion));
+
+      // Actualizar las ubicaciones existentes a 0 si no tienen pedidos
+      ubicaciones.forEach(ubicacion => {
+        if (!ubicacionesConPedidos.has(ubicacion.id_ubicacion)) {
+          const resetQuery = `
+            UPDATE PedidosEnCola
+            SET pedidos_en_cola = 0
+            WHERE id_ubicacion = ?;
+          `;
+          updatePromises.push(
+            new Promise((resolve, reject) => {
+              db.run(resetQuery, [ubicacion.id_ubicacion], function (resetErr) {
+                if (resetErr) reject(resetErr);
+                else resolve();
+              });
+            })
+          );
+        }
+      });
+
+      // Ejecutar todas las actualizaciones
+      Promise.all(updatePromises)
+        .then(() => {
+          console.log('PedidosEnCola actualizados con éxito.');
+          res.status(200).json({ success: true, message: 'PedidosEnCola actualizados correctamente.' });
+        })
+        .catch((updateErr) => {
+          console.error('Error al actualizar PedidosEnCola:', updateErr);
+          res.status(500).json({ error: 'Error al actualizar PedidosEnCola.' });
+        });
+    });
+  });
+});
 app.patch("/registro_ventas/finalizar_ruta/:enRuta", async (req, res) => {
   const { enRuta } = req.params;
 

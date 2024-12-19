@@ -41,7 +41,7 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
 
   return (
     <div className="pizza-carousel">
-      <h2>Pizzas Disponibles Hoy</h2>
+      <h2>😍 Menu of the day 😍 </h2>
       <Slider {...settings}>
         {activePizzas.map((pizza) => (
           <div key={pizza.id} onClick={() => onPizzaSelect(pizza)} className="carousel-item">

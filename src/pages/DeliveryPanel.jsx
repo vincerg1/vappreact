@@ -242,12 +242,12 @@ const DeliveryPanel = () => {
             const response = await axios.get("http://localhost:3001/registro_ventas");
             console.log("Respuesta completa de registro_ventas:", response.data);
     
-            // Filtrar pedidos pendientes o asignados que aún no están en una ruta
             const pedidosPendientes = response.data.data.filter(
                 (pedido) =>
                     (pedido.estado_entrega === "Pendiente" || pedido.estado_entrega === "Asignado") &&
                     JSON.parse(pedido.metodo_entrega || "{}").Delivery &&
-                    !pedido.enRuta // Excluir los pedidos que ya tienen ruta
+                    !JSON.parse(pedido.metodo_entrega || "{}").PickUp &&
+                    !pedido.enRuta
             );
             console.log("Pedidos pendientes filtrados:", pedidosPendientes);
     

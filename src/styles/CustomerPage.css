@@ -1,4 +1,4 @@
-/* Estilos generales para la página del cliente */
+
 .customer-page {
   display: flex;
   flex-direction: column;
@@ -7,22 +7,109 @@
   width: 100%; /* Asegura que el contenido ocupe todo el ancho disponible */
   box-sizing: border-box;
 }
-
-/* Contenedor principal del contenido con desplazamiento */
 .content-container {
-  max-height: calc(100vh - 150px); /* Ajusta la altura según sea necesario */
+  max-height: calc(100vh - 250px); 
   overflow-y: auto; 
   overflow-x: hidden;
   width: 100%;
   max-width: 1200px;
   padding: 20px;
+  padding-bottom: 60px;
   border: 1px solid #ddd;
   box-sizing: border-box;
   background-color: #fff;
   border-radius: 8px;
 }
 
-/* Ofertas en fila con desplazamiento horizontal por drag */
+/*review zone*/
+@keyframes backgroundPulse {
+  0% {
+    background-color: #E6E700; /* Color inicial */
+  }
+  50% {
+    background-color: rgb(235, 235, 135); /* Color ligeramente más claro */
+  }
+  100% {
+    background-color: #E6E700; /* Regreso al color inicial */
+  }
+}
+.review-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto; /* Centrado vertical y horizontal con margen */
+  background-color: #E6E700; /* Color base */
+  animation: backgroundPulse 0.5s infinite ease-in-out; /* Activar animación */
+  width: 100%; /* Ocupar todo el ancho */
+  min-height: 300px; /* Altura mínima para evitar que varíe */
+}
+.review-form-container form {
+  background-color: #ffffff;
+  padding: 20px; 
+  max-width: 350px;
+}
+.review-form-container label {
+  color: #b6b602;
+  font-weight: bold; /* Mayor énfasis */
+  display: block; /* Hacer que ocupe toda la fila */
+  margin-bottom: 8px; /* Espacio con respecto al input */
+}
+.review-form-container button {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.3s;
+}
+.review-form-container button:hover {
+  background-color: #333333; /* Cambio de color al pasar el mouse */
+  transform: scale(1.05); /* Efecto de escala */
+}
+.daily-challenge-card {
+  width: 100%;
+  max-width: 350px; /* Tamaño máximo */
+  /* max-height: 400px; */
+  text-align: center; /* Centra texto e imágenes */
+  background-color: #f9f9f9; /* Color de fondo */
+ 
+
+}
+.daily-challenge-card img {
+  width: 100px;
+  max-width: 200px; /* Control del tamaño de la imagen */
+  height: auto;
+  display: block;
+  margin: 0 auto 15px; /* Centrado con espacio inferior */
+  border-radius: 8px; /* Bordes redondeados */
+}
+.contact-info {
+  display: flex;
+  flex-direction: column; /* Apila los elementos verticalmente */
+  align-items: center; /* Centrado horizontal */
+  justify-content: center; /* Centrado vertical */
+  gap: 10px; /* Espaciado entre los elementos */
+  text-align: center; /* Centra el texto */
+}
+.contact-info h3 {
+  font-size: 1.8rem;
+  color: #000; /* Color del título */
+  margin-bottom: 15px; /* Espacio debajo del título */
+}
+.contact-info p {
+  font-size: 1.2rem;
+  color: #333; /* Color para los párrafos */
+  margin: 5px 0; /* Espaciado vertical */
+}
+.contact-info strong {
+  color: #000; /* Resaltar el texto fuerte */
+}
+
+
+
+
+
 .offers-section {
   display: flex;
   flex-wrap: nowrap; /* Asegura que las tarjetas no se envuelvan */
@@ -38,18 +125,12 @@
   cursor: grab;
   scroll-behavior: smooth; /* Desplazamiento suave */
 }
-
-/* Movimiento horizontal con mouse (drag) */
 .offers-section:active {
   cursor: grabbing;
 }
-
-/* Para mover las tarjetas con el puntero */
 .offers-section::-webkit-scrollbar {
   display: none; /* Oculta la barra de desplazamiento */
 }
-
-/* Estilo de las tarjetas */
 .offer-card {
   border: 2px solid #e0e0e0;
   padding: 10px;
@@ -64,31 +145,22 @@
   position: relative; /* Para la posición de los iconos */
   font-size: 12px;
 }
-
-/* Imagen en la tarjeta */
 .offer-card img {
   width: 70px; /* Tamaño más pequeño */
   height: 70px;
   object-fit: contain; /* Mantiene las proporciones de la imagen */
   margin-bottom: 5px;
 }
-
 .offer-card h3, .offer-card p {
   margin: 5px 0;
   font-size: 12px;
 }
-
-/* Tarjeta activa */
 .offer-card.active {
-  border-color: green;
+  border-color: #000000; 
 }
-
-/* Tarjeta bloqueada */
 .offer-card.blocked {
-  border-color: red;
+  border-color: #000000;
 }
-
-/* Contenido de la oferta bloqueado (desenfocado) */
 .offer-content.blurred {
   filter: grayscale(100%) opacity(0.6); /* Escala de grises y opacidad */
 }
@@ -97,26 +169,20 @@
   margin-top: 10px;
   text-align: center;
 }
-
-/* Barra de expiración */
 .expiration-bar {
   background-color: rgb(241, 243, 238);
   border-radius: 5px;
   margin-bottom: 5px;
 }
-
 .time-left {
   font-size: 0.8rem;
   font-weight: bold;
   color: #333;
 }
-
 .time-message {
   margin: 0;
   font-size: 0.8rem;
 }
-
-/* Iconos para los diferentes tipos de cupones y condiciones */
 .offer-icons {
   display: flex;
   justify-content: flex-end; /* Iconos alineados a la derecha */
@@ -126,8 +192,6 @@
   top: 5px;
   right: 5px; /* Alineados a la derecha */
 }
-
-/* Estilo uniforme para todos los iconos */
 .icon {
   font-size: 1.2rem; /* Tamaño más pequeño */
   border: 1px solid #ddd;
@@ -137,7 +201,6 @@
   transition: all 0.3s ease-in-out;
   position: relative;
 }
-
 .offer-icons .icon {
   margin: 0 3px;
   width: 20px;
@@ -170,38 +233,32 @@
   opacity: 1;
   visibility: visible;
 }
-
 /* Variantes para los íconos */
 .icon-temporal {
   border-radius: 50%; /* Temporal: Icono circular */
 }
-
 .icon-permanente {
   border-radius: 10%; /* Permanente: Icono cuadrado */
 }
-
 .icon-condiciones-true {
   border-radius: 50%; /* Con Condiciones Extras: Circular */
 }
-
 .icon-condiciones-false {
   border-radius: 10%; /* Sin Condiciones Extras: Cuadrado */
 }
-
 /* Diferentes formas para estado */
 .icon-activo {
   border-radius: 50%; /* Activo: Circular */
 }
-
 .icon-inactivo {
   border-radius: 5px; /* Inactivo: Rectangular */
 }
-
 /* Botón de la tarjeta */
 .offer-button {
-  background-color: #28a745;
-  color: #fff;
+  background-color: #E6E700; 
+  color: #000000;
   border: none;
+  font-weight: bold;
   padding: 8px;
   border-radius: 5px;
   cursor: pointer;
@@ -214,41 +271,30 @@
   cursor: not-allowed;
   filter: grayscale(100%);
 }
-
 .offer-card.blocked .offer-content {
   filter: grayscale(100%) opacity(0.6);
 }
-
-
-
-
-
 .lock-icon {
   color: red;
   text-align: center;
   margin-top: 10px;
 }
-
 .time-left {
   font-size: 0.9rem;
   color: #555;
   margin-top: 5px;
   text-align: center;
 }
-
 .offer-button:hover {
-  background-color: #218838;
+  background-color: #b6b602;
 }
-
-
-
 /* Estilos del cintillo de notificaciones */
 .notification-ticker {
   border-radius: 10px;
-  background-color: #f39c12; 
-  color: #fff; 
-  padding: 10px 0;
-  font-size: 1.2rem;
+  background-color: #E6E700; 
+  color: #000000; 
+  padding: 20px 0;
+  font-size: 1.5rem;
   position: relative;
   overflow: hidden;
   white-space: nowrap;
@@ -287,29 +333,25 @@
 .pizza-carousel h2 {
   font-size: 2rem;
   text-align: center;
-  color: #ff6600;
-  text-shadow: 0 0 5px #ffcc00;
+  color: #000000;
+  text-shadow: 0 0 5px #4e4e49;
   animation: pulseMoveShadow 3s infinite alternate ease-in-out;
   margin-top: -.25rem;
 }
 
 @keyframes pulseMoveShadow {
   0% {
-    text-shadow: 0 0 5px #ffcc00, 2px 2px 10px #ffcc00;
+    text-shadow: 0 0 5px #ffcc00, 2px 2px 10px #E6E700;
   }
   100% {
-    text-shadow: 0 0 10px #ffcc00, -2px -2px 15px #ffcc00;
+    text-shadow: 0 0 10px #ffcc00, -2px -2px 15px #E6E700;
   }
 }
-
 .pizza-carousel p {
   font-size: 1.2rem;
   margin-top: 10px;
   color: #000000;
 }
-
-
-
 .carousel-image {
   flex-shrink: 0;
   width: 100%; /* Ocupar todo el ancho del contenedor */
@@ -318,10 +360,6 @@
   border-radius: 10px; /* Bordes redondeados */
   margin-top: 10px; /* Agrega un pequeño margen superior */
 }
-
-
-
-/* Efectos de transición para hacer el carrusel más fluido */
 .slick-slide {
   transition: all 0.3s ease-in-out;
 }
@@ -337,8 +375,6 @@
   transform: scale(1.05); /* Efecto de zoom al pasar el cursor por la imagen */
   transition: transform 0.3s ease-in-out;
 }
-
-/* Estilo para el contenedor del carrusel */
 .slick-slider {
   height: 450px; /* Define una altura fija */
   display: flex;
@@ -350,7 +386,6 @@
 }
 .slick-list {
   height: 100%; 
- 
 }
 .slick-slide {
   display: inline-block !important; /* Mantén los slides en línea */
@@ -361,34 +396,72 @@
 
 /*ORDER NOW*/
 
-.order-now-container {
-  text-align: center;
-  padding: 20px;
+
+@keyframes blink-text {
+  0%, 100% { opacity: 1; } /* Texto completamente visible */
+  50% { opacity: 0.4; }    /* Texto ligeramente transparente */
 }
 
-.order-now-container h2 {
-  font-size: 2rem;
-  margin-bottom: 20px;
+.order-now-button-container {
+  display: flex;
+  justify-content: center; /* Centrar horizontalmente */
+  align-items: center;     /* Centrar verticalmente */
 }
-
-.order-now-container button {
-  display: block;
-  margin: 10px auto;
-  padding: 25px 20px;
-  font-size: 1.2rem;
-  background-color: #f39c12;
-  color: white;
-  border: none;
-  border-radius: 5px;
+.order-now-button {
+  width: 60%;
+  max-width: 450px;         /* Tamaño máximo */
+  padding: 20px 25px;       /* Espaciado interno */
+  font-size: 22px;          /* Tamaño del texto */
+  font-weight: bold;        /* Letras en negrita */
+  color: #ffffff;           /* Letras blancas */
+  background-color: #000000; /* Color naranja del botón */
+  border: none;             /* Sin borde */
+  border-radius: 12px;      /* Bordes redondeados */
   cursor: pointer;
+  text-transform: uppercase;
+  box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+.order-now-button span {
+  display: inline-block;       /* El span se comporta como bloque */
+  animation: blink-text 1.5s infinite; /* Animación de parpadeo */
+  font-size: 2rem;
+  font-weight: bold;
+}
+.order-now-button:hover {
+  background-color: #505050;   
+  transform: scale(1.08);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
 }
 
-.order-now-container button:hover {
-  background-color: #e67e22;
+/*BOTENES DEL CONTENEDOR DE PARTICIPACION*/
+
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px;               /* Espacio entre botones */
+  margin: 20px 0;          /* Margen superior e inferior */
 }
-
-
-
+.buttons-container button {
+  width: 200px;
+  height: 50px;
+  padding: 12px 18px;       /* Espaciado interno */
+  font-size: 18px;          /* Tamaño de texto */
+  font-weight: bold;        /* Negrita */
+  color: #ffffff;           /* Letras blancas */
+  background-color: #000000; /* Color naranja */
+  border: none;             /* Sin bordes */
+  border-radius: 8px;       /* Bordes redondeados */
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+.buttons-container button:hover {
+  background-color: #505050;   /* Oscurecer ligeramente el fondo */
+  transform: scale(1.05);      /* Aumentar ligeramente el tamaño */
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
+}
 .custom-tooltip {
   background-color: #f0d314 !important;
   color: #1c1b1b !important;
@@ -403,8 +476,6 @@
 .lock-icon[data-tip]:hover {
   cursor: help;
 }
-
-
 
 .blurred {
   filter: blur(5px);
@@ -458,3 +529,4 @@
 .suspension-content p {
   font-size: 18px;
 }
+

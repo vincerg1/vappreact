@@ -36,7 +36,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       // Agregar email al `compraData` directamente
       const email = sessionData.email; // Correo del cliente
       console.log('Email del cliente para enviar factura:', email); // Log para verificar el email
-      const estadoEntrega = compra.Entrega?.PickUp ? "Entregado" : "Pendiente";
+      const estadoEntrega = "Pendiente";
       const compraData = {
         id_orden: orderId,
         fecha,
@@ -98,7 +98,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       alert('Hubo un error al procesar el pago.');
     }
   };
-
   useEffect(() => {
     const fetchIncentivos = async () => {
       try {
@@ -112,41 +111,34 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
 
     fetchIncentivos();
   }, []);
-
   const calcularFaltante = (incentivo, totalAPagar) => {
     const faltante = incentivo.TO_minimo - totalAPagar;
     return faltante > 0 ? faltante : 0;
   };
-
   const recalcularTotal = (venta) => {
     return venta.reduce((acc, item) => acc + item.total, 0);
   };
-
   const getDescuentoPorcentaje = () => {
     const totalDescuento = compra.DescuentosCupon || 0;
     if (totalDescuento === 0) return 0;
     return (totalDescuento * 100).toFixed(2);
   };
-
   const guardarEnHistorial = (tipo, contenido) => {
     setHistorial(prevHistorial => [
       ...prevHistorial,
       { orderId, step: prevHistorial.length + 1, tipo, contenido },
     ]);
   };
-
   useEffect(() => {
     if (compra.venta.length > 0) {
       guardarEnHistorial("venta", { ventaId: compra.venta[compra.venta.length - 1].id });
     }
   }, [compra.venta]);
-
   useEffect(() => {
     if (compra.Entrega) {
       guardarEnHistorial("entrega", { metodo: compra.Entrega });
     }
   }, [compra.Entrega]);
-
   const handleUndo = () => {
     if (historial.length > 0) {
       const nuevoHistorial = [...historial];
@@ -170,11 +162,9 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       setHistorial(nuevoHistorial);
     }
   };
-
   useEffect(() => {
     setCompra(prevCompra => ({ ...prevCompra, id_orden: orderId }));
   }, [orderId, setCompra]);
-
   const verificarDeliveryFreePass = () => {
     console.log("Verificando incentivos disponibles...");
     const deliveryFreePass = incentivos.some((incentivo) =>
@@ -183,7 +173,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     console.log("Resultado de la verificación Delivery Free Pass:", deliveryFreePass);
     return deliveryFreePass;
   };
-
   useEffect(() => {
     if (compra.Entrega?.Delivery) {
       const valorCalculado = compra.Entrega.Delivery.costoReal ?? compra.Entrega.Delivery.costo ?? 0;
@@ -244,8 +233,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       });
     }
   }, [compra.total_a_pagar_con_descuentos, incentivos, compra.Entrega?.Delivery]);
-  
-  
 
   const calcularCostosAdicionales = () => {
     let totalDelivery = compra.Entrega?.Delivery?.costo || 0;
@@ -258,7 +245,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       totalCupones,
     };
   };
-
   const totalAPagar = compra.venta.length > 0
     ? (compra.total_a_pagar_con_descuentos > 0 ? compra.total_a_pagar_con_descuentos : compra.total_productos)
     : 0;
@@ -276,12 +262,9 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       }
       return 'No hay información de entrega disponible';
     };
-    
-
   useEffect(() => {
     setQrData(getQRCodeData());
   }, [compra?.Entrega]);
-
   const handleNext = () => {
     if (!isReadyToPay) {
       handleNextStep();
@@ -290,7 +273,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       handlePagar();
     }
   };
-
   const calcularTotalDescuentos = () => {
     const { totalDelivery, totalTicketExpress, totalCupones } = calcularCostosAdicionales();
 
@@ -318,7 +300,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       total_a_pagar_con_descuentos: parseFloat(totalFinal.toFixed(2)),
     }));
   };
-
   useEffect(() => {
     calcularTotalDescuentos();
   }, [
@@ -328,7 +309,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     compra.Entrega?.Delivery?.costoTicketExpress,
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
-
   const handleRemoveProduct = (productoAEliminar) => {
     setCompra((prevCompra) => {
       // Filtrar el producto por su identificador único (id)
@@ -349,7 +329,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       };
     });
   };
-
   const handleRemoveExtraIngredient = (productoId, ingredientIDI) => {
     setCompra((prevCompra) => {
       const nuevaVenta = prevCompra.venta.map((producto) => {
