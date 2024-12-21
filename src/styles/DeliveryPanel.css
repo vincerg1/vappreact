@@ -180,7 +180,6 @@
   align-items: center;
   justify-content: center;
 }
-
 .modal-content {
   background-color: #fff;
   padding: 20px;
@@ -188,7 +187,6 @@
   width: 90%;
   max-width: 500px;
 }
-
 .close-button {
   background-color: red;
   color: #fff;
@@ -197,7 +195,6 @@
   cursor: pointer;
   border-radius: 4px;
 }
-
 .blinking {
   animation: blinkingAnimation 1s infinite;
 }
@@ -209,4 +206,80 @@
 }
 
 
+/*Estado Repartidor*/
+/* Contenedor general de botones */
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px; /* Espacio entre botones */
+  margin: 20px 0; /* Margen superior e inferior */
+}
+
+/* Botones regulares y el botón del switch */
+/* Contenedor general de botones */
+.buttons-container {
+  display: flex;
+  justify-content: flex-start; /* Alineación a la izquierda */
+  gap: 15px; /* Espacio entre botones */
+  margin: 20px 0; /* Margen superior e inferior */
+}
+
+/* Botones regulares y el botón del switch */
+.buttons-container button, .delivery-button {
+  width: 200px; /* Ancho fijo */
+  height: 50px; /* Altura fija */
+  padding: 12px 18px; /* Espaciado interno */
+  font-size: 18px; /* Tamaño de texto uniforme */
+  font-weight: bold; /* Negrita */
+  color: #ffffff; /* Letras blancas */
+  background-color: #000000; /* Fondo negro */
+  border: none; /* Sin bordes */
+  border-radius: 8px; /* Bordes redondeados */
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+  transition: all 0.3s ease;
+  text-transform: uppercase; /* Texto en mayúsculas */
+  display: flex; /* Alinear contenido interno */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hover para todos los botones */
+.buttons-container {
+  display: flex;
+  flex-wrap: wrap; /* Permite ajustar botones si el espacio es insuficiente */
+  justify-content: flex-start; /* Alineación a la izquierda */
+  align-items: center; /* Centrado vertical */
+  gap: 15px; /* Espaciado uniforme entre botones */
+  margin: 20px 0; /* Margen superior e inferior */
+}
+.buttons-container button, .delivery-button {
+  width: 200px; /* Ancho uniforme */
+  height: 50px; /* Altura uniforme */
+  padding: 0; /* Sin padding interno adicional */
+  font-size: 18px; /* Texto uniforme */
+  font-weight: bold; /* Negrita */
+  color: #ffffff; /* Letras blancas */
+  background-color: #000000; /* Fondo negro */
+  border: none; /* Sin bordes */
+  border-radius: 8px; /* Bordes redondeados */
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+  transition: all 0.3s ease;
+  text-transform: uppercase; /* Texto en mayúsculas */
+  display: flex; /* Alineación interna */
+  align-items: center;
+  justify-content: center;
+}
+.buttons-container button:hover, .delivery-button:hover {
+  background-color: #505050; /* Fondo más oscuro */
+  transform: scale(1.05); /* Aumentar ligeramente el tamaño */
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
+}
+.delivery-button.activo {
+  background-color: green; /* Fondo verde para Activo */
+}
+.delivery-button.inactivo {
+  background-color: red; /* Fondo rojo para Inactivo */
+}
 

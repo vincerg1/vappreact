@@ -191,6 +191,18 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
     });
   });
 }
+function actualizarEstadoRepartidor(id, estado, res) {
+  const query = 'UPDATE repartidores SET estado = ? WHERE id_repartidor = ?';
+  db.run(query, [estado, id], function (err) {
+      if (err) {
+          console.error('Error al actualizar estado:', err);
+          res.status(500).json({ success: false, message: 'Error al actualizar el estado.' });
+          return;
+      }
+
+      res.json({ success: true, message: `Estado del repartidor con ID ${id} actualizado a ${estado}.` });
+  });
+}
 const extractCoordinates = (url) => {
   const match = url.match(/@([\d.-]+),([\d.-]+)/);
   if (match) {
@@ -232,27 +244,206 @@ const generateOfferCode = (description) => {
 };
 const bcrypt = require('bcrypt');
 
+const traducirDia = (diaIngles) => {
+  const dias = {
+      monday: 'lunes',
+      tuesday: 'martes',
+      wednesday: 'miercoles',
+      thursday: 'jueves',
+      friday: 'viernes',
+      saturday: 'sabado',
+      sunday: 'domingo'
+  };
+  const diaTraducido = dias[diaIngles.toLowerCase()] || diaIngles;
+  return normalizarTexto(diaTraducido); // Normalizar el día traducido
+};
+
+const normalizarTexto = (texto) => {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+};
+
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-cron.schedule('59 23 * * *', () => {
-  console.log('Iniciando cierre diario automático...');
-  db.run(
-      'UPDATE wallet_repartidores SET estado = ? WHERE estado = ?',
-      ['Consolidado', 'Por Cobrar'],
-      (err) => {
-          if (err) {
-              console.error('Error al realizar el cierre diario:', err);
-          } else {
-              console.log('Cierre diario completado: todos los pedidos "Por Cobrar" pasaron a "Consolidado".');
-          }
+
+
+cron.schedule('* * * * *', () => {
+  console.log('=== Cron Job Iniciado: Evaluando cierre de día ===');
+
+  // Traducción de días de la semana
+  const diasEnEspanol = {
+    monday: 'lunes',
+    tuesday: 'martes',
+    wednesday: 'miercoles',
+    thursday: 'jueves',
+    friday: 'viernes',
+    saturday: 'sabado',
+    sunday: 'domingo',
+  };
+
+  const diaActual = diasEnEspanol[moment().format('dddd').toLowerCase()] || 'desconocido';
+  const horaActual = moment().format('HH:mm');
+
+  console.log(`Día actual: ${diaActual}, Hora actual: ${horaActual}`);
+
+  if (diaActual === 'desconocido') {
+    console.error('❌ Error: Día no reconocido.');
+    return;
+  }
+
+  // Consultar horarios para el día actual
+  const queryHorario = `
+      SELECT * 
+      FROM horarios 
+      WHERE LOWER(Day) = ? 
+      ORDER BY Hora_fin ASC
+  `;
+
+  db.all(queryHorario, [diaActual], (err, horarios) => {
+    if (err) {
+      console.error('❌ Error al obtener horarios:', err);
+      return;
+    }
+
+    if (!horarios || horarios.length === 0) {
+      console.log(`⚠️ No hay horarios definidos para el día ${diaActual}.`);
+      return;
+    }
+
+    console.log(`✔️ Horarios encontrados para el día ${diaActual}:`, horarios);
+
+    let horarioFinalizado = false;
+
+    horarios.forEach((horario) => {
+      let horaFin = horario.Hora_fin;
+
+      // Manejar casos de medianoche (00:00)
+      if (horaFin === '00:00') {
+        horaFin = '23:59';
       }
-  );
+
+      console.log(`Evaluando turno ${horario.Shift} con hora fin ${horaFin}...`);
+
+      // Verificar si el turno ha finalizado
+      if (horaActual >= horaFin) {
+        console.log(`⏰ El turno ${horario.Shift} del día ${horario.Day} ha finalizado (${horaFin}).`);
+        horarioFinalizado = true;
+      } else {
+        console.log(`🚀 El turno ${horario.Shift} aún no finaliza (${horaFin}).`);
+      }
+    });
+
+    if (horarioFinalizado) {
+      console.log('✅ Se detectaron turnos finalizados. Procediendo a actualizar estados de repartidores...');
+
+      // Actualizar estados de repartidores a 'Inactivo'
+      db.run(
+        'UPDATE repartidores SET estado = ? WHERE estado = ?',
+        ['Inactivo', 'Activo'],
+        function (err) {
+          if (err) {
+            console.error('❌ Error al actualizar estados de repartidores:', err);
+            return;
+          }
+
+          console.log(`✔️ Estados actualizados a "Inactivo" para ${this.changes} repartidores.`);
+        }
+      );
+    } else {
+      console.log('⏳ No se han alcanzado horarios de finalización aún.');
+    }
+  });
+
+  console.log('=== Cron Job Finalizado ===\n');
 });
 
+
+
+
+
 // the get zone
+app.get('/repartidores/activos', (req, res) => {
+  const query = 'SELECT id_repartidor, nombre FROM repartidores WHERE estado = "Activo"';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error al obtener repartidores activos:', err);
+      res.status(500).json({ success: false, message: 'Error interno al obtener repartidores activos.' });
+    } else {
+      res.json({ success: true, data: rows });
+    }
+  });
+});
+app.get('/repartidores/:id/estado-horario', (req, res) => {
+  const { id } = req.params;
+  const diaActual = traducirDia(moment().format('dddd')); // Día actual en español
+  const horaActual = moment().format('HH:mm'); // Hora actual
+
+  console.log(`Evaluando horarios laborales para el día ${diaActual}, hora actual: ${horaActual}`);
+
+  const query = `
+      SELECT * 
+      FROM horarios 
+      WHERE LOWER(Day) = ? 
+      ORDER BY Hora_inicio ASC
+  `;
+
+  db.all(query, [diaActual], (err, horarios) => {
+      if (err) {
+          console.error('Error al consultar horarios:', err);
+          res.status(500).json({ puedeActivar: false, mensaje: 'Error interno al consultar horarios.' });
+          return;
+      }
+
+      if (!horarios || horarios.length === 0) {
+          console.warn(`No se encontraron horarios para el día ${diaActual}.`);
+          res.json({ puedeActivar: false, mensaje: `No hay horarios laborales definidos para hoy (${diaActual}).` });
+          return;
+      }
+
+      console.log(`✔️ Horarios encontrados:`, horarios);
+
+      // Validar si el repartidor está dentro de un horario válido
+      const horarioValido = horarios.some((horario) => {
+          let horaFin = horario.Hora_fin === '00:00' ? '23:59' : horario.Hora_fin; // Manejo de medianoche
+          const esValido = horaActual >= horario.Hora_inicio && horaActual <= horaFin;
+          console.log(`Evaluando turno ${horario.Shift}: Inicio ${horario.Hora_inicio}, Fin ${horario.Hora_fin}, ¿Valido? ${esValido}`);
+          return esValido;
+      });
+
+      if (horarioValido) {
+          res.json({ puedeActivar: true, mensaje: 'Estás dentro de un horario laboral válido.' });
+      } else {
+          const proximoTurno = horarios.find((horario) => horaActual < horario.Hora_inicio);
+          const mensaje =
+              proximoTurno
+                  ? `Tu próximo turno comienza a las ${proximoTurno.Hora_inicio}.`
+                  : 'No tienes más turnos laborales hoy.';
+          console.warn(`El repartidor no está en horario laboral válido. ${mensaje}`);
+          res.json({ puedeActivar: false, mensaje });
+      }
+  });
+});
+app.get('/repartidores/:id', (req, res) => {
+  const { id } = req.params;
+
+  const query = 'SELECT estado FROM repartidores WHERE id_repartidor = ?';
+  db.get(query, [id], (err, row) => {
+      if (err) {
+          console.error('Error al obtener el estado del repartidor:', err);
+          res.status(500).json({ success: false, message: 'Error al obtener el estado' });
+          return;
+      }
+
+      if (!row) {
+          res.status(404).json({ success: false, message: 'Repartidor no encontrado' });
+          return;
+      }
+
+      res.json({ success: true, estado: row.estado });
+  });
+});
 app.get('/registro_ventas/ruta_disponibilidad/:enRuta', (req, res) => {
   const enRuta = req.params.enRuta;
 
@@ -2351,8 +2542,58 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+app.patch('/repartidores/:id/estado', (req, res) => {
+  const { id } = req.params;
+  const { estado, diaActual } = req.body;
 
+  const diaNormalizado = normalizarTexto(diaActual); // Normalizar el día recibido
+  console.log('Día recibido del cliente (normalizado):', diaNormalizado);
 
+  if (estado === 'Activo') {
+      const horaActual = moment().format('HH:mm');
+
+      const query = `
+          SELECT * 
+          FROM horarios 
+          WHERE LOWER(Day) = ? 
+          ORDER BY Hora_inicio ASC
+      `;
+
+      db.all(query, [diaNormalizado], (err, horarios) => {
+          if (err) {
+              console.error('Error al verificar horarios:', err);
+              res.status(500).json({ success: false, message: 'Error interno al verificar horarios.' });
+              return;
+          }
+
+          if (!horarios || horarios.length === 0) {
+              console.warn(`No se encontraron horarios para el día "${diaNormalizado}".`);
+              res.json({ success: false, message: `No hay horarios laborales definidos para hoy (${diaNormalizado}).` });
+              return;
+          }
+
+          console.log('Horarios encontrados:', horarios);
+          const horarioValido = horarios.some((horario) => {
+              let horaFin = horario.Hora_fin === '00:00' ? '23:59' : horario.Hora_fin;
+              return horaActual >= horario.Hora_inicio && horaActual <= horaFin;
+          });
+
+          if (!horarioValido) {
+              res.json({
+                  success: false,
+                  message: 'No puedes activar tu estado fuera de un horario laboral válido.'
+              });
+              return;
+          }
+
+          console.log('Horario válido encontrado. Actualizando estado a "Activo".');
+          actualizarEstadoRepartidor(id, estado, res);
+      });
+  } else {
+      console.log('Actualizando estado a "Inactivo".');
+      actualizarEstadoRepartidor(id, estado, res);
+  }
+});
 app.patch('/api/update-pedidos-en-cola', (req, res) => {
   console.log('Iniciando actualización de PedidosEnCola...');
 

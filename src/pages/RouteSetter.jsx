@@ -9,9 +9,33 @@ const RouteSetter = () => {
   const [originalOrders, setOriginalOrders] = useState([]); 
   const [generatedRoutes, setGeneratedRoutes] = useState([]); 
   const [rutasDisponibles, setRutasDisponibles] = useState(false);
+  const [repartidoresActivos, setRepartidoresActivos] = useState([]);
   const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
   const coordinateCache = {}; 
 
+
+  const checkRutasDisponibles = () => {
+    const agrupables = orders.filter(order => order.estadoEntrega === "Pendiente");
+    if (agrupables.length > 1) {
+      setRutasDisponibles(true);
+    } else {
+      setRutasDisponibles(false);
+    }
+  };
+  
+
+  const fetchRepartidoresActivos = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/repartidores/activos');
+      if (response.data.success) {
+        setRepartidoresActivos(response.data.data);
+      } else {
+        console.warn('No se pudieron obtener los repartidores activos:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error al obtener repartidores activos:', error);
+    }
+  };
   const fetchOrders = async () => {
     try {
       const response = await axios.get("http://localhost:3001/registro_ventas");
@@ -60,7 +84,6 @@ const RouteSetter = () => {
       console.error("Error al sincronizar las órdenes desde registro_ventas:", error);
     }
   };
-  
   // const geocodeAddress = async (address) => {
   //   try {
   //     const response = await axios.get(
@@ -402,6 +425,12 @@ const RouteSetter = () => {
   };
   
   useEffect(() => {
+    checkRutasDisponibles();
+  }, [orders]);
+  useEffect(() => {
+    fetchRepartidoresActivos(); // Llamar a la función al montar el componente
+  }, []);
+  useEffect(() => {
     fetchOrders();
   }, []);
   useEffect(() => {
@@ -513,78 +542,44 @@ return (
         </tr>
     ))}
 </tbody>
-</table>
+        </table>
 
         </div>
       </div>
 
       {/* Columna Derecha */}
       <div className="right-column">
-        <div className="widget">
-          <h3>Crear Ruta</h3>
-          {rutasDisponibles && <p className="notification">¡Nueva ruta encontrada!</p>}
-          <button onClick={handleGenerateRoute}>Generar Nueva Ruta</button>
-        </div>
-
-        {/* Tabla de Rutas Activas */}
+      <div className="widget">
+        <h3>Crear Ruta</h3>
+        {rutasDisponibles && generatedRoutes.length === 0 && (
+          <p className="new-route-message">New route found</p>
+        )}
         {generatedRoutes.length > 0 && (
           <div className="routes-container">
-            <h3>Rutas Activas</h3>
-            <table>
-            <thead>
-              <tr>
-                <th>ID Ruta</th>
-                <th>Pedidos</th>
-                <th>QR Direcciones</th>
-                <th>Express</th>
-                <th>Paradas</th>
-                <th>Repartidor Asignado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-            {generatedRoutes.map((route, index) => (
-            <tr key={index}>
-              <td>{route.idRuta}</td>
-              <td>
-                {Array.isArray(route.pedidos) ? route.pedidos.join(", ") : route.pedidos || "N/A"}
-              </td>
-              <td>
-                {route.direcciones ? (
-                  <QRCode value={Array.isArray(route.direcciones) ? route.direcciones.join(", ") : route.direcciones} size={64} />
-                ) : (
-                  "N/A"
-                )}
-              </td>
-              <td>{route.express ? "Sí" : "No"}</td>
-              <td>{route.numeroDeParadas}</td>
-              <td>{route.repartidorAsignado || "Pendiente"}</td>
-              <td>
-                {route.estado === "Pendiente" ? (
-                  <button onClick={() => formalizeRoute(route)}>Crear Ruta</button>
-                ) : (
-                  <button onClick={() => undoRoute(route.idRuta)}>Deshacer</button>
-                )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-                </div>
-              )}
-
+            <p>Ruta {generatedRoutes[0].idRuta} en proceso</p>
+          </div>
+        )}
+        <button onClick={handleGenerateRoute}>Generar Nueva Ruta</button>
+      </div>
         {/* Widget para Repartidores Activos */}
         <div className="widget">
           <h3>Repartidores Activos</h3>
-          <p>Lista de repartidores aquí</p>
+          {repartidoresActivos.length > 0 ? (
+            <ul className="active-delivery-list">
+              {repartidoresActivos.map((repartidor) => (
+                <li key={repartidor.id_repartidor}>
+                  🚴 ✅ {repartidor.nombre} {/* Emoji o ícono junto al nombre */}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No hay repartidores activos en este momento.</p>
+          )}
         </div>
       </div>
     </div>
   </div>
 );
-
-  
 };
 
 export default RouteSetter;

@@ -5,6 +5,8 @@ import { Bar } from 'react-chartjs-2';
 import QRCode from 'qrcode.react';
 import '../styles/DeliveryPanel.css'; 
 
+
+
 const DeliveryPanel = () => {
     const [loggedIn, setLoggedIn] = useState(() => {
         const storedLoggedIn = localStorage.getItem('loggedIn');
@@ -28,7 +30,12 @@ const DeliveryPanel = () => {
     const [rutas, setRutas] = useState([]);
     const [precioDelivery, setPrecioDelivery] = useState(0);
     const [fetchPedidosEnRuta, setPedidosEnRuta] = useState({});
-  
+    const [estado, setEstado] = useState('Inactivo');
+    const [loading, setLoading] = useState(false);
+    const [puedeActivar, setPuedeActivar] = useState(false);
+    const [mensajeHorario, setMensajeHorario] = useState('');
+
+
 
     const calculateTimeLeft = (fechaYHoraPrometida) => {
         if (!fechaYHoraPrometida) {
@@ -51,7 +58,54 @@ const DeliveryPanel = () => {
     
         return `${hours}h ${minutes}m ${seconds}s`;
     };
+    const normalizarTexto = (texto) => {
+        return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    };
+    const traducirDia = (diaIngles) => {
+        const dias = {
+            monday: 'lunes',
+            tuesday: 'martes',
+            wednesday: 'miercoles',
+            thursday: 'jueves',
+            friday: 'viernes',
+            saturday: 'sabado',
+            sunday: 'domingo'
+        };
+        const diaTraducido = dias[diaIngles.toLowerCase()] || diaIngles;
+        return normalizarTexto(diaTraducido); // Normalizar el día traducido
+    };
+
+    useEffect(() => {
+        const verificarHorario = async () => {
+            try {
+                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado-horario`);
+                setPuedeActivar(response.data.puedeActivar);
+                setMensajeHorario(response.data.mensaje.replace(response.data.mensaje.match(/\(.*?\)/g), `(${traducirDia(moment().format('dddd'))})`));
+            } catch (error) {
+                console.error('Error al verificar horario:', error);
+            }
+        };
     
+        verificarHorario();
+    }, [repartidor]);
+    useEffect(() => {
+        const fetchEstado = async () => {
+            if (!repartidor || !repartidor.id_repartidor) {
+                console.warn('No hay información del repartidor logueado');
+                return;
+            }
+    
+            try {
+                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+                console.log('Estado recuperado del backend:', response.data.estado); // Log para verificar el estado
+                setEstado(response.data.estado); // Sincroniza el estado local con la base de datos
+            } catch (error) {
+                console.error('Error al obtener el estado del repartidor:', error);
+            }
+        };
+    
+        fetchEstado();
+    }, [repartidor]);
     useEffect(() => {
         const interval = setInterval(() => {
             setPedidos((prevPedidos) =>
@@ -188,16 +242,46 @@ const DeliveryPanel = () => {
         return () => clearInterval(interval); 
     }, []);
 
+    const toggleEstado = async () => {
+        setLoading(true);
+        const nuevoEstado = estado === 'Activo' ? 'Inactivo' : 'Activo';
+        const diaActual = traducirDia(moment().format('dddd'));
+        
+        console.log('Día enviado al servidor:', diaActual); // <-- Agregar este log
+        
+        try {
+            const response = await axios.patch(
+                `http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`, 
+                { estado: nuevoEstado, diaActual }
+            );
+            console.log('Respuesta del servidor:', response.data);
+            
+            if (response.data.success) {
+                setEstado(nuevoEstado);
+            } else {
+                console.warn('No se pudo cambiar el estado:', response.data.message);
+            }
+        } catch (error) {
+            console.error('Error al cambiar el estado:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
     
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:3001/repartidores/login', { username, password });
             if (response.data.success) {
-                setRepartidor(response.data.repartidor);
+                const repartidorData = response.data.repartidor;
+                setRepartidor(repartidorData);
                 setLoggedIn(true);
+    
+                // Almacenar tanto el objeto repartidor como el id_repartidor
                 localStorage.setItem('loggedIn', JSON.stringify(true));
-                localStorage.setItem('repartidor', JSON.stringify(response.data.repartidor));
+                localStorage.setItem('repartidor', JSON.stringify(repartidorData));
+                localStorage.setItem('repartidorId', repartidorData.id_repartidor); // Almacenar id_repartidor
             } else {
                 alert('Credenciales incorrectas');
             }
@@ -206,6 +290,7 @@ const DeliveryPanel = () => {
             alert('Error al iniciar sesión');
         }
     };
+    
     if (!loggedIn) {
         return (
             <div>
@@ -698,12 +783,21 @@ const DeliveryPanel = () => {
           <div className="buttons-container">
             <button onClick={handleLogout}>Cerrar Sesión</button>
             <button onClick={toggleWallet}>
-              {showWallet ? 'Ocultar Wallet' : 'Ver Wallet'}
+                {showWallet ? 'Ocultar Wallet' : 'Ver Wallet'}
             </button>
-            <div className="precio-delivery-info">
-              <h3>Delivery: {precioDelivery ? `${precioDelivery.toFixed(2)} € / km` : 'Cargando...'}</h3>
-            </div>
-          </div>
+
+            {/* Botón/Interruptor con apariencia unificada */}
+            <div
+            className={`delivery-button ${estado === 'Activo' ? 'activo' : 'inactivo'}`}
+            onClick={puedeActivar ? toggleEstado : null}
+            role="button"
+            style={{ cursor: puedeActivar ? 'pointer' : 'not-allowed', opacity: puedeActivar ? 1 : 0.5 }}
+                >
+                    {estado}
+                </div>
+                <p>{!puedeActivar && mensajeHorario}</p>
+                </div>
+
       
           {/* Wallet Modal */}
           {showWallet && (

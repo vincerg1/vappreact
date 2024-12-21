@@ -471,12 +471,9 @@
   max-width: 200px;
   text-align: center;
 }
-
-/* Efectos al pasar sobre el tooltip */
 .lock-icon[data-tip]:hover {
   cursor: help;
 }
-
 .blurred {
   filter: blur(5px);
   pointer-events: none;
