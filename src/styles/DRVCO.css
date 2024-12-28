@@ -1,0 +1,117 @@
+/* Contenedor principal */
+.drvco-container {
+    max-width: 1500px; /* Limita el ancho general */
+    margin: 0 auto; /* Centrado horizontal */
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9; /* Fondo claro */
+    border-radius: 10px; /* Bordes redondeados */
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+}
+
+/* Contenedor horizontal para filtros y KPIs */
+.header-section {
+    display: grid; /* Cambiado a grid para mayor control */
+    grid-template-columns: 200px auto; /* Dos columnas: selector (200px) y KPIs */
+    gap: 20px; /* Espacio entre columnas */
+    max-width: 1200px; /* Limita el ancho total del contenedor */
+    margin: 0 auto; /* Centrado horizontal */
+    align-items: flex-start; /* Alinea los elementos superiores */
+    margin-bottom: 20px;
+}
+
+/* Filtro de tiempo */
+.time-selector {
+    height: auto;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+    max-width: 200px; /* Ancho fijo para el selector */
+}
+
+/* Indicadores Totales */
+.kpi-section {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+    max-width: 1200px; /* Limita el ancho del contenedor */
+}
+
+/* Rejilla de KPIs */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Cuatro columnas */
+    gap: 20px;
+    text-align: center; /* Alinea horizontalmente el texto */
+    align-items: center; /* Centra verticalmente el contenido */
+    justify-items: center; /* Centra horizontalmente el contenido */
+}
+
+.top-pizzas-section {
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    padding-bottom: 20px; /* Espaciado adicional en la parte inferior */
+    text-align: center;
+    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-width: 1200px;
+    margin: 0 auto;
+    overflow: hidden; /* Evita el colapso de márgenes */
+}
+
+
+.pizza-grid {
+    display: flex; /* Cambia a flex para mejor control de centrado */
+    justify-content: center; /* Centra horizontalmente */
+    gap: 10px; /* Espaciado entre los elementos */
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan si es necesario */
+    margin-top: 10px; /* Opcional: agrega margen superior para separación */
+}
+
+.pizza-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    width: 180px; /* Ajuste del tamaño de las tarjetas */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+}
+
+.chart-type-selector {
+    display: block; /* Garantiza el flujo de bloque */
+    border-radius: 10px;
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    max-width: 1200px;
+    margin: 0 auto;
+    overflow: hidden; /* Previene colapso */
+}
+
+
+
+/* Gráfico */
+.chart-section {
+    margin-top: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+    max-width: 1200px; /* Limita el ancho del contenedor */
+    margin: 20px auto; /* Centra el gráfico */
+}
+
+.chart-section canvas {
+    max-height: 400px; /* Limita la altura del gráfico */
+    max-width: 100%; /* Se adapta al ancho del contenedor */
+}

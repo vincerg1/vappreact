@@ -75,6 +75,46 @@ const DeliveryPanel = () => {
         return normalizarTexto(diaTraducido); // Normalizar el día traducido
     };
 
+
+    useEffect(() => {
+        const verificarSuspension = async () => {
+            try {
+                // Obtener los datos del repartidor
+                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+                const repartidorData = response.data;
+    
+                if (repartidorData.suspension_status) {
+                    const ahora = moment(); // Fecha y hora actual
+                    const fechaFinSuspension = moment(repartidorData.suspension_end_date);
+    
+                    if (ahora.isAfter(fechaFinSuspension)) {
+                        // Si la suspensión ha terminado, actualizar estado a Activo y suspensión a false
+                        const updateResponse = await axios.patch(`http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`, {
+                            estado: 'Activo',
+                            suspension_status: false,
+                        });
+    
+                        if (updateResponse.data.success) {
+                            console.log('La suspensión ha sido levantada automáticamente.');
+                            setEstado('Activo'); // Reflejar el cambio en el frontend
+                        } else {
+                            console.error('Error al levantar la suspensión automáticamente.');
+                        }
+                    } else {
+                        // Si la suspensión sigue activa
+                        console.log(`Tu cuenta está suspendida hasta ${fechaFinSuspension.format('YYYY-MM-DD HH:mm')}`);
+                        setEstado('Inactivo'); // Reflejar el estado actual en el frontend
+                    }
+                }
+            } catch (error) {
+                console.error('Error al verificar la suspensión:', error);
+            }
+        };
+    
+        if (repartidor) {
+            verificarSuspension();
+        }
+    }, [repartidor]);    
     useEffect(() => {
         const verificarHorario = async () => {
             try {
@@ -244,18 +284,26 @@ const DeliveryPanel = () => {
 
     const toggleEstado = async () => {
         setLoading(true);
-        const nuevoEstado = estado === 'Activo' ? 'Inactivo' : 'Activo';
-        const diaActual = traducirDia(moment().format('dddd'));
-        
-        console.log('Día enviado al servidor:', diaActual); // <-- Agregar este log
-        
+    
         try {
+            // Verificar estado del repartidor
+            const repartidorResponse = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+            const repartidorData = repartidorResponse.data;
+    
+            // Si está suspendido, cambiar automáticamente a "Inactivo"
+            if (repartidorData.suspension_status) {
+                alert(`Tu cuenta está suspendida hasta ${moment(repartidorData.suspension_end_date).format('YYYY-MM-DD HH:mm')}.`);
+                setEstado('Inactivo');
+                return;
+            }
+    
+            // Cambiar estado si no está suspendido
+            const nuevoEstado = estado === 'Activo' ? 'Inactivo' : 'Activo';
             const response = await axios.patch(
-                `http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`, 
-                { estado: nuevoEstado, diaActual }
+                `http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`,
+                { estado: nuevoEstado }
             );
-            console.log('Respuesta del servidor:', response.data);
-            
+    
             if (response.data.success) {
                 setEstado(nuevoEstado);
             } else {
@@ -263,34 +311,45 @@ const DeliveryPanel = () => {
             }
         } catch (error) {
             console.error('Error al cambiar el estado:', error);
+            alert('Error al cambiar el estado. Por favor, verifica la conexión con el servidor.');
         } finally {
             setLoading(false);
         }
     };
-    
-    
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
             const response = await axios.post('http://localhost:3001/repartidores/login', { username, password });
+    
             if (response.data.success) {
                 const repartidorData = response.data.repartidor;
+    
+                // Si no está suspendido, proceder con el inicio de sesión
                 setRepartidor(repartidorData);
                 setLoggedIn(true);
     
-                // Almacenar tanto el objeto repartidor como el id_repartidor
+                // Almacenar la información del repartidor en localStorage
                 localStorage.setItem('loggedIn', JSON.stringify(true));
                 localStorage.setItem('repartidor', JSON.stringify(repartidorData));
                 localStorage.setItem('repartidorId', repartidorData.id_repartidor); // Almacenar id_repartidor
-            } else {
-                alert('Credenciales incorrectas');
             }
         } catch (error) {
-            console.error('Error al iniciar sesión:', error);
-            alert('Error al iniciar sesión');
+            if (error.response && error.response.status === 403) {
+                // Log para verificar el mensaje recibido
+                console.log('Mensaje recibido del backend:', error.response.data.error);
+                
+                // Mostrar mensaje amigable para cuentas suspendidas
+                alert(error.response.data.error);
+            } else if (error.response && error.response.status === 401) {
+                // Mensaje para credenciales inválidas
+                alert("Credenciales inválidas");
+            } else {
+                console.error('Error al iniciar sesión:', error);
+                alert('Error al iniciar sesión. Por favor, intenta nuevamente.');
+            }
         }
     };
-    
+     
     if (!loggedIn) {
         return (
             <div>
@@ -315,7 +374,6 @@ const DeliveryPanel = () => {
             </div>
         );
     }
-
     const handleLogout = () => {
         setLoggedIn(false);
         setRepartidor(null);
@@ -369,6 +427,11 @@ const DeliveryPanel = () => {
     };
     const handleTakePedido = async (pedidoId) => {
         try {
+            if (estado !== "Activo") {
+                alert("Debes estar en estado 'Activo' para tomar un pedido.");
+                return;
+            }
+    
             // Verificar si el pedido sigue disponible
             const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/disponibilidad/${pedidoId}`);
             if (checkResponse.data.data.estado_entrega !== 'Pendiente' || checkResponse.data.data.enRuta) {
@@ -376,17 +439,21 @@ const DeliveryPanel = () => {
                 fetchPedidos(); // Actualizar la lista de pedidos
                 return;
             }
-
+    
             // Tomar el pedido si está disponible
             const response = await axios.patch(`http://localhost:3001/registro_ventas/tomar_pedido/${pedidoId}`, {
                 estado_entrega: 'Asignado',
                 id_repartidor: repartidor.id_repartidor
             });
-
+    
             if (response.data.success) {
-                setPedidos(prevPedidos => prevPedidos.map(pedido => 
-                    pedido.id_order === pedidoId ? { ...pedido, estado_entrega: 'Asignado', id_repartidor: repartidor.id_repartidor } : pedido
-                ));
+                setPedidos((prevPedidos) =>
+                    prevPedidos.map((pedido) =>
+                        pedido.id_order === pedidoId
+                            ? { ...pedido, estado_entrega: 'Asignado', id_repartidor: repartidor.id_repartidor }
+                            : pedido
+                    )
+                );
                 alert('Pedido tomado con éxito');
             } else {
                 alert('El pedido ya fue tomado por otro repartidor');
@@ -398,12 +465,17 @@ const DeliveryPanel = () => {
     };
     const handleTakeRuta = async (enRuta) => {
         try {
+            if (estado !== "Activo") {
+                alert("Debes estar en estado 'Activo' para tomar una ruta.");
+                return;
+            }
+    
             // Validar la disponibilidad de los pedidos en la ruta
             const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/ruta_disponibilidad/${enRuta}`);
-            const pedidosNoDisponibles = checkResponse.data.filter(pedido => pedido.estado_entrega !== "Pendiente");
+            const pedidosNoDisponibles = checkResponse.data.filter((pedido) => pedido.estado_entrega !== "Pendiente");
     
             if (pedidosNoDisponibles.length > 0) {
-                alert(`No se puede tomar la ruta. Hay pedidos no disponibles: ${pedidosNoDisponibles.map(p => p.id_order).join(', ')}`);
+                alert(`No se puede tomar la ruta. Hay pedidos no disponibles: ${pedidosNoDisponibles.map((p) => p.id_order).join(', ')}`);
                 return;
             }
     
@@ -960,12 +1032,18 @@ const DeliveryPanel = () => {
             </td>
             <td>
                 {pedido.estado_entrega === "Pendiente" && (
-                    <button onClick={() => handleTakePedido(pedido.id_order)}>
+                    <button
+                        onClick={() => handleTakePedido(pedido.id_order)}
+                        disabled={estado !== "Activo"}
+                    >
                         Tomar Pedido
                     </button>
                 )}
                 {pedido.estado_entrega === "Asignado" && (
-                    <button onClick={() => handleCompletePedido(pedido.id_order)}>
+                    <button
+                        onClick={() => handleCompletePedido(pedido.id_order)}
+                        disabled={estado !== "Activo"}
+                    >
                         Confirmar Entrega
                     </button>
                 )}
@@ -1022,29 +1100,31 @@ const DeliveryPanel = () => {
                 </a>
             </td>
             <td>
-            {ruta.id_pedidos && ruta.id_pedidos.length > 0 ? (
-                ruta.estadoRuta === "Asignado" ? (
-                    <button onClick={() => handleCompleteRuta(ruta.id_ruta)}>
-                        Confirmar Entrega
-                    </button>
-                ) : ruta.estadoRuta === "Pendiente" ? (
-                    <button onClick={() => handleTakeRuta(ruta.id_ruta)}>
-                        Tomar Ruta
-                    </button>
+                {ruta.id_pedidos && ruta.id_pedidos.length > 0 ? (
+                    ruta.estadoRuta === "Asignado" ? (
+                        <button
+                            onClick={() => handleCompleteRuta(ruta.id_ruta)}
+                            disabled={estado !== "Activo"}
+                        >
+                            Confirmar Entrega
+                        </button>
+                    ) : ruta.estadoRuta === "Pendiente" ? (
+                        <button
+                            onClick={() => handleTakeRuta(ruta.id_ruta)}
+                            disabled={estado !== "Activo"}
+                        >
+                            Tomar Ruta
+                        </button>
+                    ) : (
+                        "Acción no disponible"
+                    )
                 ) : (
-                    "Acción no disponible"
-                )
-            ) : (
-                "Sin Pedidos"
-            )}
-        </td>
+                    "Sin Pedidos"
+                )}
+            </td>
         </tr>
     );
 })}
-
-
-
-
             </tbody>
           </table>
         </div>

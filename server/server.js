@@ -270,7 +270,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 cron.schedule('* * * * *', () => {
-  console.log('=== Cron Job Iniciado: Evaluando cierre de día ===');
+  console.log('=== Cron Job Iniciado: Evaluando horarios activos ===');
 
   // Traducción de días de la semana
   const diasEnEspanol = {
@@ -298,7 +298,7 @@ cron.schedule('* * * * *', () => {
       SELECT * 
       FROM horarios 
       WHERE LOWER(Day) = ? 
-      ORDER BY Hora_fin ASC
+      ORDER BY Hora_inicio ASC
   `;
 
   db.all(queryHorario, [diaActual], (err, horarios) => {
@@ -314,29 +314,17 @@ cron.schedule('* * * * *', () => {
 
     console.log(`✔️ Horarios encontrados para el día ${diaActual}:`, horarios);
 
-    let horarioFinalizado = false;
+    // Verificar si la hora actual está dentro de algún horario activo
+    const dentroDeHorarioActivo = horarios.some((horario) => {
+      const horaInicio = horario.Hora_inicio;
+      const horaFin = horario.Hora_fin === '00:00' ? '23:59' : horario.Hora_fin;
 
-    horarios.forEach((horario) => {
-      let horaFin = horario.Hora_fin;
-
-      // Manejar casos de medianoche (00:00)
-      if (horaFin === '00:00') {
-        horaFin = '23:59';
-      }
-
-      console.log(`Evaluando turno ${horario.Shift} con hora fin ${horaFin}...`);
-
-      // Verificar si el turno ha finalizado
-      if (horaActual >= horaFin) {
-        console.log(`⏰ El turno ${horario.Shift} del día ${horario.Day} ha finalizado (${horaFin}).`);
-        horarioFinalizado = true;
-      } else {
-        console.log(`🚀 El turno ${horario.Shift} aún no finaliza (${horaFin}).`);
-      }
+      console.log(`Evaluando turno ${horario.Shift}: ${horaInicio} - ${horaFin}...`);
+      return horaActual >= horaInicio && horaActual <= horaFin;
     });
 
-    if (horarioFinalizado) {
-      console.log('✅ Se detectaron turnos finalizados. Procediendo a actualizar estados de repartidores...');
+    if (!dentroDeHorarioActivo) {
+      console.log('✅ No hay horarios activos actualmente. Desactivando repartidores...');
 
       // Actualizar estados de repartidores a 'Inactivo'
       db.run(
@@ -352,7 +340,7 @@ cron.schedule('* * * * *', () => {
         }
       );
     } else {
-      console.log('⏳ No se han alcanzado horarios de finalización aún.');
+      console.log('🚀 Hay horarios activos actualmente. No se realizan cambios.');
     }
   });
 
@@ -363,7 +351,132 @@ cron.schedule('* * * * *', () => {
 
 
 
+
 // the get zone
+app.get('/reportes/repartidores', (req, res) => {
+  const { timeRange, repartidor } = req.query;
+
+  // Mapear los rangos de tiempo a consultas SQL
+  const queryMap = {
+    '7days': `SELECT DATE(w.fecha_consolidacion) AS fecha, w.monto_pagado, p.precio 
+              FROM wallet_repartidores w
+              CROSS JOIN precio_delivery p
+              WHERE w.fecha_consolidacion >= DATE('now', '-6 days')`,
+    '15days': `SELECT DATE(w.fecha_consolidacion) AS fecha, w.monto_pagado, p.precio 
+               FROM wallet_repartidores w
+               CROSS JOIN precio_delivery p
+               WHERE w.fecha_consolidacion >= DATE('now', '-14 days')`,
+    '30days': `SELECT DATE(w.fecha_consolidacion) AS fecha, w.monto_pagado, p.precio 
+               FROM wallet_repartidores w
+               CROSS JOIN precio_delivery p
+               WHERE w.fecha_consolidacion >= DATE('now', '-29 days')`,
+  };
+
+  // Usar la consulta correspondiente o un valor predeterminado
+  let sql = queryMap[timeRange] || queryMap['7days'];
+
+  // Filtrar por repartidor si está presente
+  if (repartidor && repartidor !== '') {
+    sql += ` AND w.id_repartidor = ?`;
+  }
+
+  console.log(`Ejecutando consulta para timeRange: ${timeRange}, repartidor: ${repartidor}`);
+  console.log(`Consulta SQL: ${sql}`);
+
+  const params = repartidor && repartidor !== '' ? [repartidor] : [];
+
+  // Ejecutar la consulta en la base de datos
+  db.all(sql, params, (err, rows) => {
+    if (err) {
+      console.error("Error en el endpoint /reportes/repartidores:", err.message);
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    if (!rows.length) {
+      console.warn("No se encontraron registros para la consulta");
+      res.json({ pedidos: 0, distancia: 0, pedidosPorDia: [] });
+      return;
+    }
+
+    // Calcular indicadores
+    const pedidosPorDia = {};
+    let totalPedidos = 0;
+    let totalDistancia = 0;
+
+    rows.forEach((row) => {
+      const distancia = row.precio > 0 ? row.monto_pagado / row.precio : 0;
+      totalDistancia += distancia;
+
+      // Agrupar pedidos y distancias por fecha
+      if (!pedidosPorDia[row.fecha]) {
+        pedidosPorDia[row.fecha] = { cantidad: 0, distancia: 0 };
+      }
+      pedidosPorDia[row.fecha].cantidad++;
+      pedidosPorDia[row.fecha].distancia += distancia;
+
+      totalPedidos++;
+    });
+
+    const pedidosPorDiaArray = Object.entries(pedidosPorDia)
+      .sort(([fechaA], [fechaB]) => new Date(fechaA) - new Date(fechaB)) // Asegurar orden cronológico
+      .map(([fecha, data]) => ({
+        fecha,
+        cantidad: data.cantidad,
+        distancia: data.distancia.toFixed(2),
+      }));
+
+    // Responder con los indicadores
+    res.json({
+      message: "success",
+      data: {
+        pedidos: totalPedidos,
+        distancia: totalDistancia.toFixed(2),
+        pedidosPorDia: pedidosPorDiaArray,
+      },
+    });
+  });
+});
+
+
+
+
+
+
+
+
+
+app.get('/registro_ventas/filtrado', (req, res) => {
+  const { timeRange } = req.query;
+
+  // Mapear los rangos de tiempo a consultas SQL
+  const queryMap = {
+    '7days': `SELECT * FROM registro_ventas WHERE fecha >= DATE('now', '-6 days')`,
+    '15days': `SELECT * FROM registro_ventas WHERE fecha >= DATE('now', '-14 days')`,
+    '30days': `SELECT * FROM registro_ventas WHERE fecha >= DATE('now', '-29 days')`,
+  };
+
+  // Usar la consulta correspondiente o un valor predeterminado
+  const sql = queryMap[timeRange] || queryMap['7days'];
+
+  console.log(`Ejecutando consulta para timeRange: ${timeRange}`);
+  console.log(`Consulta SQL: ${sql}`);
+
+  // Ejecutar la consulta en la base de datos
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error("Error en el endpoint /registro_ventas/filtrado:", err.message);
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    console.log("Resultados obtenidos:", rows);
+    res.json({
+      message: "success",
+      data: rows,
+    });
+  });
+});
 app.get('/repartidores/activos', (req, res) => {
   const query = 'SELECT id_repartidor, nombre FROM repartidores WHERE estado = "Activo"';
   db.all(query, [], (err, rows) => {
@@ -1584,11 +1697,63 @@ app.post('/repartidores/login', (req, res) => {
   db.get(loginQuery, [username, password], (err, row) => {
       if (err) {
           console.error("Error al buscar repartidor:", err.message);
-          res.status(500).json({ error: err.message });
-      } else if (row) {
-          res.json({ success: true, repartidor: row });
+          return res.status(500).json({ error: "Error interno del servidor. Por favor, intenta más tarde." });
+      }
+
+      if (!row) {
+          // Credenciales inválidas
+          return res.status(401).json({ error: "Credenciales inválidas" });
+      }
+
+      // Verificar si el repartidor está suspendido
+      if (row.suspension_status === 1) {
+          const currentDate = new Date();
+          const suspensionEndDate = new Date(row.suspension_end_date);
+
+          if (currentDate < suspensionEndDate) {
+              // Suspensión activa: rechazar login
+              const formattedDate = new Intl.DateTimeFormat('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(suspensionEndDate);
+            
+            
+
+            
+
+              console.log(`Repartidor ${row.id_repartidor} intentó iniciar sesión pero está suspendido hasta ${formattedDate}.`);
+              return res.status(403).json({
+                  error: `Esta cuenta está suspendida hasta el ${formattedDate}. Por favor, contacta con soporte.`,
+              });
+          } else {
+              // Suspensión finalizada: actualizar estado
+              const updateQuery = `UPDATE repartidores 
+                                   SET suspension_status = 0, estado = 'Activo'
+                                   WHERE id_repartidor = ?`;
+              db.run(updateQuery, [row.id_repartidor], function (updateErr) {
+                  if (updateErr) {
+                      console.error("Error al actualizar estado del repartidor:", updateErr.message);
+                      return res.status(500).json({ error: "Error al actualizar el estado del repartidor" });
+                  }
+
+                  // Devolver datos del repartidor actualizado
+                  row.suspension_status = 0;
+                  row.estado = 'Activo';
+                  console.log(`Repartidor ${row.id_repartidor} reactivado automáticamente tras finalizar su suspensión.`);
+                  res.json({ 
+                      success: true, 
+                      message: "Tu suspensión ha terminado. Ahora tu cuenta está activa.",
+                      repartidor: row 
+                  });
+              });
+          }
       } else {
-          res.status(401).json({ error: "Credenciales inválidas" });
+          // Repartidor no suspendido: permitir login
+          console.log(`Repartidor ${row.id_repartidor} inició sesión con éxito.`);
+          res.json({ success: true, repartidor: row });
       }
   });
 });
@@ -2542,57 +2707,80 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
-app.patch('/repartidores/:id/estado', (req, res) => {
+app.patch('/repartidores/:id/estado', async (req, res) => {
   const { id } = req.params;
-  const { estado, diaActual } = req.body;
+  const { estado } = req.body;
 
-  const diaNormalizado = normalizarTexto(diaActual); // Normalizar el día recibido
-  console.log('Día recibido del cliente (normalizado):', diaNormalizado);
+  try {
+      const repartidor = await db.get('SELECT * FROM repartidores WHERE id_repartidor = ?', [id]);
 
-  if (estado === 'Activo') {
-      const horaActual = moment().format('HH:mm');
+      if (!repartidor) {
+          return res.status(404).json({ success: false, message: 'Repartidor no encontrado' });
+      }
 
-      const query = `
-          SELECT * 
-          FROM horarios 
-          WHERE LOWER(Day) = ? 
-          ORDER BY Hora_inicio ASC
-      `;
-
-      db.all(query, [diaNormalizado], (err, horarios) => {
-          if (err) {
-              console.error('Error al verificar horarios:', err);
-              res.status(500).json({ success: false, message: 'Error interno al verificar horarios.' });
-              return;
-          }
-
-          if (!horarios || horarios.length === 0) {
-              console.warn(`No se encontraron horarios para el día "${diaNormalizado}".`);
-              res.json({ success: false, message: `No hay horarios laborales definidos para hoy (${diaNormalizado}).` });
-              return;
-          }
-
-          console.log('Horarios encontrados:', horarios);
-          const horarioValido = horarios.some((horario) => {
-              let horaFin = horario.Hora_fin === '00:00' ? '23:59' : horario.Hora_fin;
-              return horaActual >= horario.Hora_inicio && horaActual <= horaFin;
+      // Verificar si el repartidor está suspendido
+      if (repartidor.suspension_status) {
+          // Asegurar que el estado quede "Inactivo"
+          await db.run('UPDATE repartidores SET estado = ? WHERE id_repartidor = ?', ['Inactivo', id]);
+          return res.status(400).json({ 
+              success: false, 
+              message: `El repartidor está suspendido hasta ${moment(repartidor.suspension_end_date).format('YYYY-MM-DD HH:mm')}` 
           });
+      }
 
-          if (!horarioValido) {
-              res.json({
-                  success: false,
-                  message: 'No puedes activar tu estado fuera de un horario laboral válido.'
-              });
-              return;
-          }
-
-          console.log('Horario válido encontrado. Actualizando estado a "Activo".');
-          actualizarEstadoRepartidor(id, estado, res);
-      });
-  } else {
-      console.log('Actualizando estado a "Inactivo".');
-      actualizarEstadoRepartidor(id, estado, res);
+      // Actualizar estado si no está suspendido
+      await db.run('UPDATE repartidores SET estado = ? WHERE id_repartidor = ?', [estado, id]);
+      res.json({ success: true, message: 'Estado actualizado correctamente' });
+  } catch (error) {
+      console.error('Error al cambiar el estado del repartidor:', error);
+      res.status(500).json({ success: false, message: 'Error interno del servidor' });
   }
+});
+app.patch('/repartidores/:id', (req, res) => {
+  const { nombre, telefono, email, username, password, suspension_status, suspension_duration } = req.body; // Añadimos nuevos campos
+  const id = req.params.id;
+
+  // Calcular la fecha de fin de suspensión si se proporciona una duración
+  let suspension_end_date = null;
+  if (suspension_status && suspension_duration) {
+    if (suspension_duration !== -1) { // No es permanente
+      const currentDate = new Date();
+      const localOffset = currentDate.getTimezoneOffset() * 60000; // Offset en milisegundos
+      suspension_end_date = new Date(currentDate.getTime() + suspension_duration * 60 * 1000 - localOffset); // Ajuste de huso horario
+      suspension_end_date = suspension_end_date.toISOString().slice(0, 19).replace('T', ' '); // Formato para SQLite
+    }
+  }
+
+  const query = `
+    UPDATE repartidores
+    SET nombre = COALESCE(?, nombre),
+        telefono = COALESCE(?, telefono),
+        email = COALESCE(?, email),
+        username = COALESCE(?, username),
+        password = COALESCE(?, password),
+        suspension_status = COALESCE(?, suspension_status),
+        suspension_end_date = CASE
+          WHEN ? IS NOT NULL THEN ?
+          ELSE suspension_end_date
+        END
+    WHERE id_repartidor = ?;
+  `;
+
+  db.run(
+    query,
+    [
+      nombre, telefono, email, username, password,
+      suspension_status, suspension_end_date, suspension_end_date, id
+    ],
+    function (err) {
+      if (err) {
+        console.error('Error al actualizar repartidor:', err.message);
+        res.status(500).json({ error: 'Error al actualizar repartidor.' });
+        return;
+      }
+      res.json({ success: true, changes: this.changes });
+    }
+  );
 });
 app.patch('/api/update-pedidos-en-cola', (req, res) => {
   console.log('Iniciando actualización de PedidosEnCola...');
@@ -2891,23 +3079,6 @@ app.patch('/registro_ventas/tomar_pedido/:id', (req, res) => {
       }
       res.json({ success: true, message: 'Pedido asignado con éxito' });
   });
-});
-app.patch('/repartidores/:id', (req, res) => {
-  const { nombre, telefono, email, username, password } = req.body;
-  const id = req.params.id;
-
-  db.run(
-    'UPDATE repartidores SET nombre = ?, telefono = ?, email = ?, username = ?, password = ? WHERE id_repartidor = ?',
-    [nombre, telefono, email, username, password, id],
-    function (err) {
-      if (err) {
-        console.error('Error al actualizar repartidor:', err);
-        res.status(500).json({ error: 'Error al actualizar repartidor' });
-        return;
-      }
-      res.json({ success: true, changes: this.changes });
-    }
-  );
 });
 app.patch('/registro_ventas/:id_venta/procesar', (req, res) => {
   const id_venta = req.params.id_venta;

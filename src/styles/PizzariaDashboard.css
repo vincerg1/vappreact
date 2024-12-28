@@ -55,12 +55,12 @@
 .button-row {
   display: flex;
   justify-content: space-evenly;  /* Distribuir el espacio entre botones */
-  width: 100%; /* Ajusta según el diseño que prefieras */
+  width: 100%;
   max-width: 1200px; /* Mantener un máximo para evitar que crezca demasiado */
 }
 
 .dashboard-button {
-  width: 48%; /* Ocupar menos del 50% para asegurar que haya espacio entre ellos */
+  width: 48%;
   height: 100px;
   padding: 20px;
   border-radius: 10px;
@@ -80,24 +80,13 @@
 }
 
 /* Colores de los botones */
-.pedidos {
-  background-color: #1a1919; 
-  font-size: 25px;
-}
-
-.ingredientes {
-  background-color: #1a1919;
-  font-size: 25px;
-}
-
-.datos-servicio {
-  background-color: #1a1919;
-  font-size: 25px;
-}
-
+.pedidos,
+.ingredientes,
+.datos-servicio,
 .route-setter {
   background-color: #1a1919;
   font-size: 25px;
+  color: white;
 }
 
 /* Botón de suspender servicio */
@@ -127,14 +116,44 @@
   box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
 }
 
+/* Efectos de animación */
 .blinking {
   animation: blink-animation 1s steps(5, start) infinite;
-  background-color: red;
-  color: white;
 }
 
 @keyframes blink-animation {
   to {
     visibility: hidden;
   }
+}
+
+.pulsating {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Aplicación uniforme a botones */
+.dashboard-button.route-setter {
+  font-weight: bold;
+}
+
+.dashboard-button.route-setter.active-route {
+  background-color: #ffc107; /* Amarillo para destacar */
+  color: #000; /* Texto negro para contraste */
+}
+
+.dashboard-button.blinking {
+  background-color: red;
+  color: white;
 }

@@ -6,8 +6,9 @@ const Repartidores = () => {
     const [repartidores, setRepartidores] = useState([]);
     const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '', username: '', password: '' });
     const [editId, setEditId] = useState(null);
-    const [showList, setShowList] = useState(false); // Estado para controlar la visibilidad de la lista
-    const [showForm, setShowForm] = useState(false); // Estado para controlar la visibilidad del formulario
+    const [showList, setShowList] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [selectedRepartidor, setSelectedRepartidor] = useState({ id: null, duration: null });
 
     // Cargar repartidores
     const fetchRepartidores = async () => {
@@ -28,7 +29,6 @@ const Repartidores = () => {
     // Crear o editar repartidor
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         try {
             if (editId) {
                 await axios.patch(`http://localhost:3001/repartidores/${editId}`, formData);
@@ -38,7 +38,7 @@ const Repartidores = () => {
             setFormData({ nombre: '', telefono: '', email: '', username: '', password: '' });
             setEditId(null);
             fetchRepartidores();
-            setShowForm(false); // Ocultar el formulario después de agregar/editar
+            setShowForm(false);
         } catch (error) {
             console.error('Error al guardar repartidor:', error);
         }
@@ -54,11 +54,41 @@ const Repartidores = () => {
         }
     };
 
+    // Suspender repartidor
+    const handleSuspend = async (id, duration) => {
+        if (!id || !duration) return alert('Selecciona una duración válida.');
+        const suspensionData = {
+            suspension_status: true,
+            suspension_duration: duration,
+        };
+        try {
+            await axios.patch(`http://localhost:3001/repartidores/${id}`, suspensionData);
+            fetchRepartidores();
+            alert('Repartidor suspendido con éxito');
+        } catch (error) {
+            console.error('Error al suspender repartidor:', error);
+        }
+    };
+
+    // Levantar suspensión
+    const handleLiftSuspension = async (id) => {
+        try {
+            await axios.patch(`http://localhost:3001/repartidores/${id}`, {
+                suspension_status: false,
+                suspension_duration: null,
+            });
+            fetchRepartidores();
+            alert('Suspensión levantada con éxito');
+        } catch (error) {
+            console.error('Error al levantar suspensión:', error);
+        }
+    };
+
     // Seleccionar repartidor para editar
     const handleEdit = (repartidor) => {
         setEditId(repartidor.id_repartidor);
         setFormData(repartidor);
-        setShowForm(true); // Mostrar el formulario al seleccionar para editar
+        setShowForm(true);
     };
 
     useEffect(() => {
@@ -69,18 +99,15 @@ const Repartidores = () => {
         <div>
             <h1>Gestión de Repartidores</h1>
 
-            {/* Contenedor de los botones */}
             <div className="button-container">
                 <button onClick={() => setShowForm((prev) => !prev)}>
                     {showForm ? 'Ocultar Formulario' : 'Crear Repartidor'}
                 </button>
-
                 <button onClick={() => setShowList((prev) => !prev)}>
                     {showList ? 'Ocultar Lista' : 'Ver Lista'}
                 </button>
             </div>
 
-            {/* Formulario para crear/editar repartidor */}
             {showForm && (
                 <form onSubmit={handleSubmit}>
                     <input
@@ -125,7 +152,6 @@ const Repartidores = () => {
                 </form>
             )}
 
-            {/* Tabla de repartidores */}
             {showList && (
                 <table>
                     <thead>
@@ -135,7 +161,10 @@ const Repartidores = () => {
                             <th>Teléfono</th>
                             <th>Email</th>
                             <th>Usuario</th>
+                            <th>Estado de Suspensión</th>
+                            <th>Fin de Suspensión</th>
                             <th>Acciones</th>
+                            <th>Suspender</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,9 +175,46 @@ const Repartidores = () => {
                                 <td>{repartidor.telefono || 'N/A'}</td>
                                 <td>{repartidor.email || 'N/A'}</td>
                                 <td>{repartidor.username}</td>
+                                <td>{repartidor.suspension_status ? 'Suspendido' : 'Activo'}</td>
+                                <td>
+                                    {repartidor.suspension_status && repartidor.suspension_end_date
+                                        ? repartidor.suspension_end_date
+                                        : 'N/A'}
+                                </td>
                                 <td>
                                     <button onClick={() => handleEdit(repartidor)}>Editar</button>
                                     <button onClick={() => handleDelete(repartidor.id_repartidor)}>Eliminar</button>
+                                </td>
+                                <td>
+                                    {repartidor.suspension_status ? (
+                                        <button onClick={() => handleLiftSuspension(repartidor.id_repartidor)}>
+                                            Levantar Suspensión
+                                        </button>
+                                    ) : (
+                                        <div>
+                                            <select
+                                                onChange={(e) =>
+                                                    setSelectedRepartidor({ id: repartidor.id_repartidor, duration: e.target.value })
+                                                }
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>
+                                                    Seleccionar tiempo
+                                                </option>
+                                                <option value={5}>5 Minutos</option>
+                                                <option value={1440}>1 Día</option>
+                                                <option value={10080}>7 Días</option>
+                                                <option value={21600}>15 Días</option>
+                                                <option value="permanent">Permanente</option>
+                                            </select>
+                                            <button
+                                                onClick={() => handleSuspend(selectedRepartidor.id, selectedRepartidor.duration)}
+                                                disabled={!selectedRepartidor || selectedRepartidor.id !== repartidor.id_repartidor}
+                                            >
+                                                Suspender
+                                            </button>
+                                        </div>
+                                    )}
                                 </td>
                             </tr>
                         ))}

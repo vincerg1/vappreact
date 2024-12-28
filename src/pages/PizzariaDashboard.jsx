@@ -14,10 +14,59 @@ const PizzariaDashboard = () => {
   const [pendingOrders, setPendingOrders] = useState(0);  
   const [previousOrders, setPreviousOrders] = useState(0); 
   const [audio] = useState(new Audio('/sounds/notification.mp3')); 
+  const [nuevasRutasDisponibles, setNuevasRutasDisponibles] = useState(false);
+  const [cantidadRutas, setCantidadRutas] = useState(0);
   const { isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
-
   const navigate = useNavigate();  
 
+  useEffect(() => {
+    const fetchOrdersAndCalculateRoutes = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/registro_ventas");
+        const registroVentas = response.data.data || [];
+  
+        // Filtrar pedidos relevantes para rutas
+        const filteredOrders = registroVentas
+          .filter((order) => {
+            const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
+            return (
+              metodoEntrega.Delivery && // Solo considerar entregas
+              !metodoEntrega.PickUp && // Excluir recogidas
+              (order.estado_entrega === "Pendiente" || order.venta_procesada !== 1)
+            );
+          });
+  
+        console.log("Órdenes relevantes para rutas:", filteredOrders);
+  
+        // Calcular rutas potenciales
+        const agrupables = filteredOrders.filter(
+          (order) => order.estado_entrega === "Pendiente"
+        );
+        const rutasPotenciales = Math.floor(agrupables.length / 2);
+  
+        setCantidadRutas(rutasPotenciales);
+        setNuevasRutasDisponibles(rutasPotenciales > 0);
+  
+        console.log("Rutas potenciales calculadas:", rutasPotenciales);
+        console.log(
+          nuevasRutasDisponibles
+            ? "Hay nuevas rutas disponibles."
+            : "No hay nuevas rutas disponibles."
+        );
+      } catch (error) {
+        console.error(
+          "Error al sincronizar las órdenes desde registro_ventas:",
+          error
+        );
+      }
+    };
+  
+    fetchOrdersAndCalculateRoutes(); // Ejecutar al montar el componente
+  
+    const interval = setInterval(fetchOrdersAndCalculateRoutes, 10000); // Verificar cada 10 segundos
+  
+    return () => clearInterval(interval); // Limpiar intervalo al desmontar
+  }, []);
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDate(moment().tz('Europe/Madrid'));
@@ -26,11 +75,10 @@ const PizzariaDashboard = () => {
     return () => clearInterval(interval); // Limpia el intervalo al desmontar el componente
   }, []);
 
-  // Nueva función para redirigir al usuario a la página de gestión de ingredientes
+
   const irAListaIngredientes = () => {
     navigate('/_Inicio/_InvIngDB/_ListaIngredientes');
   };
-
   const loadSuspensionState = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/pizzeria-settings');
@@ -47,7 +95,6 @@ const PizzariaDashboard = () => {
       console.error('Error al obtener el estado de suspensión:', error);
     }
   };
-
   const loadHorarios = async () => {
     try {
       const response = await axios.get('http://localhost:3001/api/horarios');
@@ -56,7 +103,6 @@ const PizzariaDashboard = () => {
       console.error('Error al obtener los horarios:', error);
     }
   };
-
   const loadPendingOrders = async () => {
     try {
       const response = await axios.get('http://localhost:3001/registro_ventas');
@@ -74,18 +120,15 @@ const PizzariaDashboard = () => {
       console.error('Error al obtener las órdenes pendientes:', error);
     }
   };
-
   const playNotificationSound = () => {
     audio.play().catch((error) => {
       console.error('Error al reproducir el sonido de notificación:', error);
     });
   };
-
   const reanudarServicio = () => {
     console.log('Reanudando el servicio...');
     sendSuspensionStateToServer(false, null);  
   };
-
   const calculateRemainingTime = (endTime) => {
     const interval = setInterval(() => {
       const parsedEndTime = moment(endTime);  
@@ -114,7 +157,6 @@ const PizzariaDashboard = () => {
   
     return () => clearInterval(interval); 
   };
-
   const sendSuspensionStateToServer = async (isSuspended, endTime) => {
     try {
       const response = await axios.post('http://localhost:3001/api/pizzeria-settings', {
@@ -126,11 +168,9 @@ const PizzariaDashboard = () => {
       console.error('Error al enviar el estado de suspensión:', error);
     }
   };
-
   const handleSuspendService = () => {
     setIsSuspending(true);
   };
-
   const confirmSuspension = async () => {
     if (!suspendOption) {
       alert("Por favor, selecciona una opción de suspensión");
@@ -157,7 +197,6 @@ const PizzariaDashboard = () => {
 
     setIsSuspending(false);
   };
-
   const calculateNextShift = async () => {
     const response = await axios.get('http://localhost:3001/api/horarios');
     const horariosDB = response.data; 
@@ -236,14 +275,29 @@ const PizzariaDashboard = () => {
           </button>
         </div>
         <div className="button-row">
-          <button className="dashboard-button datos-servicio" disabled={isServiceSuspended}>Daily Reports</button>
+        <button 
+        onClick={() => navigate('/dashboard/drvco')} 
+        className="dashboard-button datos-servicio">Daily Reports
+        </button>
+
           <button
-            className="dashboard-button route-setter"
-            onClick={() => navigate('/RouteSetter')} // Navega al componente RouteSetter
+            className={`dashboard-button route-setter ${nuevasRutasDisponibles ? 'blinking active-route' : ''}`}
+            onClick={() => {
+              if (nuevasRutasDisponibles) {
+                console.log(`Navegando a RouteSetter con ${cantidadRutas} rutas disponibles.`);
+                navigate('/RouteSetter');
+              } else {
+                console.log('No hay rutas nuevas disponibles para revisar.');
+              }
+            }}
             disabled={isServiceSuspended}
+            title={nuevasRutasDisponibles ? `Hay ${cantidadRutas} rutas nuevas por revisar` : 'No hay rutas nuevas disponibles'}
           >
-            Route Setter
+            {nuevasRutasDisponibles ? `🚴 Rutas (${cantidadRutas})` : 'Route Setter'}
           </button>
+
+
+
         </div>
         <div className="suspender-servicio">
           {!isServiceSuspended ? (

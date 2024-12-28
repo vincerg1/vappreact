@@ -4,26 +4,24 @@ import moment from "moment-timezone";
 import QRCode from "qrcode.react";
 import "../styles/RouteSetter.css";
 
+
 const RouteSetter = () => {
   const [orders, setOrders] = useState([]); 
   const [originalOrders, setOriginalOrders] = useState([]); 
   const [generatedRoutes, setGeneratedRoutes] = useState([]); 
   const [rutasDisponibles, setRutasDisponibles] = useState(false);
   const [repartidoresActivos, setRepartidoresActivos] = useState([]);
+  const [cantidadRutas, setCantidadRutas] = useState(0);
+  const [nuevasRutasDisponibles, setNuevasRutasDisponibles] = useState(false);
   const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
   const coordinateCache = {}; 
 
 
-  const checkRutasDisponibles = () => {
+  const calcularCantidadRutas = () => {
     const agrupables = orders.filter(order => order.estadoEntrega === "Pendiente");
-    if (agrupables.length > 1) {
-      setRutasDisponibles(true);
-    } else {
-      setRutasDisponibles(false);
-    }
+    const rutasPotenciales = Math.floor(agrupables.length / 2); // Ejemplo: 2 pedidos = 1 ruta
+    setCantidadRutas(rutasPotenciales);
   };
-  
-
   const fetchRepartidoresActivos = async () => {
     try {
       const response = await axios.get('http://localhost:3001/repartidores/activos');
@@ -424,9 +422,24 @@ const RouteSetter = () => {
     }
   };
   
+  
   useEffect(() => {
-    checkRutasDisponibles();
+    setNuevasRutasDisponibles(cantidadRutas > 0 && generatedRoutes.length === 0);
+  }, [cantidadRutas, generatedRoutes]);
+  useEffect(() => {
+    calcularCantidadRutas();
   }, [orders]);
+  // useEffect(() => {
+  //   const checkRutasDisponibles = () => {
+  //     const agrupables = orders.filter(order => order.estadoEntrega === "Pendiente");
+  //     if (agrupables.length > 1) {
+  //       setRutasDisponibles(true);
+  //     } else {
+  //       setRutasDisponibles(false);
+  //     }
+  //   };
+   
+  // }, [orders]);
   useEffect(() => {
     fetchRepartidoresActivos(); // Llamar a la función al montar el componente
   }, []);
@@ -503,83 +516,99 @@ const RouteSetter = () => {
 return (
   <div className="route-setter-layout">
     <h1>Route Setter</h1>
-    <div className="columns-container">
-      {/* Columna Izquierda */}
-      <div className="left-column">
-        <div className="table-section">
-        <table>
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Dirección</th>
-      <th>Tiempo Restante</th>
-      <th>Express</th>
-      <th>En Ruta</th>
-      <th>Estado</th>
-      <th>Repartidor Asignado</th>
-      <th>Acciones</th>
-    </tr>
-  </thead>
-  <tbody>
-    {orders.map((order) => (
-        <tr key={order.id_order} className={order.isExpress ? "express-row" : ""}>
-            <td>{order.id_order}</td>
-            <td>{order.address}</td>
-            <td>{order.timeLeft}</td>
-            <td>{order.isExpress ? "⭐" : "No"}</td>
-            <td>{order.enRuta ? order.enRuta : "No"}</td>
-            <td>{order.estadoEntrega}</td>
-            <td>{order.repartidorAsignado}</td>
-            <td>
+    {/* Tabla Superior */}
+    <div className="table-section">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Dirección</th>
+            <th>Tiempo Restante</th>
+            <th>Express</th>
+            <th>En Ruta</th>
+            <th>Estado</th>
+            <th>Repartidor Asignado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id_order} className={order.isExpress ? "express-row" : ""}>
+              <td>{order.id_order}</td>
+              <td>{order.address}</td>
+              <td>{order.timeLeft}</td>
+              <td>{order.isExpress ? "⭐" : "No"}</td>
+              <td>{order.enRuta ? order.enRuta : "No"}</td>
+              <td>{order.estadoEntrega}</td>
+              <td>{order.repartidorAsignado}</td>
+              <td>
                 {order.ventaProcesada
-                    ? "Procesado"
-                    : order.estadoEntrega === "Pendiente" && !order.enRuta && (
-                          <button onClick={() => console.log("Asignar pedido", order.id_order)}>
-                              Asignar
-                          </button>
-                      )}
-            </td>
-        </tr>
-    ))}
-</tbody>
-        </table>
+                  ? "Procesado"
+                  : order.estadoEntrega === "Pendiente" && !order.enRuta && (
+                      <button onClick={() => console.log("Asignar pedido", order.id_order)}>
+                        Asignar
+                      </button>
+                    )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
 
-        </div>
-      </div>
-
-      {/* Columna Derecha */}
-      <div className="right-column">
+    {/* Contenedor Inferior */}
+    <div className="widgets-container">
+      {/* Widget Izquierdo */}
       <div className="widget">
-        <h3>Crear Ruta</h3>
-        {rutasDisponibles && generatedRoutes.length === 0 && (
-          <p className="new-route-message">New route found</p>
+  <h3>Crear Ruta</h3>
+  {cantidadRutas > 0 && generatedRoutes.length === 0 ? (
+    <p className="new-route-message">
+      We Found ({cantidadRutas}) New {cantidadRutas === 1 ? "Route" : "Routes"}
+    </p>
+  ) : generatedRoutes.length > 0 ? (
+    <div className="routes-container">
+      <p>
+        Rutas{" "}
+        {generatedRoutes.map((route, index) => (
+          <span key={route.idRuta}>
+            {route.idRuta}
+            {index < generatedRoutes.length - 1 ? " y " : ""}
+          </span>
+        ))}{" "}
+        en proceso.
+      </p>
+    </div>
+  ) : (
+    <p className="no-route-message">No hay Rutas Disponibles</p>
+  )}
+  <button
+    onClick={handleGenerateRoute}
+    disabled={cantidadRutas === 0}
+    className={cantidadRutas > 0 ? "enabled-button" : "disabled-button"}
+  >
+    Generar Nueva Ruta
+  </button>
+</div>
+
+
+      {/* Widget Derecho */}
+      <div className="widget">
+        <h3>Repartidores Activos</h3>
+        {repartidoresActivos.length > 0 ? (
+          <ul className="active-delivery-list">
+            {repartidoresActivos.map((repartidor) => (
+              <li key={repartidor.id_repartidor}>
+                🚴 ✅ {repartidor.nombre}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No hay repartidores activos en este momento.</p>
         )}
-        {generatedRoutes.length > 0 && (
-          <div className="routes-container">
-            <p>Ruta {generatedRoutes[0].idRuta} en proceso</p>
-          </div>
-        )}
-        <button onClick={handleGenerateRoute}>Generar Nueva Ruta</button>
-      </div>
-        {/* Widget para Repartidores Activos */}
-        <div className="widget">
-          <h3>Repartidores Activos</h3>
-          {repartidoresActivos.length > 0 ? (
-            <ul className="active-delivery-list">
-              {repartidoresActivos.map((repartidor) => (
-                <li key={repartidor.id_repartidor}>
-                  🚴 ✅ {repartidor.nombre} {/* Emoji o ícono junto al nombre */}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay repartidores activos en este momento.</p>
-          )}
-        </div>
       </div>
     </div>
   </div>
 );
-};
+  };
 
 export default RouteSetter;

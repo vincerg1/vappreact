@@ -4,10 +4,10 @@ import DeliveryPriceManagement from './DeliveryPriceManagement'; // Asegúrate d
 import '../styles/routeSetterAdmin_style.css'; // Asegúrate de crear este archivo para los estilos
 
 const RouteSetterAdmin = () => {
-  const navigate = useNavigate(); // useNavigate() debe usarse correctamente aquí
+  const navigate = useNavigate(); 
 
   const handleCrearRepartidorClick = () => {
-    navigate('/repartidores'); // Asegúrate de que la ruta sea correcta
+    navigate('/repartidores'); 
   };
 
   const handlePrecioDeliveryClick = () => {
@@ -15,7 +15,7 @@ const RouteSetterAdmin = () => {
   };
 
   const handleReportsClick = () => {
-    navigate('/reports'); // Asegúrate de que la ruta sea correcta
+    navigate('/repartidores-reportes'); 
   };
 
   const [showDeliveryPriceModal, setShowDeliveryPriceModal] = React.useState(false);
