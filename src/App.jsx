@@ -49,6 +49,7 @@ import DeliveryPanel from './pages/DeliveryPanel.jsx';
 import RouteSetterAdmin from './pages/RouteSetterAdmin.jsx';
 import DRVCO from './pages/DRVCO.jsx';
 import RRep from './pages/RRep.jsx';
+import CrearAdmin from './pages/CrearAdmin.jsx';
 
 function App() {
   const [menus, setMenus] = useState([]);
@@ -57,7 +58,8 @@ function App() {
     <PizzaProvider>
       <BrowserRouter>
         <Routes>
-        <Route path="/repartidores-reportes" element={<RRep />} />
+         <Route path="/register" element={<CrearAdmin />} />
+         <Route path="/repartidores-reportes" element={<RRep />} />
          <Route path="/dashboard/drvco" element={<DRVCO />} />
          <Route path="/RouteSetterAdmin" element={<RouteSetterAdmin />} />
          <Route path="/DeliveryPanel" element={<DeliveryPanel />} />

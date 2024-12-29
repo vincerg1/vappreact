@@ -1,0 +1,122 @@
+
+.rrep-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+}
+.rrep-container h1 {
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+}
+.filters {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 20px;
+}
+.filters > div {
+    flex: 1;
+    margin: 0 10px;
+    text-align: center;
+}
+.filters label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+}
+.filters select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+.indicators {
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+}
+.indicators h2 {
+    margin-bottom: 10px;
+    color: #333;
+}
+.indicators p {
+    margin: 5px 0;
+    font-size: 16px;
+    color: #555;
+}
+.chart-section,
+.ranking-section {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px 0;
+    background-color: #fff;
+    border: 1px solid #ffffff;
+    border-radius: 4px;
+    padding: 20px;
+}
+.chart-section h2 {
+    margin-bottom: 20px;
+    color: #555;
+    text-align: center;
+}
+.ranking-section h2 {
+    margin-bottom: 20px;
+    color: #555;
+    text-align: center;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table thead {
+    background-color: #f5f5f5;
+}
+
+table th, table td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+
+table th {
+    font-weight: bold;
+    color: #f7f7f7;
+}
+
+table tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+table tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .filters > div {
+        margin-bottom: 10px;
+    }
+
+    .chart-section, .ranking-section {
+        padding: 10px;
+    }
+}

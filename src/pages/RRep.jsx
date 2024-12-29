@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
+import '../styles/RRep.css'; 
 
 const RRep = () => {
     const [timeRange, setTimeRange] = useState('7days'); // Rango de tiempo seleccionado
@@ -9,6 +10,7 @@ const RRep = () => {
     const [indicator, setIndicator] = useState('pedidos'); // Indicador seleccionado
     const [reportData, setReportData] = useState({ pedidos: 0, distancia: 0, pedidosPorDia: [] });
     const [chartData, setChartData] = useState({ labels: [], datasets: [] });
+    const [rankingData, setRankingData] = useState([]); // Datos para la tabla de posiciones
 
     // Obtener la lista de repartidores
     useEffect(() => {
@@ -70,6 +72,26 @@ const RRep = () => {
         fetchReportData();
     }, [timeRange, selectedRepartidor, indicator]);
 
+    // Obtener los datos de la tabla de posiciones
+    useEffect(() => {
+        const fetchRankingData = async () => {
+            try {
+                const response = await axios.get('http://localhost:3001/reportes/posiciones-repartidores', {
+                    params: { timeRange },
+                });
+                const data = response.data.data;
+
+                console.log("Datos de posiciones recibidos:", data);
+                setRankingData(data);
+            } catch (error) {
+                console.error("Error al obtener los datos de posiciones:", error);
+                setRankingData([]);
+            }
+        };
+
+        fetchRankingData();
+    }, [timeRange]);
+
     // Manejar el cambio de repartidor
     const handleRepartidorChange = (event) => {
         setSelectedRepartidor(event.target.value);
@@ -121,7 +143,7 @@ const RRep = () => {
                     <select
                         value={indicator}
                         onChange={handleIndicatorChange}
-                        defaultValue="" // Mostrar el placeholder inicialmente
+                        defaultValue=""
                     >
                         <option value="" disabled>
                             Seleccionar Indicador
@@ -130,7 +152,6 @@ const RRep = () => {
                         <option value="distancia">Distancia Total Recorrida</option>
                     </select>
                 </div>
-
             </div>
 
             {/* Indicadores Clave */}
@@ -144,6 +165,36 @@ const RRep = () => {
             <div className="chart-section">
                 <h2>Gráfico de {indicator === 'pedidos' ? 'Pedidos' : 'Distancia'} por Día</h2>
                 <Bar data={chartData} options={{ responsive: true }} />
+            </div>
+
+            {/* Tabla de Posiciones */}
+            <div className="ranking-section">
+                <h2>Tabla de Posiciones</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Repartidor</th>
+                            <th>Pedidos Totales</th>
+                            <th>Distancia Total (km)</th>
+                            <th>Índice</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rankingData.map((repartidor, index) => (
+                            <tr key={index}>
+                                <td>
+                                    {
+                                        repartidores.find((r) => r.id_repartidor === repartidor.id_repartidor)?.nombre ||
+                                        `ID: ${repartidor.id_repartidor}`
+                                    }
+                                </td>
+                                <td>{repartidor.total_pedidos}</td>
+                                <td>{repartidor.total_distancia}</td>
+                                <td>{repartidor.indice}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );

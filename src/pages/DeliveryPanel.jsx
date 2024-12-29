@@ -851,7 +851,7 @@ const DeliveryPanel = () => {
     
     return (
         <div>
-          <h2>Bienvenido, {repartidor.nombre}</h2>
+            <h2>Bienvenido, {repartidor?.nombre || 'Invitado'}</h2>
           <div className="buttons-container">
             <button onClick={handleLogout}>Cerrar Sesión</button>
             <button onClick={toggleWallet}>

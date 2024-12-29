@@ -243,7 +243,6 @@ const generateOfferCode = (description) => {
   return `OFF${hash}`;
 };
 const bcrypt = require('bcrypt');
-
 const traducirDia = (diaIngles) => {
   const dias = {
       monday: 'lunes',
@@ -347,12 +346,73 @@ cron.schedule('* * * * *', () => {
   console.log('=== Cron Job Finalizado ===\n');
 });
 
-
-
-
-
-
 // the get zone
+app.get('/reportes/posiciones-repartidores', (req, res) => {
+  const { timeRange } = req.query;
+
+  // Mapear los rangos de tiempo a consultas SQL
+  const queryMap = {
+    '7days': `SELECT w.id_repartidor, SUM(w.monto_pagado) AS total_distancia, COUNT(w.id_wallet) AS total_pedidos
+              FROM wallet_repartidores w
+              JOIN precio_delivery p ON p.id_precio = 1
+              WHERE w.fecha_consolidacion >= DATE('now', '-6 days')
+              GROUP BY w.id_repartidor`,
+    '15days': `SELECT w.id_repartidor, SUM(w.monto_pagado) AS total_distancia, COUNT(w.id_wallet) AS total_pedidos
+               FROM wallet_repartidores w
+               JOIN precio_delivery p ON p.id_precio = 1
+               WHERE w.fecha_consolidacion >= DATE('now', '-14 days')
+               GROUP BY w.id_repartidor`,
+    '30days': `SELECT w.id_repartidor, SUM(w.monto_pagado) AS total_distancia, COUNT(w.id_wallet) AS total_pedidos
+               FROM wallet_repartidores w
+               JOIN precio_delivery p ON p.id_precio = 1
+               WHERE w.fecha_consolidacion >= DATE('now', '-29 days')
+               GROUP BY w.id_repartidor`,
+  };
+
+  // Usar la consulta correspondiente o un valor predeterminado
+  const sql = queryMap[timeRange] || queryMap['7days'];
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error("Error en el endpoint /reportes/posiciones-repartidores:", err.message);
+      res.status(400).json({ error: err.message });
+      return;
+    }
+
+    if (!rows.length) {
+      res.json({ message: "No data available", data: [] });
+      return;
+    }
+
+    // Calcular la suma total de pedidos y distancia
+    const totalPedidos = rows.reduce((sum, row) => sum + row.total_pedidos, 0);
+    const totalDistancia = rows.reduce((sum, row) => sum + row.total_distancia, 0);
+
+    if (totalPedidos === 0 || totalDistancia === 0) {
+      res.json({ message: "No data available", data: [] });
+      return;
+    }
+
+    // Calcular índice y ordenar
+    const posiciones = rows.map(row => {
+      const normalizadosPedidos = (row.total_pedidos / totalPedidos) * 50;
+      const normalizadosDistancia = (row.total_distancia / totalDistancia) * 50;
+      const indice = normalizadosPedidos + normalizadosDistancia;
+
+      return {
+        id_repartidor: row.id_repartidor,
+        total_pedidos: row.total_pedidos,
+        total_distancia: row.total_distancia.toFixed(2),
+        indice: indice.toFixed(2),
+      };
+    }).sort((a, b) => b.indice - a.indice); // Ordenar por índice descendente
+
+    res.json({
+      message: "success",
+      data: posiciones,
+    });
+  });
+});
 app.get('/reportes/repartidores', (req, res) => {
   const { timeRange, repartidor } = req.query;
 
@@ -437,15 +497,6 @@ app.get('/reportes/repartidores', (req, res) => {
     });
   });
 });
-
-
-
-
-
-
-
-
-
 app.get('/registro_ventas/filtrado', (req, res) => {
   const { timeRange } = req.query;
 
@@ -1550,6 +1601,64 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post('/admin/register', async (req, res) => {
+  const { nombre, correo, contrasena } = req.body;
+
+  if (!nombre || !correo || !contrasena) {
+    return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+  }
+
+  try {
+    // Verificar si el correo ya existe
+    const adminExistente = await db.get('SELECT * FROM administrador WHERE correo = ?', [correo]);
+    if (adminExistente) {
+      return res.status(400).json({ message: 'El correo ya está registrado.' });
+    }
+
+    // Insertar el nuevo administrador
+    await db.run(
+      'INSERT INTO administrador (nombre, correo, contrasena) VALUES (?, ?, ?)',
+      [nombre, correo, contrasena]
+    );
+
+    res.status(201).json({ success: true, message: 'Administrador registrado exitosamente.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al registrar el administrador.' });
+  }
+});
+app.post('/admin/login', (req, res) => {
+  const { correo, contrasena } = req.body;
+
+  // Validar que se envíen los campos
+  if (!correo || !contrasena) {
+      return res.status(400).json({ message: "Por favor, ingrese correo y contraseña." });
+  }
+
+  // Consultar el administrador en la base de datos
+  const query = 'SELECT * FROM administrador WHERE correo = ?';
+  db.get(query, [correo], (err, row) => {
+      if (err) {
+          console.error("Error al consultar la base de datos:", err);
+          return res.status(500).json({ message: "Error interno del servidor." });
+      }
+
+      if (!row) {
+          return res.status(404).json({ message: "Administrador no encontrado." });
+      }
+
+      // Verificar la contraseña (para texto plano)
+      if (row.contrasena !== contrasena) {
+          return res.status(401).json({ message: "Credenciales incorrectas." });
+      }
+
+      // Inicio de sesión exitoso
+      res.json({
+          message: "Inicio de sesión exitoso.",
+          admin: { id: row.id_admin, nombre: row.nombre, correo: row.correo }
+      });
+  });
+});
 app.post("/registro_ventas/finalizar_ruta", async (req, res) => {
   const { id_repartidor, id_ruta, pedidos } = req.body;
 
@@ -3668,7 +3777,6 @@ app.patch('/limites/:IDI', (req, res) => {
 });
 
 // the drop zone //
-
 app.delete("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const query = "DELETE FROM rutas WHERE id_ruta = ?";
@@ -3857,7 +3965,6 @@ app.delete('/clientes/:id_cliente', (req, res) => {
 //     });
 //   });
 // });
-
 app.put('/clientes/:id_cliente', (req, res) => {
   const { name, phone, address_1 } = req.body;
   const { id_cliente } = req.params;
@@ -3967,7 +4074,7 @@ app.put('/clientes/reactivar/:id_cliente', (req, res) => {
     }
   });
 });
-
+//-------------------//
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   console.log(`Server started at ${new Date().toISOString()}`);

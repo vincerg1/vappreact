@@ -10,7 +10,6 @@ const Repartidores = () => {
     const [showForm, setShowForm] = useState(false);
     const [selectedRepartidor, setSelectedRepartidor] = useState({ id: null, duration: null });
 
-    // Cargar repartidores
     const fetchRepartidores = async () => {
         try {
             const response = await axios.get('http://localhost:3001/repartidores');
@@ -19,14 +18,10 @@ const Repartidores = () => {
             console.error('Error al cargar repartidores:', error);
         }
     };
-
-    // Manejar cambios en el formulario
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
-
-    // Crear o editar repartidor
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -43,8 +38,6 @@ const Repartidores = () => {
             console.error('Error al guardar repartidor:', error);
         }
     };
-
-    // Eliminar repartidor
     const handleDelete = async (id) => {
         try {
             await axios.delete(`http://localhost:3001/repartidores/${id}`);
@@ -53,8 +46,6 @@ const Repartidores = () => {
             console.error('Error al eliminar repartidor:', error);
         }
     };
-
-    // Suspender repartidor
     const handleSuspend = async (id, duration) => {
         if (!id || !duration) return alert('Selecciona una duración válida.');
         const suspensionData = {
@@ -69,8 +60,6 @@ const Repartidores = () => {
             console.error('Error al suspender repartidor:', error);
         }
     };
-
-    // Levantar suspensión
     const handleLiftSuspension = async (id) => {
         try {
             await axios.patch(`http://localhost:3001/repartidores/${id}`, {
@@ -83,8 +72,6 @@ const Repartidores = () => {
             console.error('Error al levantar suspensión:', error);
         }
     };
-
-    // Seleccionar repartidor para editar
     const handleEdit = (repartidor) => {
         setEditId(repartidor.id_repartidor);
         setFormData(repartidor);
