@@ -1,331 +1,389 @@
 import React, { useState, useEffect, useContext } from 'react';
 import _PizzaContext from './_PizzaContext';
-import { FaPizzaSlice, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import FloatingCart from './FloatingCart';
+import { v4 as uuidv4 } from 'uuid';
+import '../styles/MakeYourPizza.css'; 
+import moment from 'moment';
+import { useLocation } from 'react-router-dom';
+import DeliveryForm from './DeliveryForm';  
+
+const PORCENTAJE_INGREDIENTE_EXTRA = 0.15;
 
 const MakeYourPizza = () => {
-  const { activePizzas } = useContext(_PizzaContext);
-  const [tipoPizzaSeleccionado, setTipoPizzaSeleccionado] = useState(null);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
-  const [selectSizeSeleccionado, setSelectSizeSeleccionado] = useState('');
-  const [metodoCoccionSeleccionado, setMetodoCoccionSeleccionado] = useState('');
-  const [ingredienteSeleccionado, setIngredienteSeleccionado] = useState('');
-  const [ingredienteSeleccionadoIzquierda, setIngredienteSeleccionadoIzquierda] = useState('');
-  const [ingredienteSeleccionadoDerecha, setIngredienteSeleccionadoDerecha] = useState('');
+  const { activePizzas, sessionData } = useContext(_PizzaContext);
+  const [sizeSeleccionado, setSizeSeleccionado] = useState('');
   const [ingredientesDisponibles, setIngredientesDisponibles] = useState([]);
   const [ingredientesSeleccionados, setIngredientesSeleccionados] = useState([]);
-  const [ingredientesSeleccionadosIzquierda, setIngredientesSeleccionadosIzquierda] = useState([]);
-  const [ingredientesSeleccionadosDerecha, setIngredientesSeleccionadosDerecha] = useState([]);
-  const [pizzaConfirmada, setPizzaConfirmada] = useState(null);
+  const [preciosBase, setPreciosBase] = useState({});
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+  const location = useLocation();
+  const initialCompra = location.state?.compra || {};
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [compra, setCompra] = useState({
+    observaciones: '',
+    id_orden: '',
+    Entrega: {},
+    fecha: moment().format('YYYY-MM-DD'),
+    hora: moment().format('HH:mm:ss'),
+    id_cliente: sessionData?.id_cliente || '',
+    DescuentosDailyChallenge: 0,
+    cupones: initialCompra.cupones || [], // Usa cupones pasados
+    venta: initialCompra.venta || [],
+    total_productos: initialCompra.total_productos || 0.0,
+    total_descuentos: initialCompra.total_descuentos || 0.0,
+    total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
+    venta_procesada: 0,
+    origen: 'MakeYourPizza',
+  });
 
-  // Función para eliminar duplicados de un array
-  const eliminarDuplicados = (array) => [...new Set(array)];
 
-  // Extraer los sizes de selectSize y eliminar duplicados
-  const extraerSizesDisponibles = () => {
-    const sizes = activePizzas.flatMap(pizza => {
-      try {
-        const parsedSizes = JSON.parse(pizza.selectSize);
-        return parsedSizes;
-      } catch (error) {
-        console.error("Error al parsear selectSize:", error);
-        return [];
-      }
-    });
-    return eliminarDuplicados(sizes);
-  };
-
-  const selectSizesDisponibles = extraerSizesDisponibles();
-
-  // Extraer ingredientes directamente de activePizzas
-  const extraerIngredientesDisponibles = () => {
-    const ingredientes = activePizzas.flatMap(pizza => {
-      try {
-        const parsedIngredientes = JSON.parse(pizza.ingredientes);
-        return parsedIngredientes.map(ing => ing.ingrediente);
-      } catch (error) {
-        console.error("Error al parsear ingredientes:", error);
-        return [];
-      }
-    });
-    return eliminarDuplicados(ingredientes); // Eliminar duplicados
-  };
-
+  
+  
   useEffect(() => {
-    const ingredientes = extraerIngredientesDisponibles();
-    setIngredientesDisponibles(ingredientes);
-  }, [activePizzas]);
-
-  // Obtener las categorías de pizza desde las pizzas activas
-  const obtenerCategorias = () => {
-    const categorias = activePizzas.map(pizza => pizza.categoria);
-    return eliminarDuplicados(categorias);
-  };
-
-  const categoriasDisponibles = obtenerCategorias();
-
-  // Extraer métodos de cocción de las pizzas activas y eliminar duplicados
-  const extraerMetodosCoccionDisponibles = () => {
-    const metodos = activePizzas.map(pizza => pizza.metodoCoccion);
-    return eliminarDuplicados(metodos);
-  };
-
-  const metodosCoccionDisponibles = extraerMetodosCoccionDisponibles();
-
-  // Función para agregar ingredientes para pizza completa
-  const agregarIngrediente = () => {
-    if (ingredienteSeleccionado) {
-      setIngredientesSeleccionados([...ingredientesSeleccionados, ingredienteSeleccionado]);
-      setIngredienteSeleccionado('');
-    }
-  };
-
-  // Función para agregar ingredientes a la parte izquierda
-  const agregarIngredienteIzquierda = () => {
-    if (ingredienteSeleccionadoIzquierda) {
-      setIngredientesSeleccionadosIzquierda([...ingredientesSeleccionadosIzquierda, ingredienteSeleccionadoIzquierda]);
-      setIngredienteSeleccionadoIzquierda('');
-    }
-  };
-
-  // Función para agregar ingredientes a la parte derecha
-  const agregarIngredienteDerecha = () => {
-    if (ingredienteSeleccionadoDerecha) {
-      setIngredientesSeleccionadosDerecha([...ingredientesSeleccionadosDerecha, ingredienteSeleccionadoDerecha]);
-      setIngredienteSeleccionadoDerecha('');
-    }
-  };
-
-  // Función para eliminar un ingrediente en pizza completa
-  const eliminarIngrediente = (ingrediente) => {
-    setIngredientesSeleccionados(ingredientesSeleccionados.filter(ing => ing !== ingrediente));
-  };
-
-  // Función para eliminar un ingrediente de la parte izquierda
-  const eliminarIngredienteIzquierda = (ingrediente) => {
-    setIngredientesSeleccionadosIzquierda(ingredientesSeleccionadosIzquierda.filter(ing => ing !== ingrediente));
-  };
-
-  // Función para eliminar un ingrediente de la parte derecha
-  const eliminarIngredienteDerecha = (ingrediente) => {
-    setIngredientesSeleccionadosDerecha(ingredientesSeleccionadosDerecha.filter(ing => ing !== ingrediente));
-  };
-
-  const handlePizzaTypeChange = (tipo) => {
-    setTipoPizzaSeleccionado(tipo);
-  };
-
-  const handleConfirmarPizza = () => {
-    const pizzaData =
-      tipoPizzaSeleccionado === 'completa'
-        ? {
-            tipo: tipoPizzaSeleccionado,
-            categoria: categoriaSeleccionada,
-            size: selectSizeSeleccionado,
-            metodoCoccion: metodoCoccionSeleccionado,
-            ingredientes: ingredientesSeleccionados,
+    console.log('Estado de compra actualizado:', compra);
+  }, [compra]);
+  useEffect(() => {
+    if (activePizzas && activePizzas.length > 0) {
+      const preciosBaseCalculados = {};
+      activePizzas.forEach((pizza) => {
+        const priceBySize = JSON.parse(pizza.PriceBySize || '{}');
+        Object.keys(priceBySize).forEach((size) => {
+          if (
+            !preciosBaseCalculados[size] ||
+            priceBySize[size] < preciosBaseCalculados[size]
+          ) {
+            preciosBaseCalculados[size] = parseFloat(priceBySize[size]);
           }
-        : {
-            tipo: tipoPizzaSeleccionado,
-            categoria: categoriaSeleccionada,
-            size: selectSizeSeleccionado,
-            metodoCoccion: metodoCoccionSeleccionado,
-            ingredientesIzquierda: ingredientesSeleccionadosIzquierda,
-            ingredientesDerecha: ingredientesSeleccionadosDerecha,
-          };
-
-    setPizzaConfirmada(pizzaData);
-    console.log("Pizza confirmada:", pizzaData); // Log para verificar la confirmación
-  };
-
-  const handleEnviarOrden = () => {
-    if (pizzaConfirmada) {
-      console.log('Enviando la orden:', pizzaConfirmada);
-      alert('Orden enviada correctamente.');
-      // Aquí podrías hacer una llamada a una API para enviar la orden al servidor.
+        });
+      });
+      setPreciosBase(preciosBaseCalculados);
     }
+  }, [activePizzas]);
+  useEffect(() => {
+    if (activePizzas && activePizzas.length > 0) {
+      const allIngredientes = [];
+      activePizzas.forEach((pizza) => {
+        const ingredientes = JSON.parse(pizza.ingredientes || '[]');
+        allIngredientes.push(
+          ...ingredientes.map((ing) => ({
+            nombre: ing.ingrediente,
+            IDI: ing.IDI,
+          }))
+        );
+      });
+      const uniqueIngredientes = allIngredientes.filter(
+        (ing, index, self) =>
+          index === self.findIndex((t) => t.IDI === ing.IDI)
+      );
+      setIngredientesDisponibles(uniqueIngredientes);
+    }
+  }, [activePizzas]);
+  useEffect(() => {
+    if (!sizeSeleccionado) {
+      setTotalPrice(0);
+      return;
+    }
+  
+    const precioBase = preciosBase[sizeSeleccionado] || 0;
+  
+    // Recalcular los precios de los ingredientes seleccionados
+    const nuevosIngredientesSeleccionados = ingredientesSeleccionados.map((ing) => {
+      const nuevoPrecio = parseFloat(
+        (precioBase * PORCENTAJE_INGREDIENTE_EXTRA).toFixed(2)
+      );
+      return {
+        ...ing,
+        precio: nuevoPrecio, // Actualizamos el precio del ingrediente
+      };
+    });
+  
+    setIngredientesSeleccionados(nuevosIngredientesSeleccionados);
+  
+    // Calcular el precio total
+    const precioIngredientes = nuevosIngredientesSeleccionados.reduce(
+      (acc, ing) => acc + ing.precio,
+      0
+    );
+  
+    setTotalPrice(parseFloat((precioBase + precioIngredientes).toFixed(2)));
+  }, [sizeSeleccionado, preciosBase, ingredientesSeleccionados]);
+  
+
+
+  const calcularPrecioIngrediente = (ingrediente, size) => {
+    const precioBase = preciosBase[size];
+    if (!precioBase) return 0;
+    return parseFloat((precioBase * PORCENTAJE_INGREDIENTE_EXTRA).toFixed(2));
+  };
+  const handleAgregarIngrediente = (ingrediente) => {
+    if (!sizeSeleccionado) {
+      alert('Debes seleccionar un tamaño antes de agregar ingredientes.');
+      return;
+    }
+
+    if (ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)) {
+      return;
+    }
+
+    const precioIngrediente = calcularPrecioIngrediente(
+      ingrediente,
+      sizeSeleccionado
+    );
+
+    const ingredienteConPrecio = {
+      ...ingrediente,
+      precio: precioIngrediente,
+    };
+
+    setIngredientesSeleccionados((prev) => [...prev, ingredienteConPrecio]);
+  };
+  const handleEliminarIngrediente = (IDI) => {
+    setIngredientesSeleccionados((prev) =>
+      prev.filter((ing) => ing.IDI !== IDI)
+    );
+  };
+  const handleConfirmarPizza = () => {
+    if (!sizeSeleccionado) {
+      alert('Por favor selecciona un tamaño.');
+      return;
+    }
+  
+    const nuevaPizza = {
+      id: uuidv4(),
+      nombre: 'Pizza Personalizada',
+      size: sizeSeleccionado,
+      cantidad: 1,
+      total: totalPrice,
+      basePrice: preciosBase[sizeSeleccionado], // Este es el precio de la base que necesitamos
+      extraIngredients: ingredientesSeleccionados.map((ing) => ({
+        IDI: ing.IDI,
+        nombre: ing.nombre,
+        precio: ing.precio,
+      })),
+    };
+    
+  
+    setCompra((prevCompra) => {
+      const nuevaVenta = [...prevCompra.venta, nuevaPizza];
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+  
+      return {
+        ...prevCompra,
+        venta: nuevaVenta,
+        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
+      };
+    });
+  
+    setSizeSeleccionado('');
+    setIngredientesSeleccionados([]);
+    setTotalPrice(0);
+    handleCloseForm();
+    alert('Pizza añadida al carrito');
+    console.log('Pizza añadida al carrito:', nuevaPizza);
+  };
+  const handleEditProduct = (productoEditado) => {
+    setSizeSeleccionado(productoEditado.size);
+    setIngredientesSeleccionados(productoEditado.extraIngredients || []);
+    setTotalPrice(productoEditado.total);
+    setIsEditing(true); // Activar el modo edición
+    setEditingProductId(productoEditado.id); // Guardar el ID del producto a editar
+  };
+  const handleUpdateProduct = () => {
+    setCompra((prevCompra) => {
+      const nuevaVenta = prevCompra.venta.map((producto) => {
+        if (producto.id === editingProductId) {
+          // Recalcular el precio base y el precio de los ingredientes extras
+          const precioBase = preciosBase[sizeSeleccionado];
+          const nuevosIngredientes = ingredientesSeleccionados.map((ing) => {
+            const nuevoPrecioIngrediente = parseFloat(
+              (precioBase * PORCENTAJE_INGREDIENTE_EXTRA).toFixed(2)
+            );
+            return {
+              ...ing,
+              precio: nuevoPrecioIngrediente, // Actualizamos el precio del ingrediente extra
+            };
+          });
+  
+          // Calcular el nuevo total
+          const nuevoTotal = parseFloat(
+            (
+              precioBase +
+              nuevosIngredientes.reduce((acc, ing) => acc + ing.precio, 0)
+            ).toFixed(2)
+          );
+  
+          return {
+            ...producto,
+            size: sizeSeleccionado,
+            basePrice: precioBase, // Actualizamos el precio base
+            total: nuevoTotal, // Nuevo total de la pizza
+            extraIngredients: nuevosIngredientes, // Ingredientes con precios actualizados
+          };
+        }
+        return producto;
+      });
+  
+      // Calcular el nuevo total de productos
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+  
+      return {
+        ...prevCompra,
+        venta: nuevaVenta,
+        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
+      };
+    });
+  
+    // Limpieza completa del formulario después de la actualización
+    setSizeSeleccionado(''); // Reiniciar tamaño seleccionado
+    setIngredientesSeleccionados([]); // Vaciar ingredientes seleccionados
+    setTotalPrice(0); // Reiniciar precio total
+    setIsEditing(false); // Salir del modo edición
+    setEditingProductId(null); // Limpiar el ID del producto en edición
+    handleCloseForm();
+    // Opcional: mensaje para confirmar la acción al usuario
+    alert('Pizza editada =).');
+  };
+  const handleCloseForm = () => {
+    setSizeSeleccionado('');
+    setIngredientesSeleccionados([]);
+    setTotalPrice(0);
+    setIsEditing(false);
+    setEditingProductId(null);
+    // Aquí puedes ocultar el formulario o panel adicional
+  };
+  const handleNextStep = () => {
+    if (compra.venta.length === 0) {
+      alert('Debes añadir al menos una pizza al carrito antes de continuar.');
+      return;
+    }
+    setShowDeliveryForm(true); // Cambiar a la vista de DeliveryForm
+  };
+  const calcularTotalDescuentos = () => {
+    let totalProductos = compra.venta.reduce((acc, item) => acc + (item.total || 0), 0);
+    const costoDelivery = compra.Entrega?.Delivery?.costo || 0;
+    const costoCupon = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
+    totalProductos += costoDelivery + costoCupon;
+    setCompra((prevCompra) => ({
+      ...prevCompra,
+      total_productos: parseFloat(totalProductos.toFixed(2)),
+    }));
   };
 
-  if (!tipoPizzaSeleccionado) {
-    return (
-      <div className="make-your-pizza-container" style={{ textAlign: 'center' }}>
-        <h2>Elige tu pizza</h2>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '50px', marginTop: '50px' }}>
-          <div onClick={() => handlePizzaTypeChange('completa')} style={{ cursor: 'pointer', textAlign: 'center' }}>
-            <FaPizzaSlice size={100} color="green" />
-            <p>Pizza Completa</p>
-          </div>
-          <div onClick={() => handlePizzaTypeChange('mitad')} style={{ cursor: 'pointer', textAlign: 'center' }}>
-            <FaChevronLeft size={100} color="green" />
-            <FaChevronRight size={100} color="green" />
-            <p>Mitad y Mitad</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
+  
   return (
     <div className="make-your-pizza-container">
-      {!pizzaConfirmada ? (
+      {/* Carrito flotante siempre visible */}
+      <FloatingCart
+        compra={compra}
+        setCompra={setCompra}
+        handleEditProduct={handleEditProduct}
+        handleNextStep={handleNextStep}
+      />
+  
+      {/* Contenido condicional basado en `showDeliveryForm` */}
+      {!showDeliveryForm ? (
         <>
-          <h2>{tipoPizzaSeleccionado === 'completa' ? 'Pizza Completa' : 'Pizza Mitad y Mitad'}</h2>
-
-          {/* Selección de categoría */}
-          <div className="categoria-pizza">
-            <h3>Selecciona el tipo de pizza:</h3>
-            <select value={categoriaSeleccionada} onChange={(e) => setCategoriaSeleccionada(e.target.value)}>
-              <option value="">Selecciona una categoría</option>
-              {categoriasDisponibles.map((categoria) => (
-                <option key={categoria} value={categoria}>
-                  {categoria}
-                </option>
-              ))}
-            </select>
-          </div>
-
+          <h2>Crea tu Pizza</h2>
+  
           {/* Selección de tamaño */}
           <div className="size-selection">
-            <h3>Selecciona el Size:</h3>
-            <select value={selectSizeSeleccionado} onChange={(e) => setSelectSizeSeleccionado(e.target.value)}>
-              <option value="">Selecciona un size</option>
-              {selectSizesDisponibles.map((size) => (
+            <h3>Selecciona el tamaño:</h3>
+            <select
+              value={sizeSeleccionado}
+              onChange={(e) => setSizeSeleccionado(e.target.value)}
+            >
+              <option value="">Selecciona un tamaño</option>
+              {Object.keys(preciosBase).map((size) => (
                 <option key={size} value={size}>
-                  {size}
+                  {size} - {preciosBase[size].toFixed(2)}€
                 </option>
               ))}
             </select>
           </div>
-
-          {/* Selección de método de cocción */}
-          <div className="metodo-coccion">
-            <h3>Selecciona el método de cocción:</h3>
-            <select value={metodoCoccionSeleccionado} onChange={(e) => setMetodoCoccionSeleccionado(e.target.value)}>
-              <option value="">Selecciona un método de cocción</option>
-              {metodosCoccionDisponibles.map((metodo) => (
-                <option key={metodo} value={metodo}>
-                  {metodo}
-                </option>
+  
+          {/* Panel de ingredientes */}
+          <div className="ingredientes-panel">
+            <h3>Selecciona tus ingredientes:</h3>
+            <div className="ingredientes-grid">
+              {ingredientesDisponibles.map((ingrediente) => (
+                <button
+                  key={ingrediente.IDI}
+                  className={`ingrediente-boton ${
+                    ingredientesSeleccionados.some(
+                      (ing) => ing.IDI === ingrediente.IDI
+                    )
+                      ? "seleccionado"
+                      : ""
+                  }`}
+                  onClick={() => handleAgregarIngrediente(ingrediente)}
+                >
+                  <span>{ingrediente.nombre}</span>
+                  <span>
+                    (
+                    {sizeSeleccionado
+                      ? `${calcularPrecioIngrediente(
+                          ingrediente,
+                          sizeSeleccionado
+                        ).toFixed(2)}€`
+                      : "0.00€"}
+                    )
+                  </span>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
-
-          {/* Selección de ingredientes para Pizza Completa */}
-          {tipoPizzaSeleccionado === 'completa' && (
-            <div className="ingredientes-lista">
-              <h3>Selecciona ingredientes para tu pizza:</h3>
-              <select value={ingredienteSeleccionado} onChange={(e) => setIngredienteSeleccionado(e.target.value)}>
-                <option value="">Selecciona un ingrediente</option>
-                {ingredientesDisponibles.map((ingrediente) => (
-                  <option key={ingrediente} value={ingrediente}>
-                    {ingrediente}
-                  </option>
-                ))}
-              </select>
-              <button onClick={agregarIngrediente}>Agregar Ingrediente</button>
-
-              {/* Lista de ingredientes seleccionados para Pizza Completa */}
-              {ingredientesSeleccionados.length > 0 && (
-                <div className="ingredientes-seleccionados">
-                  <h3>Ingredientes seleccionados:</h3>
-                  <ul>
-                    {ingredientesSeleccionados.map((ingrediente, index) => (
-                      <li key={index}>
-                        {ingrediente} <button onClick={() => eliminarIngrediente(ingrediente)}>Eliminar</button>
-                      </li>
-                    ))}
-                  </ul>
+  
+          {/* Ingredientes seleccionados */}
+          <div className="ingredientes-seleccionados-contenedor">
+            <h4>Ingredientes seleccionados:</h4>
+            <div className="ingredientes-horizontales">
+              {sizeSeleccionado && (
+                <div className="ingrediente-cuadro">
+                  <span>
+                    Base de Pizza <br />
+                    ({sizeSeleccionado}) ➡️{" "}
+                    {preciosBase[sizeSeleccionado]?.toFixed(2)}€
+                  </span>
                 </div>
               )}
+              {ingredientesSeleccionados.map((ing, index) => (
+                <React.Fragment key={ing.IDI}>
+                  {index > 0 || sizeSeleccionado ? (
+                    <span className="separador">➕</span>
+                  ) : null}
+                  <div className="ingrediente-cuadro">
+                    <span>{ing.nombre}</span>
+                    <span>({ing.precio.toFixed(2)}€)</span>
+                    <button
+                      className="boton-eliminar"
+                      onClick={() => handleEliminarIngrediente(ing.IDI)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </React.Fragment>
+              ))}
             </div>
-          )}
-
-          {/* Selección de ingredientes para la Mitad y Mitad */}
-          {tipoPizzaSeleccionado === 'mitad' && (
-            <>
-              <div className="ingredientes-lista">
-                <h3>Selecciona ingredientes para la mitad izquierda:</h3>
-                <select value={ingredienteSeleccionadoIzquierda} onChange={(e) => setIngredienteSeleccionadoIzquierda(e.target.value)}>
-                  <option value="">Selecciona un ingrediente</option>
-                  {ingredientesDisponibles.map((ingrediente) => (
-                    <option key={ingrediente} value={ingrediente}>
-                      {ingrediente}
-                    </option>
-                  ))}
-                </select>
-                <button onClick={agregarIngredienteIzquierda}>Agregar Ingrediente</button>
-
-                {/* Lista de ingredientes seleccionados para la mitad izquierda */}
-                {ingredientesSeleccionadosIzquierda.length > 0 && (
-                  <div className="ingredientes-seleccionados">
-                    <h3>Ingredientes seleccionados (Mitad Izquierda):</h3>
-                    <ul>
-                      {ingredientesSeleccionadosIzquierda.map((ingrediente, index) => (
-                        <li key={index}>
-                          {ingrediente} <button onClick={() => eliminarIngredienteIzquierda(ingrediente)}>Eliminar</button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              <div className="ingredientes-lista">
-                <h3>Selecciona ingredientes para la mitad derecha:</h3>
-                <select value={ingredienteSeleccionadoDerecha} onChange={(e) => setIngredienteSeleccionadoDerecha(e.target.value)}>
-                  <option value="">Selecciona un ingrediente</option>
-                  {ingredientesDisponibles.map((ingrediente) => (
-                    <option key={ingrediente} value={ingrediente}>
-                      {ingrediente}
-                    </option>
-                  ))}
-                </select>
-                <button onClick={agregarIngredienteDerecha}>Agregar Ingrediente</button>
-
-                {/* Lista de ingredientes seleccionados para la mitad derecha */}
-                {ingredientesSeleccionadosDerecha.length > 0 && (
-                  <div className="ingredientes-seleccionados">
-                    <h3>Ingredientes seleccionados (Mitad Derecha):</h3>
-                    <ul>
-                      {ingredientesSeleccionadosDerecha.map((ingrediente, index) => (
-                        <li key={index}>
-                          {ingrediente} <button onClick={() => eliminarIngredienteDerecha(ingrediente)}>Eliminar</button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Botón para confirmar la pizza */}
-          <div className="confirmar-pizza">
-            <button onClick={handleConfirmarPizza}>Confirmar Pizza</button>
           </div>
+  
+          {/* Precio total */}
+          <h3>Precio Total: {totalPrice.toFixed(2)}€</h3>
+          <button onClick={isEditing ? handleUpdateProduct : handleConfirmarPizza}>
+            {isEditing ? "Editar Pizza" : "Añadir al Carrito"}
+          </button>
         </>
       ) : (
-        <div className="pizza-confirmada">
-          <h3>Pizza confirmada:</h3>
-          <p><strong>Tipo de pizza:</strong> {pizzaConfirmada.tipo}</p>
-          <p><strong>Categoría:</strong> {pizzaConfirmada.categoria}</p>
-          <p><strong>Size:</strong> {pizzaConfirmada.size}</p>
-          <p><strong>Método de cocción:</strong> {pizzaConfirmada.metodoCoccion}</p>
-
-          {/* Mostrar los ingredientes dependiendo del tipo de pizza */}
-          {pizzaConfirmada.tipo === 'completa' ? (
-            <p><strong>Ingredientes:</strong> {pizzaConfirmada.ingredientes.join(', ')}</p>
-          ) : (
-            <>
-              <p><strong>Ingredientes (Mitad Izquierda):</strong> {pizzaConfirmada.ingredientesIzquierda.join(', ')}</p>
-              <p><strong>Ingredientes (Mitad Derecha):</strong> {pizzaConfirmada.ingredientesDerecha.join(', ')}</p>
-            </>
-          )}
-
-          <button onClick={handleEnviarOrden}>Enviar Orden</button>
-        </div>
+        <DeliveryForm compra={compra} setCompra={setCompra} />
       )}
     </div>
   );
+  
+  
 };
 
 export default MakeYourPizza;

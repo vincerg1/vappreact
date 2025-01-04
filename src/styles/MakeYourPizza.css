@@ -1,0 +1,168 @@
+.make-your-pizza-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  
+  .size-selection, .ingredientes-panel, .ingredientes-seleccionados {
+    margin-bottom: 20px;
+  }
+  
+  .size-selection h3, .ingredientes-panel h3, .ingredientes-seleccionados h4 {
+    margin-bottom: 10px;
+  }
+  
+  select {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .ingredientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 15px;
+  }
+  
+  .ingrediente-boton {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-size: 14px;
+    height: 80px; /* Tamaño uniforme */
+    color: #333;
+  }
+  
+  .ingrediente-boton span:first-child {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .ingrediente-boton.seleccionado {
+    background-color: #4caf50;
+    color: white;
+  }
+  
+  .ingredientes-horizontales {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  
+  .ingrediente-cuadro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    background-color: #f8f8f8;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    width: 100px;
+    height: 80px;
+    text-align: center;
+    font-size: 14px;
+    color: #333;
+  }
+  
+  .ingrediente-cuadro + .ingrediente-cuadro::before {
+    content: '+';
+    font-weight: bold;
+    font-size: 18px;
+    color: #555;
+    margin: 0 10px;
+    align-self: center;
+  }
+  
+  .ingrediente-cuadro button {
+    margin-top: 5px;
+    background-color: transparent;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.3s ease;
+  }
+  
+  .ingrediente-cuadro button:hover {
+    color: #c0392b;
+  }
+  
+  button {
+    padding: 10px 15px;
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 16px;
+  }
+  
+  button:hover {
+    background-color: #45a049;
+  }
+  
+  .ingredientes-seleccionados-contenedor {
+    margin-top: 20px;
+    padding: 15px;
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+  }
+  
+  .ingredientes-horizontales {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .ingrediente-cuadro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: white;
+    width: 120px; /* Tamaño fijo para uniformidad */
+    text-align: center;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .ingrediente-cuadro span {
+    font-size: 14px;
+  }
+  
+  .ingrediente-cuadro .boton-eliminar {
+    margin-top: 8px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: red;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  
+  .separador {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 5px;
+    color: #555;
+  }
+  

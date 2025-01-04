@@ -262,6 +262,8 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       }
       return 'No hay información de entrega disponible';
     };
+
+    
   useEffect(() => {
     setQrData(getQRCodeData());
   }, [compra?.Entrega]);
@@ -375,29 +377,31 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       )}
 
       <ul>
-        {compra.venta.map((item, index) => (
-          <li key={index}>
-            {item.nombre} x {item.cantidad} - ({item.price}€)
-            <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
-            <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
-            {item.extraIngredients.length > 0 && (
-              <ul>
+      {compra.venta.map((item, index) => (
+        <li key={index}>
+          {item.nombre} x {item.cantidad} - ({item.basePrice || item.price}€)
+          <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
+          <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
+          {item.extraIngredients.length > 0 && (
+            <ul>
               {item.extraIngredients.map((extra, idx) => (
                 <div key={extra.IDI} style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '5px' }}>
-                <span style={{ marginRight: '5px', flexGrow: 1  }}>+IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)</span>
-                <button
-                  style={{ padding: '2px 5px', fontSize: '12px' }}
-                  onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
-                >
-                  Del
-                </button>
-              </div>
-    
+                  <span style={{ marginRight: '5px', flexGrow: 1  }}>
+                    +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
+                  </span>
+                  <button
+                    style={{ padding: '2px 5px', fontSize: '12px' }}
+                    onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
+                  >
+                    Del
+                  </button>
+                </div>
               ))}
             </ul>
-            )}
-          </li>
-        ))}
+          )}
+        </li>
+      ))}
+
       </ul>
 
       <div className="totals">

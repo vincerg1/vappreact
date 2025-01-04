@@ -21,7 +21,7 @@ const CustomerMenu = () => {
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
     DescuentosDailyChallenge: 0,
-    cupones: initialCompra.cupones || [], // Usa los cupones pasados si existen
+    cupones: initialCompra.cupones || [], 
     venta: initialCompra.venta || [],
     Entrega: initialCompra.Entrega || {},
     total_productos: initialCompra.total_productos || 0.0,
@@ -338,92 +338,107 @@ const CustomerMenu = () => {
   const handleNextStep = () => {
     setShowDeliveryForm(true); 
   };
-  const handleEditProduct = (productoEditado) => {
-    console.log("Editando el producto:", productoEditado);
-    setEditingProductId(productoEditado.id);  // Establece el ID del producto que se está editando
-    setSelectedPizza(productoEditado);
-    setSelectedSize(productoEditado.size);
-    setQuantity(productoEditado.cantidad);
-  
-    // Asegurarse de que cada ingrediente extra tiene nombre y precio, sin perder información
-    const validExtraIngredients = productoEditado.extraIngredients.map((ing) => {
-      return {
-        nombre: ing.nombre || ing.ingrediente || "Ingrediente Desconocido",
-        precio: ing.precio ? parseFloat(ing.precio).toFixed(2) : "0.00"
-      };
-    });
-    setExtraIngredients(validExtraIngredients);
-    
-    setTotalPrice(productoEditado.total);
-    setFormVisible(true);
-    setIsEditing(true); // Usar este estado para saber que estamos en modo de edición
-  };
   const handleUpdateProduct = () => {
     setCompra((prevCompra) => {
-        const nuevaVenta = prevCompra.venta.map((producto) => {
-            if (producto.id === editingProductId) {
-                // Actualizar solo el producto que está siendo editado
-                const updatedProduct = {
-                    ...producto,
-                    cantidad: quantity,
-                    size: selectedSize,
-                    total: totalPrice,
-                    extraIngredients: extraIngredients.map(ing => ({
-                        IDI: ing.IDI, // Asegurar que IDI esté presente
-                        nombre: ing.ingrediente || ing.nombre, // Mantener el nombre si ya existe, usar `ingrediente` si está disponible
-                        precio: ing.precio ? parseFloat(ing.precio) : parseFloat((pizzaDetails.PriceBySize[selectedSize] * 0.15 * quantity).toFixed(2)) // Mantener precio si existe, calcular si no
-                    }))
-                };
-
-                // Debug: log del producto actualizado
-                console.log("Producto actualizado:", updatedProduct);
-
-                return updatedProduct;
-            }
-            return producto;
-        });
-
-        const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
-
-        // Debug: log del nuevo total de productos
-        console.log("Nuevo Total de Productos:", nuevoTotalProductos);
-
-        return {
-            ...prevCompra,
-            venta: nuevaVenta,
-            total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
-            total_a_pagar_con_descuentos: parseFloat(
-                (nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)
-            ),
-        };
+      // Actualizar el array `venta`
+      const nuevaVenta = prevCompra.venta.map((producto) => {
+        if (producto.id === editingProductId) {
+          const updatedProduct = {
+            ...producto,
+            size: selectedSize,
+            cantidad: quantity,
+            total: parseFloat(totalPrice.toFixed(2)),
+            price: parseFloat(pizzaDetails.PriceBySize[selectedSize]), // Actualizar el precio
+            extraIngredients: extraIngredients.map((ing) => ({
+              IDI: ing.IDI,
+              nombre: ing.nombre || ing.ingrediente,
+              precio: parseFloat(ing.precio.toFixed(2)) || 0,
+            })),
+          };
+          return updatedProduct;
+        }
+        return producto;
+      });
+  
+      // Actualizar el array `productos`
+      const nuevosProductos = prevCompra.productos.map((producto) => {
+        if (producto.id_pizza === editingProductId) {
+          return {
+            ...producto,
+            size: selectedSize,
+            cantidad: quantity,
+            price: parseFloat(pizzaDetails.PriceBySize[selectedSize]), // Asegurar que price sea un número
+            extraIngredients: extraIngredients.map((ing) => ({
+              IDI: ing.IDI,
+              nombre: ing.nombre || ing.ingrediente,
+              precio: parseFloat(ing.precio.toFixed(2)) || 0,
+            })),
+          };
+        }
+        return producto;
+      });
+  
+      // Recalcular el total de productos
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+  
+      // Devolver el estado actualizado
+      return {
+        ...prevCompra,
+        venta: nuevaVenta,
+        productos: nuevosProductos,
+        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(
+          (nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)
+        ),
+      };
     });
-
-    // Finalizar el modo de edición y ocultar el formulario
+  
+    // Finalizar el modo de edición
     setFormVisible(false);
     setIsEditing(false);
     setEditingProductId(null);
   };
+  
+  
+  const handleEditProduct = (productoEditado) => {
+    console.log("Editando el producto:", productoEditado);
+    setEditingProductId(productoEditado.id); // Establece el ID del producto que se está editando
+  
+    // Actualizar valores de la pizza seleccionada
+    setSelectedPizza({
+      ...productoEditado,
+      size: productoEditado.size,
+      cantidad: productoEditado.cantidad,
+    });
+  
+    // Actualizar valores del tamaño y cantidad
+    setSelectedSize(productoEditado.size);
+    setQuantity(productoEditado.cantidad);
+  
+    // Asegurarse de que los ingredientes extras están correctamente formateados
+    const validExtraIngredients = productoEditado.extraIngredients.map((ing) => ({
+      IDI: ing.IDI,
+      nombre: ing.nombre || ing.ingrediente || "Ingrediente Desconocido",
+      precio: parseFloat(ing.precio) || 0,
+    }));
+  
+    setExtraIngredients(validExtraIngredients);
+  
+    // Calcular el precio total en función de los datos actuales
+    setTotalPrice(parseFloat(productoEditado.total));
+  
+    // Establecer el formulario en modo edición
+    setFormVisible(true);
+    setIsEditing(true); // Activar el modo edición
+  };
+  
+
+
+
 
   return (
     <>
-      {/* Panel de Reviews */}
-      {!showDeliveryForm && (
-        <div className="reviews-panel">
-          <h2>Reseñas Recientes</h2>
-          <div className="reviews-carousel">
-            {sessionData.reviews && sessionData.reviews.length > 0 ? (
-              sessionData.reviews.map((review, index) => (
-                <div key={index} className="review-item">
-                  <p><strong>{review.nombre_cliente}:</strong> {review.comentario}</p>
-                  <p className="review-rating">Calificación: {review.calificacion} ⭐</p>
-                </div>
-              ))
-            ) : (
-              <p>No hay reseñas disponibles.</p>
-            )}
-          </div>
-        </div>
-      )}
+      
 
       {/* Carrito flotante */}
       
