@@ -438,30 +438,98 @@
 
 .buttons-container {
   display: flex;
-  justify-content: center;
-  gap: 15px;               /* Espacio entre botones */
-  margin: 20px 0;          /* Margen superior e inferior */
+  justify-content: space-evenly; /* Espaciado uniforme entre botones */
+  gap: 15px;                    /* Espacio entre botones */
+  margin: 20px 0;               /* Margen superior e inferior */
+  flex-wrap: wrap;              /* Permitir que los botones se acomoden en varias líneas si es necesario */
 }
+
 .buttons-container button {
-  width: 200px;
-  height: 50px;
-  padding: 12px 18px;       /* Espaciado interno */
-  font-size: 18px;          /* Tamaño de texto */
-  font-weight: bold;        /* Negrita */
-  color: #ffffff;           /* Letras blancas */
-  background-color: #000000; /* Color naranja */
-  border: none;             /* Sin bordes */
-  border-radius: 8px;       /* Bordes redondeados */
+  flex: 1;                      /* Deja que los botones crezcan uniformemente */
+  max-width: 250px;             /* Define un ancho máximo para los botones */
+  min-width: 150px;             /* Define un ancho mínimo */
+  height: 50px;                 /* Altura estándar */
+  padding: 12px 18px;           /* Espaciado interno */
+  font-size: 18px;              /* Tamaño de texto */
+  font-weight: bold;            /* Negrita */
+  color: #ffffff;               /* Letras blancas */
+  background-color: #000000;    /* Fondo negro */
+  border: none;                 /* Sin bordes */
+  border-radius: 8px;           /* Bordes redondeados */
   cursor: pointer;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
+
 .buttons-container button:hover {
   background-color: #505050;   /* Oscurecer ligeramente el fondo */
   transform: scale(1.05);      /* Aumentar ligeramente el tamaño */
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
 }
+
+.create-random-pizza-button {
+  background: linear-gradient(90deg, #ff7e5f, #feb47b); /* Gradiente inicial */
+  flex: 2;                     /* Este botón ocupará el doble de espacio que los demás */
+  text-align: center;          /* Centrar el texto */
+  font-size: 18px;             /* Tamaño del texto */
+  font-weight: bold;           /* Texto en negrita */
+  color: #fff;                 /* Texto blanco */
+  border: none;                /* Sin bordes */
+  border-radius: 8px;          /* Bordes redondeados */
+  padding: 12px 24px;          /* Espaciado interno */
+  cursor: pointer;             /* Cursor interactivo */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+  animation: random-blink 2s infinite; /* Animación aleatoria */
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.create-random-pizza-button:hover {
+  transform: scale(1.1); /* Aumenta ligeramente el tamaño al pasar el mouse */
+  box-shadow: 0 8px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
+}
+
+/* Animación de parpadeo aleatorio */
+@keyframes random-blink {
+  0% {
+    background: linear-gradient(90deg, #ff7e5f, #feb47b); /* Colores iniciales */
+    opacity: 1;
+  }
+  20% {
+    background: linear-gradient(90deg, #ffcc33, #ff6699); /* Cambia a colores aleatorios */
+    opacity: 0.8;
+  }
+  40% {
+    background: linear-gradient(90deg, #66ccff, #ccff33); /* Otro cambio de colores */
+    opacity: 0.6;
+  }
+  60% {
+    background: linear-gradient(90deg, #ff33cc, #33ccff); /* Otro cambio */
+    opacity: 0.9;
+  }
+  80% {
+    background: linear-gradient(90deg, #cc33ff, #33ffcc); /* Otro cambio */
+    opacity: 0.7;
+  }
+  100% {
+    background: linear-gradient(90deg, #ff7e5f, #feb47b); /* Regresa a los colores iniciales */
+    opacity: 1;
+  }
+}
+.notification-badge {
+  position: absolute;
+  top: -10px; /* Ajusta la posición vertical */
+  right: -10px; /* Ajusta la posición horizontal */
+  background-color: red;
+  color: white;
+  font-size: 14px; /* Ajusta el tamaño del texto */
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 50%; /* Hace el fondo circular */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none; /* No interferir con los clics en el botón */
+}
+
 .custom-tooltip {
   background-color: #f0d314 !important;
   color: #1c1b1b !important;
@@ -526,4 +594,5 @@
 .suspension-content p {
   font-size: 18px;
 }
+
 

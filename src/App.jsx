@@ -28,7 +28,6 @@ import SimuladorVentas from './pages/SimuladorVentas.jsx';
 import useRanking from './pages/RankING.jsx';
 import CustomerPage from './pages/CustomerPage.jsx';
 import OffersModule from './pages/OffersModule.jsx';
-import SuggestedOffers from './pages/SuggestedOffers.jsx';
 import OfferForm from './pages/OfferForm.jsx';
 import OfferList from './pages/OfferList.jsx';
 import Clientes from './pages/Clientes.jsx';
@@ -76,7 +75,6 @@ function App() {
           {/* Rutas de Ofertas */}
           <Route path="/offers/*" element={<OffersModule />} />
           <Route path="/offers/create" element={<OfferForm />} />
-          <Route path="/offers/suggested" element={<SuggestedOffers />} />
           <Route path="/offers/existing" element={<OfferList />} />
           <Route path="/offers/edit/:id" element={<OfferForm />} />
           <Route path="/offers/daily-challenge/create" element={<DailyChallengeForm />} />

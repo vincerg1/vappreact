@@ -2149,23 +2149,25 @@ app.post('/api/reviews', (req, res) => {
     });
   });
 });
-app.post('/ofertas', upload.single('Imagen'), (req, res) => { 
+app.post('/ofertas', upload.single('Imagen'), (req, res) => {
   const {
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon, 
     Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, 
-    Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones
+    Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones,
+    Tipo_Oferta // Nuevo campo
   } = req.body;
 
   console.log('Datos recibidos del formulario:', req.body);
 
   const Codigo_Oferta = `OFF${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
-  // Asegurarse de que la imagen sea válida, si no existe, se asigna null
-  const Imagen = req.file ? `/uploads/${req.file.filename}` : null;
+  // Validar Tipo_Oferta (asignar valor por defecto si no se envía)
+  const tipoOfertaValido = ['Basic', 'Pizza Rara'];
+  const tipoOferta = Tipo_Oferta && tipoOfertaValido.includes(Tipo_Oferta) ? Tipo_Oferta : 'Basic';
 
-  let parsedSegmentos;
-  let parsedDiasActivos;
+  // Validar y procesar Segmentos_Aplicables y Dias_Activos
+  let parsedSegmentos, parsedDiasActivos;
 
   try {
     parsedSegmentos = JSON.parse(Segmentos_Aplicables);
@@ -2179,33 +2181,39 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
     parsedDiasActivos = [];
   }
 
+  // Imagen: validar si se recibió o asignar null
+  const Imagen = req.file ? `/uploads/${req.file.filename}` : null;
+
   const Cupones_Disponibles = Cupones_Asignados;
 
   const IssueDate = moment().tz('Europe/Madrid').format('YYYY-MM-DD HH:mm:ss');
 
+  // SQL para insertar la nueva oferta
   const sql = `
     INSERT INTO ofertas (
       Codigo_Oferta, Cupones_Disponibles, Descripcion, Segmentos_Aplicables, Imagen, 
       Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon, 
       Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, 
       Otras_Condiciones, Estado, Cupones_Asignados, Origen, Tipo_Cupon, 
-      Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones, IssueDate
+      Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones, IssueDate, Tipo_Oferta
     ) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
+  // Parámetros para la consulta
   const params = [
     Codigo_Oferta, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
     Condiciones_Extras, Ticket_Promedio || null, Dias_Ucompra || null, 
     Numero_Compras || null, Max_Amount, Otras_Condiciones || null, Estado, 
     Cupones_Asignados, Origen || 'creada', Tipo_Cupon, JSON.stringify(parsedDiasActivos), 
-    Hora_Inicio, Hora_Fin, Observaciones, IssueDate
+    Hora_Inicio, Hora_Fin, Observaciones, IssueDate, tipoOferta // Agregado Tipo_Oferta
   ];
 
   // Log para verificar parámetros antes de la inserción
   console.log('Parámetros de inserción:', params);
 
+  // Ejecutar la consulta SQL
   db.run(sql, params, function(err) {
     if (err) {
       console.error('Error al insertar en la base de datos:', err.message);
@@ -3266,66 +3274,93 @@ app.patch('/api/incentivos/:id', (req, res) => {
   });
 });
 app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
-  const { Oferta_Id } = req.params;
+  console.log('Request received for PATCH /ofertas/:Oferta_Id');
+  console.log('Request body:', req.body);
+  console.log('File:', req.file);
+
   const {
-      Cupones_Asignados, Descripcion, Segmentos_Aplicables,
-      Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-      Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
-      Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones
+      Cupones_Asignados, Descripcion, Segmentos_Aplicables, Descuento_Percent,
+      Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, 
+      Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones,
+      Tipo_Oferta // Nuevo campo
   } = req.body;
 
-  // Manejo de Segmentos_Aplicables y Dias_Activos
-  let parsedSegmentos = [];
-  let parsedDiasActivos = [];
+  const Imagen = req.file ? `/uploads/${req.file.filename}` : req.body.Imagen;
 
+  let parsedSegmentos;
   try {
-      parsedSegmentos = JSON.parse(Segmentos_Aplicables);
+    parsedSegmentos = JSON.parse(Segmentos_Aplicables);
+    console.log('Parsed Segmentos_Aplicables:', parsedSegmentos);
   } catch (error) {
-      parsedSegmentos = [];
+    console.error('Error parsing Segmentos_Aplicables:', error);
+    parsedSegmentos = [];
   }
 
+  let parsedDiasActivos;
   try {
-      parsedDiasActivos = JSON.parse(Dias_Activos);
+    parsedDiasActivos = JSON.parse(Dias_Activos);
+    console.log('Parsed Dias_Activos:', parsedDiasActivos);
   } catch (error) {
-      parsedDiasActivos = [];
+    console.error('Error parsing Dias_Activos:', error);
+    parsedDiasActivos = [];
   }
 
-  // Verificar si hay un archivo de imagen
-  let Imagen = req.file ? `/uploads/${req.file.filename}` : req.body.Imagen; // Mantener la imagen actual si no se subió una nueva
+  // Validar el Tipo_Oferta
+  const tipoOfertaValido = ['Basic', 'Pizza Rara'];
+  const tipoOferta = Tipo_Oferta && tipoOfertaValido.includes(Tipo_Oferta) ? Tipo_Oferta : null;
 
-  // Escapar caracteres especiales en la ruta de la imagen para evitar errores
-  Imagen = Imagen ? Imagen.replace(/\\/g, '/') : null;
+  // Consultamos los cupones disponibles actuales antes de actualizar
+  const selectSql = 'SELECT Cupones_Disponibles, Cupones_Asignados FROM ofertas WHERE Oferta_Id = ?';
+  db.get(selectSql, [req.params.Oferta_Id], (err, row) => {
+    if (err) {
+      console.error('Error fetching current offer:', err.message);
+      res.status(500).json({ "error": err.message });
+      return;
+    }
 
-  const Cupones_Disponibles = Cupones_Asignados;
+    const Cupones_Disponibles_Actuales = row.Cupones_Disponibles;
+    const Cupones_Asignados_Actuales = row.Cupones_Asignados;
 
-  const sql = `
-    UPDATE ofertas
-    SET
-        Cupones_Asignados = ?, Cupones_Disponibles = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
-        Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Categoria_Cupon = ?, Condiciones_Extras = ?, 
-        Ticket_Promedio = ?, Dias_Ucompra = ?, Numero_Compras = ?, Max_Amount = ?, Otras_Condiciones = ?, 
-        Estado = ?, Origen = ?, Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Observaciones = ?
-    WHERE Oferta_Id = ?
-  `;
+    // Lógica para actualizar los cupones disponibles
+    let Cupones_Disponibles = Cupones_Disponibles_Actuales;
 
-  const params = [
+    if (parseInt(Cupones_Asignados) > Cupones_Asignados_Actuales) {
+      // Si se aumentan los cupones asignados, aumentamos los cupones disponibles proporcionalmente
+      const diferencia = parseInt(Cupones_Asignados) - Cupones_Asignados_Actuales;
+      Cupones_Disponibles = Cupones_Disponibles_Actuales + diferencia;
+    }
+
+    const sql = `
+      UPDATE ofertas
+      SET
+          Cupones_Asignados = ?, Cupones_Disponibles = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
+          Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?, Dias_Ucompra = ?,
+          Numero_Compras = ?, Max_Amount = ?, Otras_Condiciones = ?, Estado = ?, Origen = ?, 
+          Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Observaciones = ?, Tipo_Oferta = ?
+      WHERE Oferta_Id = ?
+    `;
+
+    const params = [
       Cupones_Asignados, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
-      Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon, Condiciones_Extras,
-      Ticket_Promedio || null, Dias_Ucompra || null, Numero_Compras || null, Max_Amount,
-      Otras_Condiciones || null, Estado, Origen || 'creada', Tipo_Cupon, JSON.stringify(parsedDiasActivos),
-      Hora_Inicio, Hora_Fin, Observaciones, Oferta_Id
-  ];
+      Descuento_Percent, Condiciones_Extras, Ticket_Promedio || null, Dias_Ucompra || null, 
+      Numero_Compras || null, Max_Amount, Otras_Condiciones || null, Estado, Origen, Tipo_Cupon, 
+      JSON.stringify(parsedDiasActivos), Hora_Inicio, Hora_Fin, Observaciones, tipoOferta, // Agregado Tipo_Oferta
+      req.params.Oferta_Id
+    ];
 
-  db.run(sql, params, function (err) {
+    console.log('SQL:', sql);
+    console.log('Params:', params);
+
+    db.run(sql, params, function(err) {
       if (err) {
-          console.error('Error updating offer:', err.message);
-          return res.status(400).json({ error: err.message });
+        console.error('Error updating offer:', err.message);
+        res.status(500).json({ "error": err.message });
+        return;
       }
       res.json({
-          message: 'success',
-          data: { id: Oferta_Id },
-          changes: this.changes
+        "message": "success"
       });
+    });
   });
 });
 app.patch('/api/offers/:id/use-coupon', (req, res) => {

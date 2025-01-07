@@ -729,8 +729,6 @@ const CustomerPage = (offer) => {
       };
     });
   };
-  const removeDiacritics = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const closeDailyChallenge = () => setShowDailyChallenge(false);
   const handleDailyChallengeClick = () => {
     setShowDailyChallenge(!showDailyChallenge);
     if (!dailyChallenge) {
@@ -754,13 +752,15 @@ const CustomerPage = (offer) => {
       });
     }
   };
-  const handleReviewButtonClick = () => setShowReviewForm(!showReviewForm);
-  const handleCloseReviewForm = () => setShowReviewForm(false);
   const handleOrderNowClick = () => {
     // console.log('Finalizando compra:', compra);
     navigate('/order-now', { state: { compra } });
   };
-
+  
+  const handleReviewButtonClick = () => setShowReviewForm(!showReviewForm);
+  const handleCloseReviewForm = () => setShowReviewForm(false);
+  const removeDiacritics = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const closeDailyChallenge = () => setShowDailyChallenge(false);
   const emailUsername = sessionData?.email.split('@')[0];
 
   return (
@@ -791,6 +791,12 @@ const CustomerPage = (offer) => {
               <button onClick={handleReviewButtonClick}>{showReviewForm ? 'Go Back' : 'Reviews'}</button>
               <button onClick={handleDailyChallengeClick}>{showDailyChallenge ? 'Go Back' : 'Daily Challenge'}</button>
               <button onClick={handleContactButtonClick}>{showContactInfo ? 'Go Back' : 'Contacts'}</button>
+              <button
+                className="create-random-pizza-button"
+                onClick={() => navigate('/rare-pizza')} 
+              >
+                MakeARandomPizza
+              </button>
            </div>
 
             {showReviewForm && (

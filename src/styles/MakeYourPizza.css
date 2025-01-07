@@ -4,15 +4,12 @@
     padding: 20px;
     font-family: Arial, sans-serif;
   }
-  
-  .size-selection, .ingredientes-panel, .ingredientes-seleccionados {
+.size-selection, .ingredientes-panel, .ingredientes-seleccionados {
     margin-bottom: 20px;
   }
-  
-  .size-selection h3, .ingredientes-panel h3, .ingredientes-seleccionados h4 {
+.size-selection h3, .ingredientes-panel h3, .ingredientes-seleccionados h4 {
     margin-bottom: 10px;
-  }
-  
+  } 
   select {
     width: 100%;
     padding: 8px;
@@ -21,14 +18,12 @@
     border: 1px solid #ccc;
     border-radius: 4px;
   }
-  
-  .ingredientes-grid {
+.ingredientes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 15px;
   }
-  
-  .ingrediente-boton {
+.ingrediente-boton {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -165,4 +160,164 @@
     margin: 0 5px;
     color: #555;
   }
+  .choose-type-container {
+    text-align: center;
+    margin-top: 20px;
+  }
   
+  .options {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .option-button {
+    width: 200px;
+    height: 100px;
+    padding: 15px 20px;
+    font-size: 18px;
+    background-color: #ff6600;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .option-button:hover {
+    background-color: #cc5200;
+  }
+
+
+  /*seccion de mitades*/
+
+  .half-and-half-container {
+    text-align: center;
+    margin-top: 20px;
+  }
+  .halves {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 800px;
+    gap: 20px;
+  }
+  .halves-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 20px;
+  }
+  .half-section {
+    position: relative;
+    width: 300px; /* Tamaño fijo o adaptable */
+    height: 300px;
+    overflow: hidden; 
+    background-color: #e8e7e7;
+}
+  .half-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .confirm-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #ff6600;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .confirm-button:hover {
+    background-color: #cc5200;
+  }
+  .half-and-half-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-radius: 10px;
+  }
+  .half-and-half-container h2 {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+  .size-selection {
+    margin-bottom: 20px;
+  }
+  .size-dropdown {
+    padding: 8px 12px;
+    font-size: 1rem;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  .swiper-container {
+    width: 100%;
+    height: 100%;
+  }
+  .swiper-wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+  .swiper-slide {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Ocupa toda la altura del contenedor */
+    width: 100%; /* Ocupa toda la anchura */
+    box-sizing: border-box; /* Incluye padding y borde dentro del tamaño */
+}
+  .pizza-slide {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .pizza-image {
+    width: 200px; /* Aumentar tamaño */
+    height: 200px; /* Aumentar tamaño */
+    object-fit: cover; /* Asegurar que la imagen ocupe el espacio disponible */
+    margin-bottom: 10px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+  }
+  .pizza-slide p {
+    margin: 5px 0;
+    font-size: 1rem;
+    font-weight: bold;
+    line-height: .75;
+    color: #0f0f0f;
+  }
+  .swiper-slide:hover {
+    background-color: #e3e3e3;
+  }
+  .confirm-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    color: #fff;
+    background-color: #ff6600;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .confirm-button:hover {
+    background-color: #e65500;
+  }
+  .confirm-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+

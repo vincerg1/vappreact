@@ -5,7 +5,7 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 360px; /* Ancho para los incentivos */
+  width: 380px; /* Ancho para los incentivos */
   background-color: white;
   border: 1px solid #ccc;
   padding: 10px;
@@ -203,6 +203,34 @@
 
 
 
+/* Extra ingredient item */
+.extra-ingredient-item {
+  display: flex;
+  align-items: center;
+  gap: .5px;
+  margin-bottom: 10px;
+}
+
+/* Text for extra ingredient */
+.extra-ingredient-text {
+  margin-right: 25px;
+}
+
+/* Button for removing extra ingredient */
+.extra-ingredient-button {
+  padding: 2px 5px;
+  font-size: 12px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: #ef0808;
+  
+}
+
+.extra-ingredient-button:hover {
+  color: #ffffff;
+  background-color: #b37d00;
+}
 
 
 

@@ -25,7 +25,8 @@ const OfferForm = () => {
         Dias_Activos: [],         // Nuevo campo
         Hora_Inicio: '',          // Nuevo campo
         Hora_Fin: '',             // Nuevo campo
-        Observaciones: ''         // Nuevo campo
+        Observaciones: '',        // Nuevo campo
+        Tipo_Oferta: 'Basic'      // Nuevo campo
     });
 
     const [currentImage, setCurrentImage] = useState(null);
@@ -67,7 +68,8 @@ const OfferForm = () => {
                 Dias_Activos: JSON.parse(offerData.Dias_Activos || '[]'),
                 Hora_Inicio: offerData.Hora_Inicio || '',
                 Hora_Fin: offerData.Hora_Fin || '',
-                Observaciones: offerData.Observaciones || ''
+                Observaciones: offerData.Observaciones || '',
+                Tipo_Oferta: offerData.Tipo_Oferta || 'Basic'
             });
 
             // Verificar si hay imagen
@@ -77,19 +79,16 @@ const OfferForm = () => {
         }
     };
 
-    // Manejar cambios en los inputs
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
     };
 
-    // Manejar cambios en el checkbox
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
         setFormData({ ...formData, [name]: checked });
     };
 
-    // Manejar cambios en los segmentos aplicables
     const handleSegmentChange = (segment) => {
         let updatedSegments = [...formData.Segmentos_Aplicables];
         if (updatedSegments.includes(segment)) {
@@ -100,7 +99,6 @@ const OfferForm = () => {
         setFormData({ ...formData, Segmentos_Aplicables: updatedSegments });
     };
 
-    // Manejar cambios en los días activos
     const handleDaysChange = (e) => {
         const selectedOptions = [...e.target.selectedOptions].map(option => option.value);
 
@@ -111,7 +109,6 @@ const OfferForm = () => {
         }
     };
 
-    // Manejar la subida de imagen
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         setFormData({ ...formData, Imagen: file });
@@ -154,6 +151,13 @@ const OfferForm = () => {
         <div>
             <h2>{id ? 'Editar Oferta' : 'Crear Oferta'}</h2>
             <form onSubmit={handleSubmit}>
+                <label>
+                    Tipo de Oferta:
+                    <select name="Tipo_Oferta" value={formData.Tipo_Oferta} onChange={handleChange}>
+                        <option value="Basic">Básica</option>
+                        <option value="Pizza Rara">Pizza Rara</option>
+                    </select>
+                </label>
                 <label>
                     Cupones Asignados:
                     <input
@@ -241,7 +245,7 @@ const OfferForm = () => {
                         <option value="temporal">Temporal</option>
                     </select>
                 </label>
-
+    
                 {(formData.Tipo_Cupon === 'temporal' || formData.Tipo_Cupon === 'permanente') && (
                     <>
                         <label>
@@ -257,7 +261,7 @@ const OfferForm = () => {
                                 ))}
                             </select>
                         </label>
-
+    
                         <label>
                             Hora de Inicio:
                             <input
@@ -267,7 +271,7 @@ const OfferForm = () => {
                                 onChange={handleChange}
                             />
                         </label>
-
+    
                         <label>
                             Hora de Fin:
                             <input
@@ -279,7 +283,7 @@ const OfferForm = () => {
                         </label>
                     </>
                 )}
-
+    
                 <label>
                     Condiciones Extras:
                     <input
@@ -326,7 +330,7 @@ const OfferForm = () => {
                         </li>
                     </ul>
                 )}
-
+    
                 <label>
                     Estado:
                     <select
@@ -341,5 +345,7 @@ const OfferForm = () => {
             </form>
         </div>
     );
+    
 };
+
 export default OfferForm;

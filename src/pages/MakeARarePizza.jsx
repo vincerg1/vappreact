@@ -1,114 +1,179 @@
 import React, { useState, useContext } from 'react';
-import _PizzaContext from './_PizzaContext'; // Asegúrate de tener acceso al contexto
+import { useLocation } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid';
+import _PizzaContext from './_PizzaContext';
+import '../styles/MakeARarePizza.css';
+import FloatingCart from './FloatingCart';
+import DeliveryForm from './DeliveryForm';
+import moment from 'moment';
 
 const MakeARarePizza = () => {
-  const { activePizzas } = useContext(_PizzaContext); // Usamos los ingredientes activos
+  const { activePizzas, updateFloatingCart, sessionData } = useContext(_PizzaContext);
   const basePizza = ['Salsa Tomate Pizza', 'Mozzarella'];
+  const location = useLocation();
   const [ingredientesAleatorios, setIngredientesAleatorios] = useState([]);
   const [descuento, setDescuento] = useState(null);
   const [pizzaGenerada, setPizzaGenerada] = useState(false);
-  const [generarIntentos, setGenerarIntentos] = useState(0); // Contador para el límite de regeneración
+  const [sizeSeleccionado, setSizeSeleccionado] = useState('');
+  const [generarIntentos, setGenerarIntentos] = useState(3); // Número de intentos permitidos
+  const initialCompra = location.state?.compra || {};
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [compra, setCompra] = useState({
+    observaciones: '',
+    id_orden: '',
+    Entrega: {},
+    fecha: moment().format('YYYY-MM-DD'),
+    hora: moment().format('HH:mm:ss'),
+    id_cliente: sessionData?.id_cliente || '',
+    DescuentosDailyChallenge: 0,
+    cupones: initialCompra.cupones || [],
+    venta: initialCompra.venta || [],
+    total_productos: initialCompra.total_productos || 0.0,
+    total_descuentos: initialCompra.total_descuentos || 0.0,
+    total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
+    venta_procesada: 0,
+    origen: 'MakeARarePizza',
+  });
 
-  // Fijamos el método de cocción
-  const metodoCoccionFijo = 'Horneado';
+  const sizesDisponibles = [...new Set(activePizzas.flatMap(pizza => JSON.parse(pizza.selectSize)))];
 
-  // Función para extraer ingredientes activos y excluir los ingredientes base
-  const extraerIngredientesDisponibles = () => {
-    const ingredientes = activePizzas.flatMap(pizza => {
-      try {
-        const parsedIngredientes = JSON.parse(pizza.ingredientes);
-        return parsedIngredientes.map(ing => ing.ingrediente);
-      } catch (error) {
-        console.error("Error al parsear ingredientes:", error);
-        return [];
-      }
-    });
-    // Excluir los ingredientes base (Mozzarella y Salsa Tomate Pizza)
-    return [...new Set(ingredientes)].filter(ing => !basePizza.includes(ing));
-  };
-
-  const ingredientesDisponibles = extraerIngredientesDisponibles();
-
-  // Función para extraer sizes disponibles de las pizzas activas
-  const extraerSizesDisponibles = () => {
-    const sizes = activePizzas.flatMap(pizza => {
-      try {
-        const parsedSizes = JSON.parse(pizza.selectSize);
-        return parsedSizes;
-      } catch (error) {
-        console.error("Error al parsear selectSize:", error);
-        return [];
-      }
-    });
-    return [...new Set(sizes)]; // Eliminar duplicados
-  };
-
-  const sizesDisponibles = extraerSizesDisponibles();
-
-  // Función para generar ingredientes aleatorios
   const generarIngredientesAleatorios = () => {
-    const ingredientesSeleccionados = [];
-    while (ingredientesSeleccionados.length < 2) {
-      const ingredienteAleatorio = ingredientesDisponibles[Math.floor(Math.random() * ingredientesDisponibles.length)];
-      if (!ingredientesSeleccionados.includes(ingredienteAleatorio)) {
-        ingredientesSeleccionados.push(ingredienteAleatorio);
+    const ingredientesDisponibles = [...new Set(
+      activePizzas.flatMap(pizza => JSON.parse(pizza.ingredientes).map(ing => ing.ingrediente))
+    )].filter(ing => !basePizza.includes(ing));
+
+    const seleccionados = [];
+    while (seleccionados.length < 2) {
+      const random = ingredientesDisponibles[Math.floor(Math.random() * ingredientesDisponibles.length)];
+      if (!seleccionados.includes(random)) {
+        seleccionados.push(random);
       }
     }
-    return ingredientesSeleccionados;
+    return seleccionados;
   };
 
-  // Función para generar un size aleatorio basado en los sizes activos
-  const generarSizeAleatorio = () => {
-    return sizesDisponibles[Math.floor(Math.random() * sizesDisponibles.length)];
-  };
-
-  // Función para generar la pizza
   const handleGeneratePizza = () => {
-    if (generarIntentos < 3) {
-      const ingredientes = generarIngredientesAleatorios();
-      const sizeAleatorio = generarSizeAleatorio();
-      const descuentoGenerado = Math.floor(Math.random() * 7) + 1; // Descuento aleatorio entre 1% y 7%
-      setIngredientesAleatorios(ingredientes);
-      setDescuento(descuentoGenerado);
-      setPizzaGenerada({ size: sizeAleatorio });
-      setGenerarIntentos(generarIntentos + 1); // Aumentamos el contador de intentos
+    if (generarIntentos === 0) {
+      alert('Ya no tienes más intentos para generar una pizza rara.');
+      return;
     }
+
+    if (!sizeSeleccionado) {
+      alert('Selecciona un tamaño antes de generar la pizza.');
+      return;
+    }
+
+    const ingredientes = generarIngredientesAleatorios();
+    const descuentoAleatorio = Math.floor(Math.random() * (10 - 1 + 1)) + 1; // Descuento entre 1% y 10%
+    setIngredientesAleatorios(ingredientes);
+    setDescuento(descuentoAleatorio);
+
+    const nuevaPizza = {
+      id: 103,
+      nombre: 'Pizza Personalizada 3',
+      size: sizeSeleccionado,
+      ingredientes: ['Salsa Tomate Pizza', 'Mozzarella', ...ingredientes],
+      descuento: descuentoAleatorio,
+      precioBase: 10,
+      total: 10 - (10 * descuentoAleatorio) / 100,
+    };
+
+    setPizzaGenerada(nuevaPizza);
+    setGenerarIntentos(prev => prev - 1); // Reducir los intentos disponibles
   };
 
-  // Función para reiniciar la generación (solo si no se han hecho 3 intentos)
-  const handleRegenerarPizza = () => {
-    if (generarIntentos < 3) {
-      handleGeneratePizza();
+  const handleAddToCart = () => {
+    if (!pizzaGenerada) {
+      alert('Primero genera una pizza rara.');
+      return;
     }
+
+    const nuevaPizza = {
+      ...pizzaGenerada,
+      cantidad: 1,
+      ingredientes: [...basePizza, ...ingredientesAleatorios],
+      extraIngredients: ingredientesAleatorios.map(ing => ({
+        nombre: ing,
+        precio: 1.5,
+      })),
+    };
+
+    setCompra(prev => {
+      const nuevaVenta = [...prev.venta, nuevaPizza];
+      const nuevoTotal = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+
+      return {
+        ...prev,
+        venta: nuevaVenta,
+        total_productos: nuevoTotal,
+        total_a_pagar_con_descuentos: nuevoTotal,
+      };
+    });
+
+    setPizzaGenerada(null);
+    setSizeSeleccionado('');
+    setIngredientesAleatorios([]);
+    setDescuento(null);
+    alert('Pizza añadida al carrito.');
+  };
+
+  const handleNextStep = () => {
+    if (compra.venta.length === 0) {
+      alert('Debes añadir al menos una pizza al carrito antes de continuar.');
+      return;
+    }
+    setShowDeliveryForm(true);
   };
 
   return (
     <div className="make-a-rare-pizza">
-      <h2>Make A Rare Pizza</h2>
+      <FloatingCart
+        compra={compra}
+        setCompra={setCompra}
+        handleNextStep={handleNextStep}
+      />
 
-      {!pizzaGenerada ? (
-        <>
-          <p>Haz clic en el botón para generar tu pizza rara con un descuento especial.</p>
-          <button onClick={handleGeneratePizza}>Generate</button>
-        </>
+      {showDeliveryForm ? (
+        <DeliveryForm compra={compra} setCompra={setCompra} />
       ) : (
         <>
-          <h3>Tu Pizza Rara ha sido Generada:</h3>
-          <p><strong>Base de la pizza:</strong> {basePizza.join(', ')}</p>
-          <p><strong>Size:</strong> {pizzaGenerada.size}</p>
-          <p><strong>Método de Cocción:</strong> {metodoCoccionFijo}</p>
-          <p><strong>Ingredientes adicionales:</strong> {ingredientesAleatorios.join(', ')}</p>
-          <p><strong>Descuento aplicado:</strong> {descuento}%</p>
+          <h2>Make A Rare Pizza</h2>
+          <p>Selecciona un tamaño y genera tu Pizza Rara con un descuento único.</p>
 
-          {/* Botón para volver a generar, si no se han agotado los intentos */}
-          {generarIntentos < 3 ? (
-            <button onClick={handleRegenerarPizza}>Volver a Generar ({3 - generarIntentos} intentos restantes)</button>
-          ) : (
-            <p>No puedes generar más de 3 veces.</p>
+          <div className="size-selector">
+            <select
+              value={sizeSeleccionado}
+              onChange={e => setSizeSeleccionado(e.target.value)}
+            >
+              <option value="">Selecciona un tamaño</option>
+              {sizesDisponibles.map(size => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            className="generate-button"
+            onClick={handleGeneratePizza}
+            disabled={generarIntentos === 0}
+          >
+            {pizzaGenerada ? `Volver a Generar (${generarIntentos} intentos restantes)` : 'Generar Pizza'}
+          </button>
+
+          {pizzaGenerada && (
+            <div className="pizza-card">
+              <h3>Tu Pizza Rara</h3>
+              <p><strong>Tamaño:</strong> {pizzaGenerada.size}</p>
+              <p><strong>Ingredientes:</strong> {pizzaGenerada.ingredientes.join(', ')}</p>
+              <p><strong>Descuento:</strong> {pizzaGenerada.descuento}%</p>
+              <p><strong>Total:</strong> {pizzaGenerada.total.toFixed(2)}€</p>
+              <button className="add-to-cart" onClick={handleAddToCart}>
+                Añadir al Carrito
+              </button>
+            </div>
           )}
-
-          {/* Botón para confirmar la pizza */}
-          <button onClick={() => alert('Orden enviada')}>Confirmar Pizza y Enviar Orden</button>
         </>
       )}
     </div>

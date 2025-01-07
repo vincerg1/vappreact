@@ -7,98 +7,18 @@ import '../styles/FloatingCart.css';
 import { v4 as uuidv4 } from 'uuid';
 
 const generarOrderId = () => {
-  return 'ORD' + Math.floor(100000 + Math.random() * 9000);  // Ejemplo: ORD1234
+  return 'ORD' + Math.floor(100000 + Math.random() * 9000);  
 };
 
 const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) => {
   const { sessionData } = useContext(_PizzaContext);
   const [incentivos, setIncentivos] = useState([]);
   const [qrData, setQrData] = useState('');
-  const [historial, setHistorial] = useState([]);  // Historial de cambios en venta y entrega
-  const [orderId, setOrderId] = useState(generarOrderId());  // Generar un número de orden al iniciar
-  const [isReadyToPay, setIsReadyToPay] = useState(false);  // Estado para controlar si el botón debe ser "Pagar"
+  const [historial, setHistorial] = useState([]);  
+  const [orderId, setOrderId] = useState(generarOrderId());  
+  const [isReadyToPay, setIsReadyToPay] = useState(false);  
 
-  const handlePagar = async () => {
-    try {
-      const fecha = moment().format('YYYY-MM-DD');
-      const hora = moment().format('HH:mm:ss');
-      const metodo_pago = 'Tarjeta';
-  
-      if (!compra.venta.length) throw new Error('No hay productos en la venta');
-  
-      const totalDescuentosNum = parseFloat(compra.total_descuentos) || 0;
-      const totalSinDescuentosNum = parseFloat(compra.total_productos) || 0;
-  
-      const incentivosAlcanzados = incentivos.filter(incentivo => {
-        return compra.total_a_pagar_con_descuentos >= incentivo.TO_minimo;
-      });
-  
-      // Agregar email al `compraData` directamente
-      const email = sessionData.email; // Correo del cliente
-      console.log('Email del cliente para enviar factura:', email); // Log para verificar el email
-      const estadoEntrega = "Pendiente";
-      const compraData = {
-        id_orden: orderId,
-        fecha,
-        hora,
-        id_cliente: sessionData.id_cliente,
-        email, // Incluimos el email en los datos que se envían al servidor
-        metodo_pago,
-        total_con_descuentos: compra.total_a_pagar_con_descuentos || totalSinDescuentosNum,
-        total_productos: totalSinDescuentosNum,
-        total_descuentos: totalDescuentosNum,
-        productos: compra.venta.map(item => ({
-          id_pizza: item.id_producto,
-          cantidad: item.cantidad,
-          size: item.size,
-          price: item.price,
-          extraIngredients: item.extraIngredients,
-        })),
-        cupones: compra.cupones,
-        incentivos: incentivosAlcanzados.map(inc => ({ id: inc.id })),
-        metodo_entrega: JSON.stringify({
-          ...compra.Entrega,
-          Delivery: {
-            ...compra.Entrega?.Delivery,
-            costo: compra.Entrega?.Delivery?.freePassApplied ? 0 : compra.Entrega?.Delivery?.costoReal, // Asegurar que se almacene el costo del delivery siempre, sea 0 o el real
-            costoReal: compra.Entrega?.Delivery?.costoReal, // Asegurar que el costo real siempre esté presente
-            freePassApplied: compra.Entrega?.Delivery?.freePassApplied || false, // Asegurar que el estado esté presente
-          },
-        }),
-        observaciones: compra.observaciones,
-        venta_procesada: 0,
-        estado_entrega: estadoEntrega, 
-      };
-  
-      console.log('Datos de la compra:', compraData); // Verificar todos los datos antes de enviar
-  
-      // Realizar la solicitud para registrar la venta
-      const response = await axios.post('http://localhost:3001/registro_ventas', compraData);
-  
-      if (response.data.success) {
-        // Actualizar la tabla `PedidosEnCola` después de registrar la venta
-        if (compra.Entrega?.Delivery) {
-          const idUbicacion = compra.Entrega?.Delivery?.tiendaSalida?.id;
-          if (idUbicacion) {
-            await axios.post('http://localhost:3001/fill_pedidos_encola');
-          }
-        } else if (compra.Entrega?.PickUp) {
-          const idUbicacion = compra.Entrega?.PickUp?.puntoRecogida?.id;
-          if (idUbicacion) {
-            await axios.post('http://localhost:3001/fill_pedidos_encola');
-          }
-        }
-  
-        alert('Pago realizado y venta registrada con éxito');
-      } else {
-        throw new Error('Error al registrar la venta en el servidor');
-      }
-    } catch (error) {
-      console.error('Error al realizar el pago y registrar la venta:', error);
-      alert('Hubo un error al procesar el pago.');
-    }
-  };
-  useEffect(() => {
+ useEffect(() => {
     const fetchIncentivos = async () => {
       try {
         const response = await axios.get('http://localhost:3001/api/incentivos');
@@ -111,24 +31,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
 
     fetchIncentivos();
   }, []);
-  const calcularFaltante = (incentivo, totalAPagar) => {
-    const faltante = incentivo.TO_minimo - totalAPagar;
-    return faltante > 0 ? faltante : 0;
-  };
-  const recalcularTotal = (venta) => {
-    return venta.reduce((acc, item) => acc + item.total, 0);
-  };
-  const getDescuentoPorcentaje = () => {
-    const totalDescuento = compra.DescuentosCupon || 0;
-    if (totalDescuento === 0) return 0;
-    return (totalDescuento * 100).toFixed(2);
-  };
-  const guardarEnHistorial = (tipo, contenido) => {
-    setHistorial(prevHistorial => [
-      ...prevHistorial,
-      { orderId, step: prevHistorial.length + 1, tipo, contenido },
-    ]);
-  };
   useEffect(() => {
     if (compra.venta.length > 0) {
       guardarEnHistorial("venta", { ventaId: compra.venta[compra.venta.length - 1].id });
@@ -139,40 +41,9 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       guardarEnHistorial("entrega", { metodo: compra.Entrega });
     }
   }, [compra.Entrega]);
-  const handleUndo = () => {
-    if (historial.length > 0) {
-      const nuevoHistorial = [...historial];
-      const ultimoCambio = nuevoHistorial.pop();
-
-      if (ultimoCambio.tipo === "venta") {
-        setCompra(prevCompra => {
-          const nuevaVenta = prevCompra.venta.slice(0, -1);
-          const nuevoTotal = recalcularTotal(nuevaVenta);
-          return {
-            ...prevCompra,
-            venta: nuevaVenta,
-            total_productos: nuevoTotal,
-            total_a_pagar_con_descuentos: nuevoTotal - prevCompra.total_descuentos,
-          };
-        });
-      } else if (ultimoCambio.tipo === "entrega") {
-        setCompra(prevCompra => ({ ...prevCompra, Entrega: null }));
-      }
-
-      setHistorial(nuevoHistorial);
-    }
-  };
   useEffect(() => {
     setCompra(prevCompra => ({ ...prevCompra, id_orden: orderId }));
   }, [orderId, setCompra]);
-  const verificarDeliveryFreePass = () => {
-    console.log("Verificando incentivos disponibles...");
-    const deliveryFreePass = incentivos.some((incentivo) =>
-      incentivo.incentivo === "Delivery Free Pass" && compra.total_a_pagar_con_descuentos >= incentivo.TO_minimo
-    );
-    console.log("Resultado de la verificación Delivery Free Pass:", deliveryFreePass);
-    return deliveryFreePass;
-  };
   useEffect(() => {
     if (compra.Entrega?.Delivery) {
       const valorCalculado = compra.Entrega.Delivery.costoReal ?? compra.Entrega.Delivery.costo ?? 0;
@@ -233,7 +104,148 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       });
     }
   }, [compra.total_a_pagar_con_descuentos, incentivos, compra.Entrega?.Delivery]);
+   useEffect(() => {
+    setQrData(getQRCodeData());
+  }, [compra?.Entrega]);
+  useEffect(() => {
+    calcularTotalDescuentos();
+  }, [
+    compra.venta,
+    compra.cupones,
+    compra.Entrega?.Delivery?.costo,
+    compra.Entrega?.Delivery?.costoTicketExpress,
+    compra.Entrega?.PickUp?.costoTicketExpress,
+  ]);
+ 
+  const handlePagar = async () => {
+    try {
+      const fecha = moment().format('YYYY-MM-DD');
+      const hora = moment().format('HH:mm:ss');
+      const metodo_pago = 'Tarjeta';
+  
+      if (!compra.venta.length) throw new Error('No hay productos en la venta');
+  
+      const totalDescuentosNum = parseFloat(compra.total_descuentos) || 0;
+      const totalSinDescuentosNum = parseFloat(compra.total_productos) || 0;
+  
+      const incentivosAlcanzados = incentivos.filter(incentivo => {
+        return compra.total_a_pagar_con_descuentos >= incentivo.TO_minimo;
+      });
+  
+      // Agregar email al `compraData` directamente
+      const email = sessionData.email; // Correo del cliente
+      console.log('Email del cliente para enviar factura:', email); // Log para verificar el email
+      const estadoEntrega = "Pendiente";
+      const compraData = {
+        id_orden: orderId,
+        fecha,
+        hora,
+        id_cliente: sessionData.id_cliente,
+        email, // Incluimos el email en los datos que se envían al servidor
+        metodo_pago,
+        total_con_descuentos: compra.total_a_pagar_con_descuentos || totalSinDescuentosNum,
+        total_productos: totalSinDescuentosNum,
+        total_descuentos: totalDescuentosNum,
+        productos: compra.venta.map((item) => ({
+          id_pizza: item.id || item.id_producto, 
+          cantidad: item.cantidad,
+          size: item.size,
+          price: item.basePrice || item.total || item.price,
+          extraIngredients: item.extraIngredients || [], 
+        })),
+        cupones: compra.cupones,
+        incentivos: incentivosAlcanzados.map(inc => ({ id: inc.id })),
+        metodo_entrega: JSON.stringify({
+          ...compra.Entrega,
+          Delivery: {
+            ...compra.Entrega?.Delivery,
+            costo: compra.Entrega?.Delivery?.freePassApplied ? 0 : compra.Entrega?.Delivery?.costoReal, // Asegurar que se almacene el costo del delivery siempre, sea 0 o el real
+            costoReal: compra.Entrega?.Delivery?.costoReal, // Asegurar que el costo real siempre esté presente
+            freePassApplied: compra.Entrega?.Delivery?.freePassApplied || false, // Asegurar que el estado esté presente
+          },
+        }),
+        observaciones: compra.observaciones,
+        venta_procesada: 0,
+        estado_entrega: estadoEntrega, 
+      };
+  
+      console.log('Datos de la compra:', compraData); // Verificar todos los datos antes de enviar
+  
+      // Realizar la solicitud para registrar la venta
+      const response = await axios.post('http://localhost:3001/registro_ventas', compraData);
+  
+      if (response.data.success) {
+        // Actualizar la tabla `PedidosEnCola` después de registrar la venta
+        if (compra.Entrega?.Delivery) {
+          const idUbicacion = compra.Entrega?.Delivery?.tiendaSalida?.id;
+          if (idUbicacion) {
+            await axios.post('http://localhost:3001/fill_pedidos_encola');
+          }
+        } else if (compra.Entrega?.PickUp) {
+          const idUbicacion = compra.Entrega?.PickUp?.puntoRecogida?.id;
+          if (idUbicacion) {
+            await axios.post('http://localhost:3001/fill_pedidos_encola');
+          }
+        }
+  
+        alert('Pago realizado y venta registrada con éxito');
+      } else {
+        throw new Error('Error al registrar la venta en el servidor');
+      }
+    } catch (error) {
+      console.error('Error al realizar el pago y registrar la venta:', error);
+      alert('Hubo un error al procesar el pago.');
+    }
+  };
+  const calcularFaltante = (incentivo, totalAPagar) => {
+    const faltante = incentivo.TO_minimo - totalAPagar;
+    return faltante > 0 ? faltante : 0;
+  };
+  const recalcularTotal = (venta) => {
+    return venta.reduce((acc, item) => acc + item.total, 0);
+  };
+  const getDescuentoPorcentaje = () => {
+    const totalDescuento = compra.DescuentosCupon || 0;
+    if (totalDescuento === 0) return 0;
+    return (totalDescuento * 100).toFixed(2);
+  };
+  const guardarEnHistorial = (tipo, contenido) => {
+    setHistorial(prevHistorial => [
+      ...prevHistorial,
+      { orderId, step: prevHistorial.length + 1, tipo, contenido },
+    ]);
+  };
+  const handleUndo = () => {
+    if (historial.length > 0) {
+      const nuevoHistorial = [...historial];
+      const ultimoCambio = nuevoHistorial.pop();
 
+      if (ultimoCambio.tipo === "venta") {
+        setCompra(prevCompra => {
+          const nuevaVenta = prevCompra.venta.slice(0, -1);
+          const nuevoTotal = recalcularTotal(nuevaVenta);
+          return {
+            ...prevCompra,
+            venta: nuevaVenta,
+            total_productos: nuevoTotal,
+            total_a_pagar_con_descuentos: nuevoTotal - prevCompra.total_descuentos,
+          };
+        });
+      } else if (ultimoCambio.tipo === "entrega") {
+        setCompra(prevCompra => ({ ...prevCompra, Entrega: null }));
+      }
+
+      setHistorial(nuevoHistorial);
+    }
+  };
+  const verificarDeliveryFreePass = () => {
+    console.log("Verificando incentivos disponibles...");
+    const deliveryFreePass = incentivos.some((incentivo) =>
+      incentivo.incentivo === "Delivery Free Pass" && compra.total_a_pagar_con_descuentos >= incentivo.TO_minimo
+    );
+    console.log("Resultado de la verificación Delivery Free Pass:", deliveryFreePass);
+    return deliveryFreePass;
+  };
   const calcularCostosAdicionales = () => {
     let totalDelivery = compra.Entrega?.Delivery?.costo || 0;
     let totalTicketExpress = (compra.Entrega?.Delivery?.costoTicketExpress || 0) + (compra.Entrega?.PickUp?.costoTicketExpress || 0);
@@ -245,11 +257,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       totalCupones,
     };
   };
-  const totalAPagar = compra.venta.length > 0
-    ? (compra.total_a_pagar_con_descuentos > 0 ? compra.total_a_pagar_con_descuentos : compra.total_productos)
-    : 0;
-
-    const getQRCodeData = () => {
+  const getQRCodeData = () => {
       if (compra?.Entrega?.PickUp) {
         const puntoRecogida = compra?.Entrega?.PickUp?.puntoRecogida;
         const puntoRecogidaInfo = puntoRecogida
@@ -261,12 +269,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         return `Delivery\nCliente: ${compra.cliente?.name}\nTeléfono: ${compra.cliente?.phone}\nDirección: ${compra?.Entrega?.Delivery?.address}\nFecha y Hora: ${compra?.Entrega?.Delivery?.fechaYHoraPrometida}\nTicketExpress: ${compra?.Entrega?.Delivery?.TicketExpress ? 'Sí' : 'No'}`;
       }
       return 'No hay información de entrega disponible';
-    };
-
-    
-  useEffect(() => {
-    setQrData(getQRCodeData());
-  }, [compra?.Entrega]);
+  };
   const handleNext = () => {
     if (!isReadyToPay) {
       handleNextStep();
@@ -302,15 +305,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       total_a_pagar_con_descuentos: parseFloat(totalFinal.toFixed(2)),
     }));
   };
-  useEffect(() => {
-    calcularTotalDescuentos();
-  }, [
-    compra.venta,
-    compra.cupones,
-    compra.Entrega?.Delivery?.costo,
-    compra.Entrega?.Delivery?.costoTicketExpress,
-    compra.Entrega?.PickUp?.costoTicketExpress,
-  ]);
   const handleRemoveProduct = (productoAEliminar) => {
     setCompra((prevCompra) => {
       // Filtrar el producto por su identificador único (id)
@@ -363,6 +357,10 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     });
   };
 
+  const totalAPagar = compra.venta.length > 0
+  ? (compra.total_a_pagar_con_descuentos > 0 ? compra.total_a_pagar_con_descuentos : compra.total_productos)
+  : 0;
+
   return (
     <div className="floating-cart">
       <div className="cart-header">
@@ -377,32 +375,60 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       )}
 
       <ul>
-      {compra.venta.map((item, index) => (
-        <li key={index}>
-          {item.nombre} x {item.cantidad} - ({item.basePrice || item.price}€)
-          <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
-          <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
-          {item.extraIngredients.length > 0 && (
+        {compra.venta.map((item, index) => (
+          <li
+            key={index}
+            style={{
+              marginLeft: '0px', // Eliminar márgenes adicionales
+              paddingLeft: '0px', // Eliminar padding izquierdo
+              listStyleType: 'none', // Evitar viñetas si las hay
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#000000' }}>✅</span>
+              <span>
+                {item.cantidad} x {item.nombre} ({item.size} - {item.basePrice || item.total || item.price}€)
+              </span>
+              <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
+              <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
+            </div>
+
+            {/* Renderizar otros detalles (IE o HalfAndHalf) */}
+            {item.halfAndHalf && (
+              <ul>
+                <li>
+                  Mitad: {item.halfAndHalf.izquierda.nombre} - {item.halfAndHalf.izquierda.precio.toFixed(2)}€
+                </li>
+                <li>
+                  Mitad: {item.halfAndHalf.derecha.nombre} - {item.halfAndHalf.derecha.precio.toFixed(2)}€
+                </li>
+              </ul>
+            )}
+            {item.extraIngredients?.length > 0 && (
             <ul>
-              {item.extraIngredients.map((extra, idx) => (
-                <div key={extra.IDI} style={{ display: 'flex', alignItems: 'center', marginBottom: '5px', gap: '5px' }}>
-                  <span style={{ marginRight: '5px', flexGrow: 1  }}>
-                    +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
-                  </span>
-                  <button
-                    style={{ padding: '2px 5px', fontSize: '12px' }}
-                    onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
-                  >
-                    Del
-                  </button>
-                </div>
+              {item.extraIngredients.map((extra) => (
+                <li
+                  key={extra.nombre}
+                  className="extra-ingredient-item"
+                >
+                  +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
+                  {item.id !== 101 && item.id !== 102 && item.id !== 103 && (
+                    <button
+                      className="extra-ingredient-button"
+                      onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
+                      title="Eliminar ingrediente"
+                    >
+                      Del
+                    </button>
+                  )}
+                </li>
               ))}
             </ul>
-          )}
-        </li>
-      ))}
-
+             )}
+          </li>
+        ))}
       </ul>
+
 
       <div className="totals">
         

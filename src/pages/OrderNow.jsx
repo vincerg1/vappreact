@@ -15,16 +15,13 @@ const OrderNow = () => {
     navigate('/make-your-pizza', { state: { compra } });  // Pasar la prop "compra" a MakeYourPizza si es necesario
   };
 
-  const handleMakeARarePizzaClick = () => {
-    navigate('/rare-pizza', { state: { compra } });
-  };
+
 
   return (
     <div className="order-now-container">
       <h1>Order Now</h1>
       <button onClick={handleMenuClick}>Menú</button>
       <button onClick={handleMakeYourPizzaClick}>Make Your Pizza</button>
-      <button onClick={handleMakeARarePizzaClick}>Make a Rare Pizza</button>
     </div>
   );
 };
