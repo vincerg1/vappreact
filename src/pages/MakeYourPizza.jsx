@@ -472,7 +472,7 @@ const MakeYourPizza = () => {
   
   return (
     <div className="make-your-pizza-container">
-      {/* Carrito flotante siempre visible */}
+     
       <FloatingCart
         compra={compra}
         setCompra={setCompra}

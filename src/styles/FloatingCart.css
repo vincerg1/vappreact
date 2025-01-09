@@ -1,10 +1,10 @@
 /* FloatingCart.css */
-/* Ancho aumentado del carrito */
+
 .floating-cart {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 400px; /* Ancho para los incentivos */
+  width: 400px; 
   background-color: white;
   border: 1px solid #ccc;
   padding: 10px;
@@ -12,15 +12,12 @@
   z-index: 1000;
   border-radius: 10px;
 }
-
-/* Título y botón Deshacer alineados */
 .cart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px; /* Espacio entre el título y el total */
+  margin-bottom: 10px; 
 }
-
 .undo-button {
   background-color: #f10000;
   border: none;
@@ -30,20 +27,24 @@
   cursor: pointer;
   border-radius: 5px;
 }
-
 .undo-button:hover {
   background-color: #ff4d4d;
   color: white;
 }
-
-/* Texto de "Detalles de tu compra" */
 .detalles-compra p {
   font-size: 12px;
   color: #f8bf05;
   text-align: left;
 }
-
-/* Incentivo con efecto de parpadeo */
+.detalles_pedidos ul {
+  background-color: #ededed;
+  border-radius: 10px;
+  padding: .75rem;
+}
+.detalles_pedidos_general{
+  color: #d40000;
+  font-weight: bold;
+}
 .incentivo-estado {
   color: rgb(118, 231, 165);
   font-size: 13px;
@@ -54,7 +55,6 @@
   margin-top: 10px;
   animation: blinkBackground 1.5s infinite;
 }
-
 @keyframes blinkBackground {
   0% { background-color: rgb(204, 237, 57); }
   50% { background-color: rgb(249, 250, 127); }
@@ -75,13 +75,11 @@
   font-size: 12px;
   width: fit-content;
 }
-
 .next-button-container {
   display: flex;
   justify-content: center;
   margin-top: 20px;
 }
-
 .next-button {
   background-color: #f5cf36;
   color: white;
@@ -92,11 +90,9 @@
   border-radius: 5px;
   width: 100%;
 }
-
 .next-button:hover {
   background-color: #0056b3;
 }
-
 .undo-button {
   background-color: #f10000;
   border: none;
@@ -105,11 +101,9 @@
   color: white;
   padding: 5px 10px;
 }
-
 .undo-button:hover {
   background-color: #d40000;
 }
-
 .qr-with-text {
   display: flex;
   align-items: center;
@@ -122,7 +116,6 @@
   border-radius: 10px; /* Bordes redondeados */
 
 }
-
 .vertical-text {
   transform: rotate(180deg);
   writing-mode: vertical-rl;
@@ -137,17 +130,14 @@
   height: 128px; /* Ajustamos la altura del texto al tamaño del QR */
   overflow: hidden; /* Asegura que no se salga del contenedor */
 }
-
 .track-title {
   text-align: center;
   font-weight: bold;
   margin-bottom: 10px;
 }
-
 .totals p{
   text-align: start;
 }
-
 .additional-costs {
   border: 1px solid #ccc;  /* Borde para resaltar la sección */
   padding: 10px;           /* Espaciado interno para mejorar la legibilidad */
@@ -156,7 +146,6 @@
   background-color: #f9f9f9;  /* Color de fondo para diferenciar la sección */
   line-height: .75;
 }
-
 .edit-button, .delete-button {
   background: none; /* Eliminar fondo */
   border: none; /* Eliminar el borde */
@@ -168,69 +157,63 @@
   justify-content: end;
   filter: grayscale(100%); 
 }
-
 .edit-button:hover, .delete-button:hover {
   color: #575757; /* Cambiar el color al pasar el ratón */
 }
-
 .edit-button .icon, .delete-button .icon {
   font-size: 12px; /* Ajustar el tamaño del ícono */
   color: gray; /* Cambiar a escala de grises */
 }
-
-/* Ajustar los ingredientes extra en el FloatingCart */
-.extra-ingredients-list {
-  list-style: none; /* Eliminar viñetas */
-  padding-left: 0;  /* Eliminar sangría */
-}
-
-.extra-ingredient-item {
-  font-style: italic;  /* Texto en cursiva */
-  font-size: 1rem;    /* Reducir tamaño de fuente */
-
-}
-
-.extra-ingredient-item span {
-  margin-right: 5px; /* Espacio entre el nombre y el precio */
-}
-
 .additional-costs-name{
   font-size: 12px;
   color: #f8bf05;
   text-align: left;
-
 }
 
+/* Ajustar los ingredientes extra en el FloatingCart */
 
 
-/* Extra ingredient item */
-.extra-ingredient-item {
-  display: flex;
-  align-items: center;
-  gap: .5px;
-  margin-bottom: 10px;
+.extra-ingredient-item,
+.half-and-half-item {
+  font-style: italic; 
+  margin-left: 0rem;
 }
 
-/* Text for extra ingredient */
-.extra-ingredient-text {
-  margin-right: 25px;
-}
-
-/* Button for removing extra ingredient */
 .extra-ingredient-button {
-  padding: 2px 5px;
+  padding: 2px 4px;
   font-size: 12px;
   cursor: pointer;
-  background: none;
-  border: none;
-  color: #ef0808;
-  
-}
+  color: #ffffff;
+  margin-left: .5rem;
+  background-color: #d40000;
+  /* line-height: -11.5;  */
 
+}
 .extra-ingredient-button:hover {
   color: #ffffff;
-  background-color: #b37d00;
+  background-color: #828281;
 }
+
+/* Ajustar los ingredientes extra en el CM */
+
+.extra-ingredients-list {
+  list-style: none; /* Eliminar viñetas */
+  padding-left: 0;  /* Eliminar sangría */
+}
+.extra-ingredient-text {
+  margin-right: 250px;
+  background-color: #0056b3;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 

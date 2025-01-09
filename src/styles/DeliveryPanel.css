@@ -43,8 +43,7 @@
     text-align: center;
   }
   
-  button {
-    margin: 10px 0;
+  /* button {
     padding: 10px 15px;
     border: none;
     border-radius: 5px;
@@ -52,8 +51,8 @@
     color: white;
     cursor: pointer;
     font-size: 14px;
-    width: 100%; /* Botones ocupan todo el ancho de la columna */
-  }
+    width: 100%; 
+  } */
   
   button:hover {
     background-color: #218838;

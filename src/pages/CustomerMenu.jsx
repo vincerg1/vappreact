@@ -14,6 +14,11 @@ const CustomerMenu = () => {
   const location = useLocation();
   const [incentivos, setIncentivos] = useState([]);
   const initialCompra = location.state?.compra || {};
+  const [clienteInfo, setClienteInfo] = useState(sessionData?.cliente || null); 
+  const [showDeliveryForm, setShowDeliveryForm] = useState(false);  
+  const [ingredientesActivos, setIngredientesActivos] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
   const [compra, setCompra] = useState({
     observaciones: '',
     id_orden: '',
@@ -31,12 +36,6 @@ const CustomerMenu = () => {
     origen: '',
     observaciones: ''
   });
-  const [clienteInfo, setClienteInfo] = useState(sessionData?.cliente || null); 
-  const [showDeliveryForm, setShowDeliveryForm] = useState(false);  
-  const [ingredientesActivos, setIngredientesActivos] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingProductId, setEditingProductId] = useState(null);
- 
 
   useEffect(() => {
     if (activePizzas && activePizzas.length > 0) {

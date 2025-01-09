@@ -374,61 +374,70 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         </div>
       )}
 
-      <ul>
-        {compra.venta.map((item, index) => (
-          <li
-            key={index}
-            style={{
-              marginLeft: '0px', // Eliminar márgenes adicionales
-              paddingLeft: '0px', // Eliminar padding izquierdo
-              listStyleType: 'none', // Evitar viñetas si las hay
-            }}
-          >
-            <div>
-              <span>
-                {item.cantidad} x {item.nombre} ({item.size} - {item.basePrice || item.precioBase || item.price}€)
-              </span>
-              <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
-              <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
-            </div>
+      <div className="detalles_pedidos">
+            <ul >
+      {compra.venta.map((item, index) => {
+  const precioPrincipal = item.halfAndHalf
+    ? (item.halfAndHalf.izquierda.precio + item.halfAndHalf.derecha.precio).toFixed(2)
+    : (item.basePrice || item.precioBase || item.price);
 
-            {/* Renderizar otros detalles (IE o HalfAndHalf) */}
-            {item.halfAndHalf && (
-              <ul>
-                <li>
-                  Mitad: {item.halfAndHalf.izquierda.nombre} - {item.halfAndHalf.izquierda.precio.toFixed(2)}€
-                </li>
-                <li>
-                  Mitad: {item.halfAndHalf.derecha.nombre} - {item.halfAndHalf.derecha.precio.toFixed(2)}€
-                </li>
-              </ul>
-            )}
-            {item.extraIngredients?.length > 0 && (
-            <ul>
-              {item.extraIngredients.map((extra) => (
-                <li
-                  key={extra.nombre}
-                  className="extra-ingredient-item"
-                >
-                  +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
-                  {item.id !== 101 && item.id !== 102 && item.id !== 103 && (
-                    <button
-                      className="extra-ingredient-button"
-                      onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
-                      title="Eliminar ingrediente"
-                    >
-                      Del
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-             )}
+  return (
+    <li
+      key={index}
+      style={{
+        listStyleType: 'none', // Evitar viñetas
+      }}
+    >
+      <div className="detalles_pedidos_general">
+        <span>
+          {item.cantidad} x {item.nombre} ({item.size} - {precioPrincipal}€)
+        </span>
+        <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
+        <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
+      </div>
+
+      {/* Renderizar otros detalles (IE o HalfAndHalf) */}
+      {item.halfAndHalf && (
+        <ul 
+        style={{ margin: 5, padding: .75, listStyleType: 'none' }}
+        >
+          <li className="half-and-half-item">
+            Mitad: {item.halfAndHalf.izquierda.nombre} ({item.halfAndHalf.izquierda.precio.toFixed(2)}€)
           </li>
-        ))}
-      </ul>
+          <li className="half-and-half-item">
+            Mitad: {item.halfAndHalf.derecha.nombre} ({item.halfAndHalf.derecha.precio.toFixed(2)}€)
+          </li>
+        </ul>
+      )}
 
+      {item.extraIngredients?.length > 0 && (
+        <ul style={{listStyleType: 'none' }}>
+          {item.extraIngredients.map((extra) => (
+            <li
+              key={extra.nombre}
+              className="extra-ingredient-item"
+              style={{ margin: 0, padding: 0 }}
+            >
+              +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
+              {item.id !== 101 && item.id !== 102 && item.id !== 103 && (
+                <button
+                  className="extra-ingredient-button"
+                  onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
+                  title="Eliminar ingrediente"
+                >
+                  Del
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+      })}
 
+            </ul>
+      </div>
       <div className="totals">
         
         {compra.cupones.length > 0 && (

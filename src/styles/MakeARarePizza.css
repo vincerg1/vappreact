@@ -1,8 +1,10 @@
 .make-a-rare-pizza {
   text-align: center;
-  padding: 20px;
 }
 
+.make-a-rare-pizza .floating-cart {
+  text-align: left;
+}
 .make-a-rare-pizza h2 {
   font-size: 28px;
   color: #333;
