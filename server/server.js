@@ -347,6 +347,18 @@ cron.schedule('* * * * *', () => {
 });
 
 // the get zone
+
+app.get('/IngredientExtraPrices', (req, res) => {
+  const query = 'SELECT * FROM IngredientExtraPrices';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error al obtener los datos de IngredientExtraPrices:', err.message);
+      res.status(500).json({ error: 'Error al obtener los datos' });
+    } else {
+      res.status(200).json(rows);
+    }
+  });
+});
 app.get('/reportes/posiciones-repartidores', (req, res) => {
   const { timeRange } = req.query;
 
@@ -3963,6 +3975,25 @@ app.delete('/clientes/:id_cliente', (req, res) => {
 });
 
 //put zone //
+app.put('/IngredientExtraPrices/:id', async (req, res) => {
+  const { id } = req.params;
+  const { extra_price } = req.body;
+
+  if (!extra_price || isNaN(extra_price)) {
+    return res.status(400).send('Precio inválido.');
+  }
+
+  try {
+    await db.run(
+      'UPDATE IngredientExtraPrices SET extra_price = ? WHERE id = ?',
+      [extra_price, id]
+    );
+    res.status(200).send({ message: 'Precio actualizado con éxito.' });
+  } catch (error) {
+    res.status(500).send('Error al actualizar el precio.');
+  }
+});
+
 
 // app.put('/ofertas/:id', upload.single('image'), (req, res) => {
 //   const {

@@ -331,12 +331,6 @@ const handleFormSubmit = async (e) => {
   }
 };
 
-
-
-
-
-
-
   return (
     <div>
       <h1 className="PDCRL">{pizzaId ? 'Editar Menu' : 'Crear Menu'}</h1>
@@ -361,7 +355,7 @@ const handleFormSubmit = async (e) => {
             onChange={handleChange}
           >
             <option value="">Seleccione una categoría</option>
-            {["Pizza Tradicional", "Pizza Frita", "Pizza Sin Gluten", "Pizza Dulce", "Pizza Molde", "Pizza Frutal", "Calzone"].map((categoria) => (
+            {["Base Pizza", "Pizza Tradicional", "Pizza Frita", "Pizza Sin Gluten", "Pizza Dulce", "Pizza Frutal", "Calzone"].map((categoria) => (
               <option key={categoria} value={categoria}>
                 {categoria}
               </option>

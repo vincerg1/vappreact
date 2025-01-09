@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import _PizzaContext from './_PizzaContext';
@@ -6,18 +6,20 @@ import '../styles/MakeARarePizza.css';
 import FloatingCart from './FloatingCart';
 import DeliveryForm from './DeliveryForm';
 import moment from 'moment';
+import axios from 'axios';
 
 const MakeARarePizza = () => {
   const { activePizzas, updateFloatingCart, sessionData } = useContext(_PizzaContext);
   const basePizza = ['Salsa Tomate Pizza', 'Mozzarella'];
   const location = useLocation();
   const [ingredientesAleatorios, setIngredientesAleatorios] = useState([]);
-  const [descuento, setDescuento] = useState(null);
-  const [pizzaGenerada, setPizzaGenerada] = useState(false);
+  const [pizzaGenerada, setPizzaGenerada] = useState(null);
   const [sizeSeleccionado, setSizeSeleccionado] = useState('');
   const [generarIntentos, setGenerarIntentos] = useState(3); // Número de intentos permitidos
   const initialCompra = location.state?.compra || {};
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
+  const [ofertaPizzaRara, setOfertaPizzaRara] = useState(null);
+  const [descuentoAleatorio, setDescuentoAleatorio] = useState(null);
   const [compra, setCompra] = useState({
     observaciones: '',
     id_orden: '',
@@ -36,12 +38,21 @@ const MakeARarePizza = () => {
   });
 
   const sizesDisponibles = [...new Set(activePizzas.flatMap(pizza => JSON.parse(pizza.selectSize)))];
+  const basePizzaData = activePizzas.find(pizza => pizza.categoria === 'Base Pizza');
+
+ useEffect(() => {
+    console.log('Estado de compra actualizado:', compra);
+  }, [compra]);
+  useEffect(() => {
+    console.log("Venta actualizada:", compra.venta);
+  }, [compra.venta]);
+
 
   const generarIngredientesAleatorios = () => {
     const ingredientesDisponibles = [...new Set(
       activePizzas.flatMap(pizza => JSON.parse(pizza.ingredientes).map(ing => ing.ingrediente))
     )].filter(ing => !basePizza.includes(ing));
-
+   console.log(activePizzas)
     const seleccionados = [];
     while (seleccionados.length < 2) {
       const random = ingredientesDisponibles[Math.floor(Math.random() * ingredientesDisponibles.length)];
@@ -49,74 +60,160 @@ const MakeARarePizza = () => {
         seleccionados.push(random);
       }
     }
+    console.log('Ingredientes aleatorios seleccionados:', seleccionados);
     return seleccionados;
   };
-
-  const handleGeneratePizza = () => {
-    if (generarIntentos === 0) {
-      alert('Ya no tienes más intentos para generar una pizza rara.');
-      return;
+  const handleGeneratePizza = async () => {
+    try {
+      if (generarIntentos === 0) {
+        alert('Ya no tienes más intentos para generar una pizza rara.');
+        return;
+      }
+  
+      if (!sizeSeleccionado) {
+        alert('Selecciona un tamaño antes de generar la pizza.');
+        return;
+      }
+  
+      // Obtener las ofertas para Pizza Rara
+      const ofertaResponse = await axios.get('http://localhost:3001/ofertas');
+      const ofertaEncontrada = ofertaResponse.data.data.find(
+        (oferta) => oferta.Tipo_Oferta === 'Pizza Rara'
+      );
+      if (!ofertaEncontrada) {
+        alert('No hay ofertas disponibles para Pizza Rara.');
+        return;
+      }
+  
+      const { Min_Descuento_Percent, Max_Descuento_Percent, Cupones_Disponibles } = ofertaEncontrada;
+      if (Cupones_Disponibles <= 0) {
+        alert('No hay cupones disponibles para esta oferta.');
+        return;
+      }
+      const descuento = Math.floor(
+        Math.random() * (Max_Descuento_Percent - Min_Descuento_Percent + 1)
+      ) + Min_Descuento_Percent;
+  
+      if (Cupones_Disponibles <= 0) {
+        alert('No hay cupones disponibles para esta oferta.');
+        return;
+      }
+  
+      // Generar un descuento aleatorio dentro del rango
+      const descuentoAleatorio = Math.floor(
+        Math.random() * (Max_Descuento_Percent - Min_Descuento_Percent + 1)
+      ) + Min_Descuento_Percent;
+  
+      // Obtener la base de pizza
+      const response = await axios.get('http://localhost:3001/menu_pizzas');
+      const pizzasBase = response.data.data.filter(
+        (pizza) => pizza.categoria.toLowerCase() === 'base pizza'
+      );
+  
+      if (pizzasBase.length === 0) {
+        throw new Error('No se encontraron pizzas base en la API.');
+      }
+  
+      const basePizza = pizzasBase[0];
+      const priceBySize = JSON.parse(basePizza.PriceBySize);
+      const precioBase = parseFloat(priceBySize[sizeSeleccionado]);
+  
+      if (isNaN(precioBase)) {
+        throw new Error('El precio de la base de pizza no es válido.');
+      }
+  
+      // Obtener los precios de ingredientes extras
+      const responseExtraPrices = await axios.get('http://localhost:3001/IngredientExtraPrices');
+      const extraPrices = responseExtraPrices.data.reduce((acc, item) => {
+        acc[item.size] = item.extra_price;
+        return acc;
+      }, {});
+  
+      // Generar ingredientes aleatorios
+      const ingredientes = generarIngredientesAleatorios();
+      const ingredientesExtra = activePizzas
+        .flatMap((pizza) => JSON.parse(pizza.ingredientes))
+        .filter((ing) => ingredientes.includes(ing.ingrediente))
+        .map((ing) => ({
+          IDI: ing.IDI,
+          nombre: ing.ingrediente,
+          precio: extraPrices[sizeSeleccionado] || 0, // Precio según el tamaño
+        }));
+  
+      // Evitar duplicados en `extraIngredients`
+      const ingredientesUnicos = ingredientesExtra.filter(
+        (ing, index, self) => index === self.findIndex((t) => t.IDI === ing.IDI)
+      );
+  
+      // Calcular el precio total de los ingredientes extra
+      const precioIngredientesExtra = ingredientesUnicos.reduce((acc, ing) => acc + ing.precio, 0);
+  
+      // Calcular precio final
+      const total =
+        (precioBase + precioIngredientesExtra) * (1 - descuentoAleatorio / 100);
+  
+      // Crear nueva pizza
+      const nuevaPizza = {
+        id: 103,
+        nombre: 'Pizza Personalizada 3',
+        size: sizeSeleccionado,
+        cantidad: 1,
+        ingredientes: ['Salsa Tomate Pizza', 'Mozzarella', ...ingredientes],
+        extraIngredients: ingredientesUnicos,
+        descuento: descuento,
+        precioBase: precioBase,
+        precioIngredientesExtra: precioIngredientesExtra,
+        total: parseFloat(total.toFixed(2)),
+      };
+      setOfertaPizzaRara(ofertaEncontrada);     
+      setPizzaGenerada(nuevaPizza);   
+      setDescuentoAleatorio(descuento);  
+      setGenerarIntentos((prev) => prev - 1);
+    } catch (error) {
+      console.error('Error al generar la pizza rara:', error);
     }
-
-    if (!sizeSeleccionado) {
-      alert('Selecciona un tamaño antes de generar la pizza.');
-      return;
-    }
-
-    const ingredientes = generarIngredientesAleatorios();
-    const descuentoAleatorio = Math.floor(Math.random() * (10 - 1 + 1)) + 1; // Descuento entre 1% y 10%
-    setIngredientesAleatorios(ingredientes);
-    setDescuento(descuentoAleatorio);
-
-    const nuevaPizza = {
-      id: 103,
-      nombre: 'Pizza Personalizada 3',
-      size: sizeSeleccionado,
-      ingredientes: ['Salsa Tomate Pizza', 'Mozzarella', ...ingredientes],
-      descuento: descuentoAleatorio,
-      precioBase: 10,
-      total: 10 - (10 * descuentoAleatorio) / 100,
-    };
-
-    setPizzaGenerada(nuevaPizza);
-    setGenerarIntentos(prev => prev - 1); // Reducir los intentos disponibles
   };
-
   const handleAddToCart = () => {
     if (!pizzaGenerada) {
       alert('Primero genera una pizza rara.');
       return;
     }
 
-    const nuevaPizza = {
-      ...pizzaGenerada,
-      cantidad: 1,
-      ingredientes: [...basePizza, ...ingredientesAleatorios],
-      extraIngredients: ingredientesAleatorios.map(ing => ({
-        nombre: ing,
-        precio: 1.5,
-      })),
+    if (!ofertaPizzaRara || !descuentoAleatorio) {
+      alert('No se ha cargado la oferta de pizza rara.');
+      return;
+    }
+    const cuponRandomPizza = {
+      Oferta_Id: ofertaPizzaRara.Oferta_Id,
+      Codigo_Oferta: ofertaPizzaRara.Codigo_Oferta,
+      Descuento: descuentoAleatorio / 100,  // p. ej. 0.15 si es 15
+      Max_Amount: ofertaPizzaRara.Max_Amount,
+      Tipo_Cupon: ofertaPizzaRara.Tipo_Cupon,
+      // ... cualquier otro campo que quieras
     };
-
-    setCompra(prev => {
-      const nuevaVenta = [...prev.venta, nuevaPizza];
+    // Tomamos la pizzaGenerada y la añadimos al carrito
+    setCompra((prev) => {
+      const nuevaVenta = [...prev.venta, pizzaGenerada];
       const nuevoTotal = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
-
+  
       return {
         ...prev,
         venta: nuevaVenta,
-        total_productos: nuevoTotal,
-        total_a_pagar_con_descuentos: nuevoTotal,
+        cupones: [...prev.cupones, cuponRandomPizza],
+        total_productos: parseFloat(nuevoTotal.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(nuevoTotal.toFixed(2)),
       };
     });
-
+  
+    // Limpiamos estados
     setPizzaGenerada(null);
     setSizeSeleccionado('');
     setIngredientesAleatorios([]);
-    setDescuento(null);
+    setDescuentoAleatorio(null);
+    setOfertaPizzaRara(null);
     alert('Pizza añadida al carrito.');
+  
   };
-
   const handleNextStep = () => {
     if (compra.venta.length === 0) {
       alert('Debes añadir al menos una pizza al carrito antes de continuar.');
@@ -124,6 +221,7 @@ const MakeARarePizza = () => {
     }
     setShowDeliveryForm(true);
   };
+
 
   return (
     <div className="make-a-rare-pizza">

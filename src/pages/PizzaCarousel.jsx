@@ -41,29 +41,32 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
 
   return (
     <div className="pizza-carousel">
-      <h2>😍 Menu of the day 😍 </h2>
+      <h2>😍 Menu of the day 😍</h2>
       <Slider {...settings}>
-        {activePizzas.map((pizza) => (
-          <div key={pizza.id} onClick={() => onPizzaSelect(pizza)} className="carousel-item">
-            <div className="carousel-image-container">
-              <img
-                src={`http://localhost:3001/${pizza.imagen}`}
-                alt={pizza.nombre}
-                className="carousel-image"
-              />
+        {activePizzas
+          .filter((pizza) => pizza.categoria !== "Base Pizza") // Filtrar pizzas con categoría distinta a "Base Pizza"
+          .map((pizza) => (
+            <div key={pizza.id} onClick={() => onPizzaSelect(pizza)} className="carousel-item">
+              <div className="carousel-image-container">
+                <img
+                  src={`http://localhost:3001/${pizza.imagen}`}
+                  alt={pizza.nombre}
+                  className="carousel-image"
+                />
+              </div>
+              <div className="carousel-details">
+                <h3>{pizza.nombre}</h3>
+                <p>{pizza.descripcion || 'Deliciosa pizza artesanal.'}</p>
+                <p>
+                  Desde <strong>{pizza.price ? `${pizza.price}€` : 'Consultar'}</strong>
+                </p>
+              </div>
             </div>
-            <div className="carousel-details">
-              <h3>{pizza.nombre}</h3>
-              <p>{pizza.descripcion || 'Deliciosa pizza artesanal.'}</p>
-              <p>
-                Desde <strong>{pizza.price ? `${pizza.price}€` : 'Consultar'}</strong>
-              </p>
-            </div>
-          </div>
-        ))}
+          ))}
       </Slider>
     </div>
   );
+  
 };
 
 

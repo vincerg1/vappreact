@@ -49,6 +49,7 @@ import RouteSetterAdmin from './pages/RouteSetterAdmin.jsx';
 import DRVCO from './pages/DRVCO.jsx';
 import RRep from './pages/RRep.jsx';
 import CrearAdmin from './pages/CrearAdmin.jsx';
+import GestionarIngredientesExtras from './pages/GestionarIngredientesExtras.jsx';
 
 function App() {
   const [menus, setMenus] = useState([]);
@@ -57,6 +58,7 @@ function App() {
     <PizzaProvider>
       <BrowserRouter>
         <Routes>
+         <Route path="/GestionarIngredientesExtras" element={<GestionarIngredientesExtras />} />
          <Route path="/register" element={<CrearAdmin />} />
          <Route path="/repartidores-reportes" element={<RRep />} />
          <Route path="/dashboard/drvco" element={<DRVCO />} />

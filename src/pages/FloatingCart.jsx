@@ -384,10 +384,9 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
               listStyleType: 'none', // Evitar viñetas si las hay
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#000000' }}>✅</span>
+            <div>
               <span>
-                {item.cantidad} x {item.nombre} ({item.size} - {item.basePrice || item.total || item.price}€)
+                {item.cantidad} x {item.nombre} ({item.size} - {item.basePrice || item.precioBase || item.price}€)
               </span>
               <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
               <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>

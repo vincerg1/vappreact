@@ -268,7 +268,7 @@ const handleDeletePartner = async (id) => {
 
   return (
     <div>
-    <h1 className="PDCRL">Panel de Control / Menú</h1>
+    {/* <h1 className="PDCRL">Panel de Control / Menú</h1> */}
     <h1 className="h1m">Menú Overview</h1>
     <button onClick={handleCreatePizza}>Crear una Nueva Pizza</button>
     <div className="menu-container">

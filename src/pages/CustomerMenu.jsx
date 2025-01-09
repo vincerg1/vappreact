@@ -398,8 +398,6 @@ const CustomerMenu = () => {
     setIsEditing(false);
     setEditingProductId(null);
   };
-  
-  
   const handleEditProduct = (productoEditado) => {
     console.log("Editando el producto:", productoEditado);
     setEditingProductId(productoEditado.id); // Establece el ID del producto que se está editando
@@ -431,15 +429,9 @@ const CustomerMenu = () => {
     setFormVisible(true);
     setIsEditing(true); // Activar el modo edición
   };
-  
-
-
-
 
   return (
     <>
-      
-
       {/* Carrito flotante */}
       
       <FloatingCart 
@@ -457,16 +449,18 @@ const CustomerMenu = () => {
         <>
           <h1 className="PDCRL">Selecciona Tu Pizza del Menú</h1>
           <div className="menu-container">
-            {activePizzas.map(pizza => (
-              <div className="menu-item-cm" key={pizza.id}>
-                <div className="menu-image-cm">
-                  <img src={`http://localhost:3001/${pizza.imagen}`} alt={pizza.nombre} />
+           {activePizzas
+              .filter(pizza => pizza.categoria !== "Base Pizza")
+              .map(pizza => (
+                <div className="menu-item-cm" key={pizza.id}>
+                  <div className="menu-image-cm">
+                    <img src={`http://localhost:3001/${pizza.imagen}`} alt={pizza.nombre} />
+                  </div>
+                  <div className="menu-details">
+                    <h3>{pizza.nombre}</h3>
+                    <button className="botonSeleccionarMenu" onClick={() => handleSelectPizza(pizza)}>Seleccionar</button>
+                  </div>
                 </div>
-                <div className="menu-details">
-                  <h3>{pizza.nombre}</h3>
-                  <button className="botonSeleccionarMenu" onClick={() => handleSelectPizza(pizza)}>Seleccionar</button>
-                </div>
-              </div>
             ))}
           </div>
         </>
@@ -519,44 +513,44 @@ const CustomerMenu = () => {
               <p className="total-price">Precio total: {totalPrice}€</p>
             )}
 
-<div className="extra-ingredients">
-  {showIngredientSelect ? (
-    <>
-      <select id="ingredient-select" disabled={!selectedSize}>
-        <option value="">Seleccione un ingrediente extra</option>
-        {ingredientesActivos.map((ing) => (
-          <option key={ing.IDI} value={ing.IDI}>{ing.ingrediente}</option>
-        ))}
-      </select>
-      <button onClick={() => {
-        if (!selectedSize) {
-          setSizeError('Debes seleccionar un tamaño para continuar');
-          return;
-        }
-        const selectElement = document.getElementById("ingredient-select");
-        const selectedIngredientIDI = selectElement.value;
-        handleAddExtraIngredient(selectedIngredientIDI);
-      }}>Agregar</button>
-    </>
-  ) : (
-    <button onClick={() => {
-      if (!selectedSize) {
-        setSizeError('Debes seleccionar un tamaño para continuar');
-        return;
-      }
-      setShowIngredientSelect(true);
-    }}>Agregar Ingrediente Extra</button>
-  )}
-</div>
+            <div className="extra-ingredients">
+              {showIngredientSelect ? (
+                <>
+                  <select id="ingredient-select" disabled={!selectedSize}>
+                    <option value="">Seleccione un ingrediente extra</option>
+                    {ingredientesActivos.map((ing) => (
+                      <option key={ing.IDI} value={ing.IDI}>{ing.ingrediente}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => {
+                    if (!selectedSize) {
+                      setSizeError('Debes seleccionar un tamaño para continuar');
+                      return;
+                    }
+                    const selectElement = document.getElementById("ingredient-select");
+                    const selectedIngredientIDI = selectElement.value;
+                    handleAddExtraIngredient(selectedIngredientIDI);
+                  }}>Agregar</button>
+                </>
+              ) : (
+                <button onClick={() => {
+                  if (!selectedSize) {
+                    setSizeError('Debes seleccionar un tamaño para continuar');
+                    return;
+                  }
+                  setShowIngredientSelect(true);
+                }}>Agregar Ingrediente Extra</button>
+              )}
+            </div>
 
-<ul className="extra-ingredients-list">
-  {extraIngredients.map((ing, index) => (
-    <li key={index}>
-      {ing.nombre || ing.ingrediente} ({parseFloat(ing.precio).toFixed(2)}€)
-      <button onClick={() => handleRemoveExtraIngredient(ing.IDI)}>Eliminar</button>
-    </li>
-  ))}
-</ul>
+            <ul className="extra-ingredients-list">
+              {extraIngredients.map((ing, index) => (
+                <li key={index}>
+                  {ing.nombre || ing.ingrediente} ({parseFloat(ing.precio).toFixed(2)}€)
+                  <button onClick={() => handleRemoveExtraIngredient(ing.IDI)}>Eliminar</button>
+                </li>
+              ))}
+            </ul>
             <div className="modal-actions">
               {isEditing ? (
                 <button className="botonSeleccionarMenu" onClick={handleUpdateProduct}>
