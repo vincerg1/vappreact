@@ -31,18 +31,24 @@
   background-color: #ff4d4d;
   color: white;
 }
+.carrito-vacio{
+  color: #a3a2a2;
+  background-color: #e6e6e6;
+  border-radius: 10px;
+  padding: .75rem;
+}
 .detalles-compra p {
   font-size: 12px;
   color: #f8bf05;
   text-align: left;
 }
 .detalles_pedidos ul {
-  background-color: #ededed;
+  background-color: #e6e6e6;
   border-radius: 10px;
   padding: .75rem;
 }
 .detalles_pedidos_general{
-  color: #d40000;
+  color: #010101;
   font-weight: bold;
 }
 .incentivo-estado {
@@ -139,11 +145,12 @@
   text-align: start;
 }
 .additional-costs {
-  border: 1px solid #ccc;  /* Borde para resaltar la sección */
-  padding: 10px;           /* Espaciado interno para mejorar la legibilidad */
-  margin-bottom: 10px;     /* Espaciado inferior */
-  line-height: 1.4;        /* Ajuste del interlineado */
-  background-color: #f9f9f9;  /* Color de fondo para diferenciar la sección */
+  font-style: italic;
+  color: #000000;
+  padding: 10px;          
+  margin-bottom: 10px;     
+  background-color: #e6e6e6;
+  border-radius: 10px;  
   line-height: .75;
 }
 .edit-button, .delete-button {
@@ -172,13 +179,12 @@
 
 /* Ajustar los ingredientes extra en el FloatingCart */
 
-
 .extra-ingredient-item,
 .half-and-half-item {
   font-style: italic; 
   margin-left: 0rem;
+  color: var(--tx1_color);
 }
-
 .extra-ingredient-button {
   padding: 2px 4px;
   font-size: 12px;

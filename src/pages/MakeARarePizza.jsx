@@ -46,7 +46,25 @@ const MakeARarePizza = () => {
   useEffect(() => {
     console.log("Venta actualizada:", compra.venta);
   }, [compra.venta]);
-
+  useEffect(() => {
+    const updateCuponesDisponibles = async () => {
+      if (ofertaPizzaRara && compra.cupones.some(cupon => cupon.Oferta_Id === ofertaPizzaRara.Oferta_Id)) {
+        try {
+          await axios.patch(`http://localhost:3001/ofertas/${ofertaPizzaRara.Oferta_Id}`, {
+            Cupones_Disponibles: ofertaPizzaRara.Cupones_Disponibles - 1,
+          });
+          console.log("Cupones disponibles actualizados exitosamente.");
+        } catch (error) {
+          console.error("Error al actualizar Cupones_Disponibles:", error);
+        }
+      }
+    };
+  
+    if (pizzaGenerada) {
+      updateCuponesDisponibles();
+    }
+  }, [pizzaGenerada, ofertaPizzaRara, compra.cupones]);
+  
 
   const generarIngredientesAleatorios = () => {
     const ingredientesDisponibles = [...new Set(
@@ -86,14 +104,6 @@ const MakeARarePizza = () => {
       }
   
       const { Min_Descuento_Percent, Max_Descuento_Percent, Cupones_Disponibles } = ofertaEncontrada;
-      if (Cupones_Disponibles <= 0) {
-        alert('No hay cupones disponibles para esta oferta.');
-        return;
-      }
-      const descuento = Math.floor(
-        Math.random() * (Max_Descuento_Percent - Min_Descuento_Percent + 1)
-      ) + Min_Descuento_Percent;
-  
       if (Cupones_Disponibles <= 0) {
         alert('No hay cupones disponibles para esta oferta.');
         return;
@@ -148,9 +158,8 @@ const MakeARarePizza = () => {
       // Calcular el precio total de los ingredientes extra
       const precioIngredientesExtra = ingredientesUnicos.reduce((acc, ing) => acc + ing.precio, 0);
   
-      // Calcular precio final
-      const total =
-        (precioBase + precioIngredientesExtra) * (1 - descuentoAleatorio / 100);
+      // Calcular el precio sin descuento
+      const totalSinDescuento = precioBase + precioIngredientesExtra;
   
       // Crear nueva pizza
       const nuevaPizza = {
@@ -160,59 +169,53 @@ const MakeARarePizza = () => {
         cantidad: 1,
         ingredientes: ['Salsa Tomate Pizza', 'Mozzarella', ...ingredientes],
         extraIngredients: ingredientesUnicos,
-        descuento: descuento,
+        descuento: descuentoAleatorio, // Guardar el porcentaje de descuento
+        totalSinDescuento: parseFloat(totalSinDescuento.toFixed(2)), // Precio sin descuento
         precioBase: precioBase,
         precioIngredientesExtra: precioIngredientesExtra,
-        total: parseFloat(total.toFixed(2)),
+        total: parseFloat(totalSinDescuento.toFixed(2)), // Total sin aplicar descuento
       };
-      setOfertaPizzaRara(ofertaEncontrada);     
-      setPizzaGenerada(nuevaPizza);   
-      setDescuentoAleatorio(descuento);  
+  
+      setOfertaPizzaRara(ofertaEncontrada);
+      setPizzaGenerada(nuevaPizza);
+      setDescuentoAleatorio(descuentoAleatorio);
       setGenerarIntentos((prev) => prev - 1);
     } catch (error) {
       console.error('Error al generar la pizza rara:', error);
     }
   };
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!pizzaGenerada) {
       alert('Primero genera una pizza rara.');
       return;
     }
-
-    if (!ofertaPizzaRara || !descuentoAleatorio) {
-      alert('No se ha cargado la oferta de pizza rara.');
-      return;
-    }
+  
     const cuponRandomPizza = {
       Oferta_Id: ofertaPizzaRara.Oferta_Id,
       Codigo_Oferta: ofertaPizzaRara.Codigo_Oferta,
-      Descuento: descuentoAleatorio / 100,  // p. ej. 0.15 si es 15
+      Descuento: descuentoAleatorio / 100, // Ejemplo: 0.15 si es 15%
       Max_Amount: ofertaPizzaRara.Max_Amount,
       Tipo_Cupon: ofertaPizzaRara.Tipo_Cupon,
-      // ... cualquier otro campo que quieras
     };
-    // Tomamos la pizzaGenerada y la añadimos al carrito
+  
     setCompra((prev) => {
       const nuevaVenta = [...prev.venta, pizzaGenerada];
-      const nuevoTotal = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+      const nuevoTotal = nuevaVenta.reduce((acc, item) => acc + item.totalSinDescuento, 0);
   
       return {
         ...prev,
         venta: nuevaVenta,
         cupones: [...prev.cupones, cuponRandomPizza],
-        total_productos: parseFloat(nuevoTotal.toFixed(2)),
-        total_a_pagar_con_descuentos: parseFloat(nuevoTotal.toFixed(2)),
+        total_productos: parseFloat(nuevoTotal.toFixed(2)), // Total sin descuentos
       };
     });
   
-    // Limpiamos estados
     setPizzaGenerada(null);
     setSizeSeleccionado('');
     setIngredientesAleatorios([]);
     setDescuentoAleatorio(null);
     setOfertaPizzaRara(null);
     alert('Pizza añadida al carrito.');
-  
   };
   const handleNextStep = () => {
     if (compra.venta.length === 0) {
@@ -221,7 +224,6 @@ const MakeARarePizza = () => {
     }
     setShowDeliveryForm(true);
   };
-
 
   return (
     <div className="make-a-rare-pizza">

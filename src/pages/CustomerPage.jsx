@@ -452,6 +452,7 @@ const CustomerPage = (offer) => {
   const [hasCoupon, setHasCoupon] = useState(false);
   const [cuponesUsados, setCuponesUsados] = useState([]);
   const [selectedPizza, setSelectedPizza] = useState(null);
+  const [cuponesDisponibles, setCuponesDisponibles] = useState(null);
   const [compra, setCompra] = useState({
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -606,6 +607,27 @@ const CustomerPage = (offer) => {
       setLoadingPizzas(false);
     }
   }, [activePizzas]);
+  useEffect(() => {
+    const fetchCuponesDisponibles = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/ofertas');
+        const ofertaPizzaRara = response.data.data.find(
+          (oferta) => oferta.Tipo_Oferta === 'Pizza Rara'
+        );
+        if (ofertaPizzaRara) {
+          setCuponesDisponibles(ofertaPizzaRara.Cupones_Disponibles);
+        } else {
+          setCuponesDisponibles(0); // En caso de que no haya una oferta activa
+        }
+      } catch (error) {
+        console.error('Error al obtener la cantidad de cupones:', error);
+      }
+    };
+    fetchCuponesDisponibles();
+  }, []);
+  
+
+
 
   const handlePizzaSelect = (pizza) => {
     setSelectedPizza(pizza); 
@@ -793,9 +815,15 @@ const CustomerPage = (offer) => {
               <button onClick={handleContactButtonClick}>{showContactInfo ? 'Go Back' : 'Contacts'}</button>
               <button
                 className="create-random-pizza-button"
-                onClick={() => navigate('/rare-pizza')} 
+                onClick={() => navigate('/rare-pizza')}
+                disabled={cuponesDisponibles === 0} // Deshabilitar el botón si no hay cupones
               >
                 MakeARandomPizza
+                {cuponesDisponibles !== null && (
+                  <span className="badge">
+                    {cuponesDisponibles === 0 ? 'Sin cupones' : cuponesDisponibles}
+                  </span>
+                )}
               </button>
            </div>
 

@@ -516,18 +516,25 @@
     opacity: 1;
   }
 }
-.notification-badge {
+.create-random-pizza-button {
+  position: relative;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+.create-random-pizza-button .badge {
   position: absolute;
-  top: -10px; /* Ajusta la posición vertical */
-  right: -10px; /* Ajusta la posición horizontal */
+  top: -5px;
+  right: -10px;
   background-color: red;
   color: white;
-  font-size: 14px; /* Ajusta el tamaño del texto */
+  font-size: 12px;
   font-weight: bold;
-  padding: 4px 8px;
-  border-radius: 50%; /* Hace el fondo circular */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  pointer-events: none; /* No interferir con los clics en el botón */
+  border-radius: 50%;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .custom-tooltip {

@@ -251,6 +251,12 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     let totalTicketExpress = (compra.Entrega?.Delivery?.costoTicketExpress || 0) + (compra.Entrega?.PickUp?.costoTicketExpress || 0);
     let totalCupones = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
     
+    console.log("Costos Adicionales:", {
+      totalDelivery,
+      totalTicketExpress,
+      totalCupones
+    });
+
     return {
       totalDelivery,
       totalTicketExpress,
@@ -285,26 +291,37 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     let totalProductos = compra.venta.reduce((acc, item) => acc + (item.total || 0), 0);
     totalProductos += totalTicketExpress;
 
+    console.log("Total Productos Inicial:", totalProductos);
+
     if (compra.cupones.length > 0 && totalProductos > 0) {
-      compra.cupones.forEach((cupon) => {
-        const descuentoAplicado = totalProductos * (cupon.Descuento || 0);
-        const descuentoFinal = Math.min(descuentoAplicado, cupon.Max_Amount || 0);
-        totalDescuentos += descuentoFinal;
-      });
+        compra.cupones.forEach((cupon) => {
+            const descuentoAplicado = totalProductos * (cupon.Descuento || 0);
+            const descuentoFinal = Math.min(descuentoAplicado, cupon.Max_Amount || 0);
+            totalDescuentos += descuentoFinal;
+            console.log("Descuento aplicado:", { descuentoAplicado, descuentoFinal });
+        });
     }
 
     let totalConDescuento = totalProductos - totalDescuentos;
     totalConDescuento = totalConDescuento < 0 ? 0 : totalConDescuento;
 
-    const totalFinal = totalConDescuento + totalCupones;
+    const totalFinal = totalConDescuento + totalDelivery + totalCupones;
+
+    console.log("Totales Calculados:", {
+        totalProductos,
+        totalDescuentos,
+        totalConDescuento,
+        totalFinal
+    });
 
     setCompra((prevCompra) => ({
-      ...prevCompra,
-      total_productos: parseFloat(totalProductos.toFixed(2)),
-      total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
-      total_a_pagar_con_descuentos: parseFloat(totalFinal.toFixed(2)),
+        ...prevCompra,
+        total_productos: parseFloat(totalProductos.toFixed(2)),
+        total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(totalFinal.toFixed(2)),
     }));
-  };
+};
+
   const handleRemoveProduct = (productoAEliminar) => {
     setCompra((prevCompra) => {
       // Filtrar el producto por su identificador único (id)
@@ -374,70 +391,97 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         </div>
       )}
 
-      <div className="detalles_pedidos">
-            <ul >
-      {compra.venta.map((item, index) => {
-  const precioPrincipal = item.halfAndHalf
-    ? (item.halfAndHalf.izquierda.precio + item.halfAndHalf.derecha.precio).toFixed(2)
-    : (item.basePrice || item.precioBase || item.price);
+        <div className="detalles_pedidos">
+          {compra.venta.length === 0 ? (
+            <p className="carrito-vacio">🍕¡Agrega tus productos!🍕</p>
+          ) : (
+            <ul>
+              {compra.venta.map((item, index) => {
+                const precioPrincipal = item.halfAndHalf
+                  ? (
+                      item.halfAndHalf.izquierda.precio +
+                      item.halfAndHalf.derecha.precio
+                    ).toFixed(2)
+                  : item.basePrice || item.precioBase || item.price;
 
-  return (
-    <li
-      key={index}
-      style={{
-        listStyleType: 'none', // Evitar viñetas
-      }}
-    >
-      <div className="detalles_pedidos_general">
-        <span>
-          {item.cantidad} x {item.nombre} ({item.size} - {precioPrincipal}€)
-        </span>
-        <button className="edit-button" onClick={() => handleEditProduct(item)}>✏️</button>
-        <button className="delete-button" onClick={() => handleRemoveProduct(item)}>❌</button>
-      </div>
+                return (
+                  <li
+                    key={index}
+                    style={{
+                      listStyleType: "none",
+                    }}
+                  >
+                    <div className="detalles_pedidos_general">
+                      <span>
+                        {item.cantidad} x {item.nombre} ({item.size} - {precioPrincipal}
+                        €)
+                      </span>
+                      <button
+                        className="edit-button"
+                        onClick={() => handleEditProduct(item)}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="delete-button"
+                        onClick={() => handleRemoveProduct(item)}
+                      >
+                        ❌
+                      </button>
+                    </div>
 
-      {/* Renderizar otros detalles (IE o HalfAndHalf) */}
-      {item.halfAndHalf && (
-        <ul 
-        style={{ margin: 5, padding: .75, listStyleType: 'none' }}
-        >
-          <li className="half-and-half-item">
-            Mitad: {item.halfAndHalf.izquierda.nombre} ({item.halfAndHalf.izquierda.precio.toFixed(2)}€)
-          </li>
-          <li className="half-and-half-item">
-            Mitad: {item.halfAndHalf.derecha.nombre} ({item.halfAndHalf.derecha.precio.toFixed(2)}€)
-          </li>
-        </ul>
-      )}
+                    {/* Renderizar otros detalles (IE o HalfAndHalf) */}
+                    {item.halfAndHalf && (
+                      <ul
+                        style={{ margin: 5, padding: 0.75, listStyleType: "none" }}
+                      >
+                        <li className="half-and-half-item">
+                          Mitad: {item.halfAndHalf.izquierda.nombre} (
+                          {item.halfAndHalf.izquierda.precio.toFixed(2)}€)
+                        </li>
+                        <li className="half-and-half-item">
+                          Mitad: {item.halfAndHalf.derecha.nombre} (
+                          {item.halfAndHalf.derecha.precio.toFixed(2)}€)
+                        </li>
+                      </ul>
+                    )}
 
-      {item.extraIngredients?.length > 0 && (
-        <ul style={{listStyleType: 'none' }}>
-          {item.extraIngredients.map((extra) => (
-            <li
-              key={extra.nombre}
-              className="extra-ingredient-item"
-              style={{ margin: 0, padding: 0 }}
-            >
-              +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
-              {item.id !== 101 && item.id !== 102 && item.id !== 103 && (
-                <button
-                  className="extra-ingredient-button"
-                  onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
-                  title="Eliminar ingrediente"
-                >
-                  Del
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-      })}
-
+                    {item.extraIngredients?.length > 0 && (
+                      <ul style={{ listStyleType: "none" }}>
+                        {item.extraIngredients.map((extra) => (
+                          <li
+                            key={extra.nombre}
+                            className="extra-ingredient-item"
+                            style={{ margin: 0, padding: 0 }}
+                          >
+                            +IE: {extra.nombre} (
+                            {parseFloat(extra.precio).toFixed(2)}€)
+                            {item.id !== 101 &&
+                              item.id !== 102 &&
+                              item.id !== 103 && (
+                                <button
+                                  className="extra-ingredient-button"
+                                  onClick={() =>
+                                    handleRemoveExtraIngredient(item.id, extra.IDI)
+                                  }
+                                  title="Eliminar ingrediente"
+                                >
+                                  Del
+                                </button>
+                              )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
-      </div>
+          )}
+        </div>
+
+
+      
       <div className="totals">
         
         {compra.cupones.length > 0 && (
