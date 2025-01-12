@@ -168,7 +168,7 @@ const MakeYourPizza = () => {
     // Crear el objeto de la pizza personalizada
     const nuevaPizza = {
       id: 101, 
-      nombre: 'Pizza Personalizada 1',
+      nombre: 'PP1',
       size: sizeSeleccionado,
       cantidad: 1,
       total: totalPrice,
@@ -202,6 +202,9 @@ const MakeYourPizza = () => {
               nombre: ing.nombre,
               precio: ing.precio,
             })),
+            halfAndHalf: {
+              ...nuevaPizza.halfAndHalf
+            }
           },
         ],
       };
@@ -213,9 +216,9 @@ const MakeYourPizza = () => {
     setTotalPrice(0);
     handleCloseForm();
     calcularTotalDescuentos();
-    // Confirmación visual
     alert('Pizza añadida al carrito');
     console.log('Pizza añadida al carrito:', nuevaPizza);
+    
   };  
   const handleEditProduct = (productoEditado) => {
     setSizeSeleccionado(productoEditado.size);
@@ -413,10 +416,6 @@ const MakeYourPizza = () => {
       total_a_pagar_con_descuentos: totalConDescuento,
     });
   };
-  
-  
-  
-  
   const handleConfirmHalfAndHalf = () => {
     if (!sizeSeleccionado) {
       alert("Debes seleccionar el tamaño antes de confirmar.");
@@ -499,7 +498,7 @@ const MakeYourPizza = () => {
     // Crear el objeto de la pizza mitad y mitad
     const nuevaPizza = {
       id: 102,
-      nombre: "Pizza Personalizada 2",
+      nombre: "PP2",
       size: sizeSeleccionado,
       cantidad: 1,
       total: totalPrecio,

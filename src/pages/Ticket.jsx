@@ -101,15 +101,43 @@ const Ticket = ({ order }) => {
           {productos.length > 0 ? (
             productos.map((producto, index) => {
               const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
+              const customPizzaNames = {
+                101: 'PP1',
+                102: 'PP2',
+                103: 'PP3',
+              };
+              let nombrePizza = 'Desconocida';
+              if (pizza) {
+                nombrePizza = pizza.nombre;
+              } else if (customPizzaNames[producto.id_pizza]) {
+                nombrePizza = customPizzaNames[producto.id_pizza];
+              }
+
+              // Verificar si es una pizza mitad y mitad
+              if (producto.id_pizza === 102 && producto.halfAndHalf) {
+                return (
+                  <li key={index} className="producto-item">
+                    Cant: {producto.cantidad} / Size: {producto.size}
+                    <br />
+                    Pizza: {nombrePizza} 
+                    <ul>
+                      <li>Mitad: {producto.halfAndHalf.izquierda.nombre} </li>
+                      <li>Mitad: {producto.halfAndHalf.derecha.nombre} </li>
+                    </ul>
+                  </li>
+                );
+              }
+
+              // Caso general para otras pizzas
               return (
                 <li key={index} className="producto-item">
                   Cant: {producto.cantidad} / Size: {producto.size}
                   <br />
-                  Pizza: {pizza ? `${pizza.nombre} (${producto.price}€)` : 'Desconocida'}
+                  Pizza: {pizza ? `${pizza.nombre}` : nombrePizza}
                   {producto.extraIngredients && producto.extraIngredients.length > 0 && (
                     <ul>
                       {producto.extraIngredients.map((ing, idx) => (
-                        <li key={idx}>+IE: {ing.nombre} ({ing.precio}€)</li>
+                        <li key={idx}>+IE: {ing.nombre}</li>
                       ))}
                     </ul>
                   )}

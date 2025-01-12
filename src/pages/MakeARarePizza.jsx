@@ -46,24 +46,7 @@ const MakeARarePizza = () => {
   useEffect(() => {
     console.log("Venta actualizada:", compra.venta);
   }, [compra.venta]);
-  useEffect(() => {
-    const updateCuponesDisponibles = async () => {
-      if (ofertaPizzaRara && compra.cupones.some(cupon => cupon.Oferta_Id === ofertaPizzaRara.Oferta_Id)) {
-        try {
-          await axios.patch(`http://localhost:3001/ofertas/${ofertaPizzaRara.Oferta_Id}`, {
-            Cupones_Disponibles: ofertaPizzaRara.Cupones_Disponibles - 1,
-          });
-          console.log("Cupones disponibles actualizados exitosamente.");
-        } catch (error) {
-          console.error("Error al actualizar Cupones_Disponibles:", error);
-        }
-      }
-    };
-  
-    if (pizzaGenerada) {
-      updateCuponesDisponibles();
-    }
-  }, [pizzaGenerada, ofertaPizzaRara, compra.cupones]);
+
   
 
   const generarIngredientesAleatorios = () => {
@@ -164,16 +147,16 @@ const MakeARarePizza = () => {
       // Crear nueva pizza
       const nuevaPizza = {
         id: 103,
-        nombre: 'Pizza Personalizada 3',
+        nombre: 'PP3',
         size: sizeSeleccionado,
         cantidad: 1,
         ingredientes: ['Salsa Tomate Pizza', 'Mozzarella', ...ingredientes],
         extraIngredients: ingredientesUnicos,
-        descuento: descuentoAleatorio, // Guardar el porcentaje de descuento
-        totalSinDescuento: parseFloat(totalSinDescuento.toFixed(2)), // Precio sin descuento
+        descuento: descuentoAleatorio, 
+        totalSinDescuento: parseFloat(totalSinDescuento.toFixed(2)), 
         precioBase: precioBase,
         precioIngredientesExtra: precioIngredientesExtra,
-        total: parseFloat(totalSinDescuento.toFixed(2)), // Total sin aplicar descuento
+        total: parseFloat(totalSinDescuento.toFixed(2)), 
       };
   
       setOfertaPizzaRara(ofertaEncontrada);
@@ -190,14 +173,17 @@ const MakeARarePizza = () => {
       return;
     }
   
+    // Construir el objeto cupón (puede tener PrecioCupon o no, según la oferta)
     const cuponRandomPizza = {
       Oferta_Id: ofertaPizzaRara.Oferta_Id,
       Codigo_Oferta: ofertaPizzaRara.Codigo_Oferta,
-      Descuento: descuentoAleatorio / 100, // Ejemplo: 0.15 si es 15%
+      Descuento: descuentoAleatorio / 100, 
       Max_Amount: ofertaPizzaRara.Max_Amount,
       Tipo_Cupon: ofertaPizzaRara.Tipo_Cupon,
+      PrecioCupon: ofertaPizzaRara.PrecioCupon || 0
     };
   
+    // 1) Agregar la pizza y el cupón al carrito (estado 'compra')
     setCompra((prev) => {
       const nuevaVenta = [...prev.venta, pizzaGenerada];
       const nuevoTotal = nuevaVenta.reduce((acc, item) => acc + item.totalSinDescuento, 0);
@@ -210,11 +196,27 @@ const MakeARarePizza = () => {
       };
     });
   
+    // 2) Actualizar los cupones disponibles en la tabla 'ofertas'
+    try {
+      await axios.patch(
+        `http://localhost:3001/api/offers/${ofertaPizzaRara.Oferta_Id}/use-coupon`,
+        {
+          // Restar uno a Cupones_Disponibles
+          Cupones_Disponibles: ofertaPizzaRara.Cupones_Disponibles - 1,
+        }
+      );
+      console.log('Cupones disponibles actualizados exitosamente.');
+    } catch (error) {
+      console.error('Error al actualizar Cupones_Disponibles:', error);
+    }
+  
+    // 3) Limpiar estados temporales
     setPizzaGenerada(null);
     setSizeSeleccionado('');
     setIngredientesAleatorios([]);
     setDescuentoAleatorio(null);
     setOfertaPizzaRara(null);
+  
     alert('Pizza añadida al carrito.');
   };
   const handleNextStep = () => {

@@ -184,13 +184,39 @@ const ViewOrder = () => {
                       <ul>
                         {productos.map((producto) => {
                           const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
+                          const customPizzaNames = {
+                            101: 'PP1',
+                            102: 'PP2',
+                            103: 'PP3',
+                          };
+                          let nombrePizza = 'Desconocida';
+                          if (pizza) {
+                            nombrePizza = pizza.nombre;
+                          } else if (customPizzaNames[producto.id_pizza]) {
+                            nombrePizza = customPizzaNames[producto.id_pizza];
+                          }
+
+                          // Verificar si es una pizza mitad y mitad
+                          if (producto.id_pizza === 102 && producto.halfAndHalf) {
+                            return (
+                              <li key={producto.id_pizza}>
+                                Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
+                                <ul>
+                                  <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre} </li>
+                                  <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
+                                </ul>
+                              </li>
+                            );
+                          }
+
+                          // Caso general para otras pizzas
                           return (
                             <li key={producto.id_pizza}>
-                              Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {pizza ? pizza.nombre : 'Desconocida'} ({producto.price}€)
+                              Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza} 
                               {producto.extraIngredients && producto.extraIngredients.length > 0 && (
                                 <ul>
                                   {producto.extraIngredients.map((extra, idx) => (
-                                    <li key={idx}>+IE: {extra.nombre} ({extra.precio}€)</li>
+                                    <li key={idx}>+IE: {extra.nombre} ({extra.precio.toFixed(2)}€)</li>
                                   ))}
                                 </ul>
                               )}

@@ -38,9 +38,10 @@
   padding: .75rem;
 }
 .detalles-compra p {
-  font-size: 12px;
+  font-size: 14px;
   color: #f8bf05;
   text-align: left;
+  font-weight: bold;
 }
 .detalles_pedidos ul {
   background-color: #e6e6e6;
@@ -144,6 +145,18 @@
 .totals p{
   text-align: start;
 }
+.totals2 {
+  /* Separa el bloque completo de la parte superior */
+  margin-top: 22px; 
+}
+.totals2 p {
+  margin: 4px 0;    
+  line-height: 1.2; 
+  text-align: start;
+}
+
+
+
 .additional-costs {
   font-style: italic;
   color: #000000;
@@ -171,10 +184,11 @@
   font-size: 12px; /* Ajustar el tamaño del ícono */
   color: gray; /* Cambiar a escala de grises */
 }
-.additional-costs-name{
-  font-size: 12px;
+.additional-costs-name p{
+  font-size: 14px;
   color: #f8bf05;
   text-align: left;
+  font-weight: bold
 }
 
 /* Ajustar los ingredientes extra en el FloatingCart */

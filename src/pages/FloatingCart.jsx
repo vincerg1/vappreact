@@ -17,6 +17,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   const [historial, setHistorial] = useState([]);  
   const [orderId, setOrderId] = useState(generarOrderId());  
   const [isReadyToPay, setIsReadyToPay] = useState(false);  
+  const [ingredientExtraPrices, setIngredientExtraPrices] = useState([]);
 
  useEffect(() => {
     const fetchIncentivos = async () => {
@@ -116,6 +117,17 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     compra.Entrega?.Delivery?.costoTicketExpress,
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
+  useEffect(() => {
+    const fetchIngredientExtraPrices = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/IngredientExtraPrices');
+        setIngredientExtraPrices(response.data); // Almacenar los precios en el estado
+      } catch (error) {
+        console.error('Error al obtener los precios de los ingredientes extras:', error);
+      }
+    };
+    fetchIngredientExtraPrices();
+  }, []);
  
   const handlePagar = async () => {
     try {
@@ -146,28 +158,46 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         total_con_descuentos: compra.total_a_pagar_con_descuentos || totalSinDescuentosNum,
         total_productos: totalSinDescuentosNum,
         total_descuentos: totalDescuentosNum,
-        productos: compra.venta.map((item) => ({
-          id_pizza: item.id || item.id_producto, 
-          cantidad: item.cantidad,
-          size: item.size,
-          price: item.basePrice || item.total || item.price,
-          extraIngredients: item.extraIngredients || [], 
-        })),
+        productos: compra.venta.map((item) => {
+          // Manejo especial para pizzas mitad y mitad
+          if (item.id === 102 && item.halfAndHalf) {
+            return {
+              id_pizza: item.id, // ID de la pizza mitad y mitad
+              cantidad: item.cantidad,
+              size: item.size,
+              price: item.total, // Precio total de la mitad y mitad
+              halfAndHalf: { ...item.halfAndHalf }, // Incluye los datos de las mitades
+              extraIngredients: item.extraIngredients || [], // Incluye los ingredientes extra si los hay
+            };
+          }
+      
+          // Caso general para otras pizzas
+          return {
+            id_pizza: item.id || item.id_producto,
+            cantidad: item.cantidad,
+            size: item.size,
+            price: item.basePrice || item.total || item.price,
+            extraIngredients: item.extraIngredients || [],
+          };
+        }),
         cupones: compra.cupones,
-        incentivos: incentivosAlcanzados.map(inc => ({ id: inc.id })),
+        incentivos: incentivosAlcanzados.map((inc) => ({ id: inc.id })),
         metodo_entrega: JSON.stringify({
           ...compra.Entrega,
           Delivery: {
             ...compra.Entrega?.Delivery,
-            costo: compra.Entrega?.Delivery?.freePassApplied ? 0 : compra.Entrega?.Delivery?.costoReal, // Asegurar que se almacene el costo del delivery siempre, sea 0 o el real
+            costo: compra.Entrega?.Delivery?.freePassApplied
+              ? 0
+              : compra.Entrega?.Delivery?.costoReal, // Asegurar que se almacene el costo del delivery siempre, sea 0 o el real
             costoReal: compra.Entrega?.Delivery?.costoReal, // Asegurar que el costo real siempre esté presente
             freePassApplied: compra.Entrega?.Delivery?.freePassApplied || false, // Asegurar que el estado esté presente
           },
         }),
         observaciones: compra.observaciones,
         venta_procesada: 0,
-        estado_entrega: estadoEntrega, 
+        estado_entrega: estadoEntrega,
       };
+      
   
       console.log('Datos de la compra:', compraData); // Verificar todos los datos antes de enviar
   
@@ -320,16 +350,70 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
         total_a_pagar_con_descuentos: parseFloat(totalFinal.toFixed(2)),
     }));
-};
-
+  };
   const handleRemoveProduct = (productoAEliminar) => {
     setCompra((prevCompra) => {
-      // Filtrar el producto por su identificador único (id)
       const nuevaVenta = prevCompra.venta.filter(
         (producto) => producto.id !== productoAEliminar.id
       );
   
-      // Recalcular el total de productos después de eliminar el producto
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => {
+        const ingredientesPrecio = item.extraIngredients.reduce((ingAcc, ing) => {
+          const ingPrecio = ingredientExtraPrices.find(
+            (price) => price.IDI === ing.IDI && price.size === item.size
+          )?.precio || 0;
+          return ingAcc + ingPrecio;
+        }, 0);
+        return acc + item.price * item.cantidad + ingredientesPrecio;
+      }, 0);
+  
+      return {
+        ...prevCompra,
+        venta: nuevaVenta,
+        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(
+          (nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)
+        ),
+      };
+    });
+  };
+  
+  const handleRemoveExtraIngredient = (productoId, ingredientIDI) => {
+    setCompra((prevCompra) => {
+      const nuevaVenta = prevCompra.venta.map((producto) => {
+        if (producto.id === productoId) {
+          const nuevosIngredientes = producto.extraIngredients.filter(
+            (ing) => ing.IDI !== ingredientIDI
+          );
+  
+          // Obtener el precio actualizado del ingrediente eliminado
+          const ingredienteEliminado = producto.extraIngredients.find(
+            (ing) => ing.IDI === ingredientIDI
+          );
+          const ingredientePrecio = ingredientExtraPrices.find(
+            (price) => price.IDI === ingredientIDI && price.size === producto.size
+          )?.precio || 0;
+  
+          // Recalcular el total del producto
+          const nuevoTotal =
+            producto.price * producto.cantidad +
+            nuevosIngredientes.reduce((acc, ing) => {
+              const ingPrecio = ingredientExtraPrices.find(
+                (price) => price.IDI === ing.IDI && price.size === producto.size
+              )?.precio || 0;
+              return acc + parseFloat(ingPrecio) * producto.cantidad;
+            }, 0);
+  
+          return {
+            ...producto,
+            extraIngredients: nuevosIngredientes,
+            total: parseFloat(nuevoTotal.toFixed(2)),
+          };
+        }
+        return producto;
+      });
+  
+      // Recalcular el total del carrito
       const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
   
       return {
@@ -342,41 +426,18 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       };
     });
   };
-  const handleRemoveExtraIngredient = (productoId, ingredientIDI) => {
-    setCompra((prevCompra) => {
-      const nuevaVenta = prevCompra.venta.map((producto) => {
-        if (producto.id === productoId) {
-          const nuevosIngredientes = producto.extraIngredients.filter(
-            (ing) => ing.IDI !== ingredientIDI
-          );
-          const nuevoTotal = producto.price * producto.cantidad + nuevosIngredientes.reduce((acc, ing) => acc + parseFloat(ing.precio), 0);
-          return {
-            ...producto,
-            extraIngredients: nuevosIngredientes,
-            total: parseFloat(nuevoTotal.toFixed(2)),
-          };
-        }
-        return producto;
-      });
-
-      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
-      const nuevoTotalDescuentos = prevCompra.total_descuentos;
-      const totalAPagarConDescuentos = parseFloat(
-        (nuevoTotalProductos - nuevoTotalDescuentos).toFixed(2)
-      );
-
-      return {
-        ...prevCompra,
-        venta: nuevaVenta,
-        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
-        total_a_pagar_con_descuentos: totalAPagarConDescuentos,
-      };
-    });
-  };
+  
 
   const totalAPagar = compra.venta.length > 0
   ? (compra.total_a_pagar_con_descuentos > 0 ? compra.total_a_pagar_con_descuentos : compra.total_productos)
   : 0;
+
+  const { totalDelivery, totalTicketExpress, totalCupones } = calcularCostosAdicionales();
+  const hayCostosAdicionales = (
+    totalDelivery > 0 ||
+    totalTicketExpress > 0 ||
+    totalCupones > 0
+  );
 
   return (
     <div className="floating-cart">
@@ -484,19 +545,16 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       
       <div className="totals">
         
-        {compra.cupones.length > 0 && (
-          compra.cupones.map((cupon, index) => (
-            <p key={index}>✅ {cupon.Descuento ? `${(cupon.Descuento * 100).toFixed(2)}%` : '0%'} de descuento</p>
-          ))
-        )} 
+       {isReadyToPay && compra.venta.length > 0 && hayCostosAdicionales && (
+        <div className="additional-costs-name">
 
+          <p><strong>Costos Adicionales:</strong></p>
+        </div>
+       )}
        
-        <p>Total Descuento: {(compra.total_descuentos || 0).toFixed(2)}€</p>
-        {isReadyToPay && compra.venta.length > 0 && (
+        {isReadyToPay && compra.venta.length > 0 && hayCostosAdicionales && (
           <>
             <div className="additional-costs">
-              <h3 className="additional-costs-name" >Costos Adicionales</h3>
-            
               {compra.Entrega?.Delivery && compra.Entrega?.Delivery?.costo !== undefined && (
                 <p>+Delivery: {compra.Entrega?.Delivery?.costo === 0 && compra.Entrega?.Delivery?.freePassApplied ? 'Today Free' : `${(compra.Entrega?.Delivery?.costoReal || 0).toFixed(2)}€`}</p>
               )}
@@ -514,13 +572,31 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
                 ))
               )}
             </div>
-            
-
-            <p><b>Total a Pagar:</b> {(compra.total_a_pagar_con_descuentos || 0).toFixed(2)}€</p>
-
           </>
         )}
       </div>
+
+      {compra.total_productos > 0 && (
+      <div className="totals2">
+       
+        {compra.cupones.length > 0 &&
+          compra.cupones.map((cupon, index) => (
+            <p key={index}>
+              ✅ {cupon.Descuento ? `${(cupon.Descuento * 100).toFixed(2)}%` : '0%'} de descuento
+            </p>
+          ))
+        }
+        {compra.total_descuentos > 0 && (
+          <p>
+            <b>Total Descuento:</b> {(compra.total_descuentos || 0).toFixed(2)}€
+          </p>
+        )}
+
+        <p>
+          <b>Total a Pagar:</b> {(compra.total_a_pagar_con_descuentos || 0).toFixed(2)}€
+        </p>
+      </div>
+      )}
 
       {incentivos.map((incentivo) => {
         const faltante = calcularFaltante(incentivo, totalAPagar);
