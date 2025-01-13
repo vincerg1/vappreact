@@ -33,11 +33,9 @@ const OfferList = () => {
             console.error('Error fetching offers:', error);
         }
     };
-
     const handleEdit = (offerId) => {
         navigate(`/offers/edit/${offerId}`);
     };
-
     const handleDelete = async (offerId) => {
         try {
             await axios.delete(`http://localhost:3001/ofertas/${offerId}`);

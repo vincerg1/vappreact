@@ -22,15 +22,11 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   const [isTimeBlocked, setIsTimeBlocked] = useState(false);
   const [nextAvailableDay, setNextAvailableDay] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [blockReason, setBlockReason] = useState(''); // Razón del bloqueo
-  const [precioCupon, setPrecioCupon] = useState(0); // Estado para almacenar el precio del cupón
+  const [blockReason, setBlockReason] = useState(''); 
 
   useEffect(() => {
-    // console.log('Datos de sessionData en OfferCard:', sessionData);
-    // console.log('Datos de ofertas en OfferCard:', offer);
     checkExtraConditions();
-    calculateCouponPrice(); // Calcular el precio del cupón al cargar la oferta
-    checkTimeAvailability(); // Comprobar la disponibilidad del tiempo
+    checkTimeAvailability(); 
   }, [offer, sessionData]);
 
   useEffect(() => {
@@ -43,7 +39,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   }, [timeLeft]);
 
   const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
   const calculateTimeLeft = (timeInSeconds) => {
     const duration = moment.duration(timeInSeconds, 'seconds');
     return {
@@ -52,7 +47,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       seconds: Math.floor(duration.seconds()),
     };
   };
-
   const checkTimeAvailability = () => {
     let currentDay = moment().format('dddd').toLowerCase();
     const currentTime = moment();
@@ -81,7 +75,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       calculateNextCycle();
     }
   };
-
   const calculateNextCycle = () => {
     const currentDayIndex = moment().day();
     const diasActivos = JSON.parse(offer.Dias_Activos).map(removeAccents);
@@ -105,7 +98,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       setTimeLeft(timeUntilNextStart > 0 ? timeUntilNextStart : 0);
     }
   };
-
   const checkExtraConditions = () => {
     if (offer.Condiciones_Extras === "false" || !offer.Condiciones_Extras) {
       setIsBlocked(false);
@@ -114,14 +106,12 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
 
     const userTicketPromedio = parseFloat(sessionData?.ticketPromedio || 0);
     const requiredTicketPromedio = parseFloat(offer.Ticket_Promedio || 0);
-
     const userNumeroCompras = parseInt(sessionData?.numeroDeCompras || 0);
     const requiredNumeroCompras = parseInt(offer.Numero_Compras || 0);
-
     const userDiasUcompra = parseInt(sessionData?.Dias_Ucompra || 0);
     const requiredDiasUcompra = parseInt(offer.Dias_Ucompra || 0);
 
-    let reason = ''; // Variable para almacenar la razón del bloqueo
+    let reason = ''; 
 
     if (userTicketPromedio < requiredTicketPromedio) {
       reason = `Bloqueado: El ticket promedio del usuario (${userTicketPromedio}) no cumple el requerido (${requiredTicketPromedio}).`;
@@ -144,24 +134,11 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       return;
     }
 
-    setBlockReason(''); // No hay razón para bloquear
+    setBlockReason(''); 
     setIsBlocked(false);
   };
-
   const getRandomDiscount = (min, max) => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  };
-
-  const calculateCouponPrice = () => {
-    if (offer.Categoria_Cupon === 'pago') {
-      const basePrice = 0.5; // Definir el precio base
-      const discountFactor = (offer.Min_Descuento_Percent + offer.Max_Descuento_Percent) / 2;
-      let calculatedPrice = Math.max(basePrice, (basePrice + (discountFactor / 100) * 1.5).toFixed(2));
-      calculatedPrice = Math.min(calculatedPrice, 1.99); // Limitar el precio máximo a 1.99€
-      setPrecioCupon(calculatedPrice); // Establecer el precio calculado en el estado
-    } else {
-      setPrecioCupon(0); // Si el cupón no es de pago, es gratis
-    }
   };
 
   const handleUseCoupon = () => {
@@ -171,15 +148,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     }
   
     const descuentoAleatorio = getRandomDiscount(offer.Min_Descuento_Percent, offer.Max_Descuento_Percent);
-  
-    // Calcular el precio del cupón solo una vez
-    let precioCupon = 0;
-    if (offer.Categoria_Cupon === 'pago') {
-      const basePrice = 0.5; // Definir el precio base
-      const discountFactor = (offer.Min_Descuento_Percent + offer.Max_Descuento_Percent) / 2;
-      precioCupon = Math.max(basePrice, (basePrice + (discountFactor / 100) * 1.5).toFixed(2));
-      precioCupon = Math.min(precioCupon, 1.99); // Limitar el precio máximo a 1.99€
-    }
   
     axios
       .patch(`http://localhost:3001/api/offers/${offer.Oferta_Id}/use-coupon`)
@@ -191,12 +159,11 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
           Oferta_Id: offer.Oferta_Id,
           Descuento: descuentoAleatorio / 100,
           Max_Amount: offer.Max_Amount,
-          PrecioCupon: precioCupon // Incluir el precio del cupón calculado
+          PrecioCupon: offer.Precio_Cupon // Usar el precio desde la base de datos
         };
   
         setCuponesUsados([...cuponesUsados, newCoupon]);
   
-        // Actualizar la compra con el precio del cupón
         setCompra((prevCompra) => ({
           ...prevCompra,
           cupones: [...(prevCompra.cupones || []), newCoupon]
@@ -207,7 +174,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         alert('No se pudo utilizar el cupón. Posiblemente ya no hay cupones disponibles.');
       });
   };
-  
 
   const renderTimeLeft = () => {
     const { hours, minutes, seconds } = calculateTimeLeft(timeLeft);
@@ -224,39 +190,69 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     return `${offer.Descuento_Percent}% Descuento`;
   };
 
+  
+
   return (
-    <div className={`offer-card ${isBlocked ? 'blocked' : 'active'}`}>
+    <div
+      className={`offer-card ${isBlocked ? 'blocked' : 'active'}`}
+      style={{
+        backgroundImage: `url(http://localhost:3001${offer.Imagen})`,
+        backgroundSize: '100px 100px', // Define el tamaño de cada cuadro
+        backgroundRepeat: 'repeat', // Hace que la imagen se repita
+        backgroundPosition: 'center',
+        position: 'relative',
+      }}
+    >
+      <div className="offer-overlay"></div> {/* Overlay para transparencia */}
       <div className={`offer-content ${isBlocked ? 'blurred' : ''}`}>
-        <img src={`http://localhost:3001${offer.Imagen}`} alt={offer.Descripcion} />
         <h3>{offer.Descripcion}</h3>
         <p>¡Quedan {cuponesDisponibles} Cupones!</p>
         <p>{renderDiscountRange()}</p>
         <p>
-          Precio: {precioCupon === 0 ? 'Today Free' : `Today ${precioCupon}€`}
+          Precio: 
+          {offer.Categoria_Cupon === 'gratis' 
+            ? 'Today Free' 
+            : `Today ${offer.Precio_Cupon || 'n/a'}€`}
         </p>
-
-        <button className={`offer-button ${isBlocked ? 'disabled' : ''}`} onClick={handleUseCoupon} disabled={isBlocked}>
+  
+        <button
+          className={`offer-button ${isBlocked ? 'disabled' : ''}`}
+          onClick={handleUseCoupon}
+          disabled={isBlocked}
+        >
           Usar Cupón
         </button>
-
+  
         {!isBlocked && (
           <div className="expiration-info">
             <p className="time-message">Disponible hasta:</p>
             <p className="time-left">{renderTimeLeft()}</p>
           </div>
         )}
-
+  
         {isBlocked && (
-          <div className="lock-icon" data-tooltip-id="tooltip" data-tooltip-content={blockReason || 'Este cupón está bloqueado'}>
+          <div
+            className="lock-icon"
+            data-tooltip-id="tooltip"
+            data-tooltip-content={blockReason || 'Este cupón está bloqueado'}
+          >
             <p>🔒</p>
           </div>
         )}
-
-        <Tooltip id="tooltip" place="top" type="dark" effect="solid" className="custom-tooltip" />
+  
+        <Tooltip
+          id="tooltip"
+          place="top"
+          type="dark"
+          effect="solid"
+          className="custom-tooltip"
+        />
       </div>
     </div>
   );
+  
 };
+
 const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, compra }) => {
   const offersRef = useRef(null);
 
@@ -282,6 +278,11 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
     offersRef.current.scrollLeft = scrollLeft - walk;
   };
 
+  // Filtro para excluir ofertas de tipo "Pizza Rara"
+  const filteredOffers = offers.filter(
+    (offer) => offer.Tipo_Oferta !== 'Pizza Rara' // Excluir las de tipo "Pizza Rara"
+  );
+
   return (
     <div
       className="offers-section"
@@ -291,19 +292,20 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
       onMouseUp={handleMouseLeaveOrUp}
       onMouseMove={handleMouseMove}
     >
-      {offers.map((offer) => (
+      {filteredOffers.map((offer) => (
         <OfferCard
           key={offer.Oferta_Id}
           offer={offer}
-          cuponesUsados={cuponesUsados}  // Pasar cuponesUsados
-          setCuponesUsados={setCuponesUsados} 
+          cuponesUsados={cuponesUsados}
+          setCuponesUsados={setCuponesUsados}
           setCompra={setCompra}
-          compra={compra} // Pasar setCuponesUsados
+          compra={compra}
         />
       ))}
     </div>
   );
 };
+
 const NotificationTicker = () => {
   const { sessionData } = useContext(_PizzaContext);
   const [offerMessage, setOfferMessage] = useState('');

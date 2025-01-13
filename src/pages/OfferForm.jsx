@@ -1,47 +1,50 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+import '../styles/formularios.css';
 
 const segments = ['S1', 'S2', 'S3', 'S4'];
 
 const OfferForm = () => {
-    const [formData, setFormData] = useState({
-        Cupones_Asignados: '',
-        Descripcion: '',
-        Segmentos_Aplicables: [], // Siempre debe ser un array
-        Imagen: '',
-        Min_Descuento_Percent: '',  // Nuevo campo
-        Max_Descuento_Percent: '',  // Nuevo campo
-        Categoria_Cupon: 'gratis',  // Nuevo campo para seleccionar entre cupón gratis o pago
-        Condiciones_Extras: false,  // Asegurarse de que es booleano
-        Ticket_Promedio: '',
-        Dias_Ucompra: '',
-        Numero_Compras: '',
-        Max_Amount: '',
-        Otras_Condiciones: '',
-        Estado: 'Inactiva', // Por defecto
-        Origen: '',
-        Tipo_Cupon: 'permanente', // Nuevo campo
-        Dias_Activos: [],         // Nuevo campo
-        Hora_Inicio: '',          // Nuevo campo
-        Hora_Fin: '',             // Nuevo campo
-        Observaciones: '',        // Nuevo campo
-        Tipo_Oferta: 'Basic'      // Nuevo campo
-    });
-
+   
     const [currentImage, setCurrentImage] = useState(null);
     const navigate = useNavigate();
-    const { id } = useParams(); // Parámetro ID que nos dice si estamos en modo de edición
-
+    const { id } = useParams(); 
     const allDays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const [formData, setFormData] = useState({
+            Cupones_Asignados: '',
+            Descripcion: '',
+            Segmentos_Aplicables: [],
+            Imagen: '',
+            Min_Descuento_Percent: '',
+            Max_Descuento_Percent: '',
+            Categoria_Cupon: 'gratis',
+            Precio_Cupon: null, 
+            Modo_Precio_Cupon: 'automatico', 
+            Condiciones_Extras: false,
+            Ticket_Promedio: '',
+            Dias_Ucompra: '',
+            Numero_Compras: '',
+            Max_Amount: '',
+            Otras_Condiciones: '',
+            Estado: 'Inactiva',
+            Origen: '',
+            Tipo_Cupon: 'permanente',
+            Dias_Activos: [],
+            Hora_Inicio: '',
+            Hora_Fin: '',
+            Observaciones: '',
+            Tipo_Oferta: 'Basic'
+        });
+
 
     useEffect(() => {
         if (id) {
-            fetchOffer(id); // Cargar la oferta si estamos en modo edición
+            fetchOffer(id); 
         }
     }, [id]);
 
-    // Obtener los datos de la oferta desde el servidor
+ 
     const fetchOffer = async (offerId) => {
         try {
             const response = await axios.get(`http://localhost:3001/ofertas/edit/${offerId}`);
@@ -69,7 +72,8 @@ const OfferForm = () => {
                 Hora_Inicio: offerData.Hora_Inicio || '',
                 Hora_Fin: offerData.Hora_Fin || '',
                 Observaciones: offerData.Observaciones || '',
-                Tipo_Oferta: offerData.Tipo_Oferta || 'Basic'
+                Tipo_Oferta: offerData.Tipo_Oferta || 'Basic',
+                Precio_Cupon: offerData.Precio_Cupon || null
             });
 
             // Verificar si hay imagen
@@ -78,17 +82,22 @@ const OfferForm = () => {
             console.error('Error al obtener la oferta:', error);
         }
     };
-
+    const handlePriceModeChange = (e) => {
+        const mode = e.target.value;
+        setFormData((prev) => ({
+            ...prev,
+            Modo_Precio_Cupon: mode,
+            Precio_Cupon: mode === 'automatico' ? calcularPrecioAutomatico() : null, // Calcula automáticamente si corresponde
+        }));
+    };
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
     };
-
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
         setFormData({ ...formData, [name]: checked });
     };
-
     const handleSegmentChange = (segment) => {
         let updatedSegments = [...formData.Segmentos_Aplicables];
         if (updatedSegments.includes(segment)) {
@@ -98,47 +107,61 @@ const OfferForm = () => {
         }
         setFormData({ ...formData, Segmentos_Aplicables: updatedSegments });
     };
-
     const handleDaysChange = (e) => {
-        const selectedOptions = [...e.target.selectedOptions].map(option => option.value);
-
-        if (selectedOptions.includes('Todos los Dias')) {
-            setFormData({ ...formData, Dias_Activos: allDays });
-        } else {
-            setFormData({ ...formData, Dias_Activos: selectedOptions });
-        }
+        const selectedOptions = [...e.target.selectedOptions].map((option) => option.value);
+    
+        // Reemplazar "Todos los Días" por el array completo de días
+        const updatedDays =
+            selectedOptions.includes('Todos los Días') ? allDays : selectedOptions;
+    
+        setFormData({ ...formData, Dias_Activos: updatedDays });
     };
-
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         setFormData({ ...formData, Imagen: file });
         setCurrentImage(URL.createObjectURL(file));
     };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+    
+        const finalFormData = { ...formData };
+    
+        // Validar y ajustar los valores de Precio_Cupon y Modo_Precio_Cupon
+        if (finalFormData.Categoria_Cupon === 'gratis') {
+            finalFormData.Precio_Cupon = 'n/a';
+            finalFormData.Modo_Precio_Cupon = 'n/a';
+        } else if (finalFormData.Categoria_Cupon === 'pago') {
+            if (finalFormData.Modo_Precio_Cupon === 'automatico') {
+                finalFormData.Precio_Cupon = calcularPrecioAutomatico();
+            } else if (finalFormData.Modo_Precio_Cupon === 'manual') {
+                // Validar que el precio manual sea válido
+                if (!finalFormData.Precio_Cupon || isNaN(parseFloat(finalFormData.Precio_Cupon))) {
+                    alert('Por favor, ingresa un precio válido para el cupón.');
+                    return;
+                }
+            }
+        }
+    
+        // Crear FormData y enviar al servidor
         const updatedFormData = new FormData();
-        Object.keys(formData).forEach(key => {
+        Object.keys(finalFormData).forEach((key) => {
             if (key === 'Segmentos_Aplicables' || key === 'Condiciones_Extras' || key === 'Dias_Activos') {
-                updatedFormData.append(key, JSON.stringify(formData[key]));
+                updatedFormData.append(key, JSON.stringify(finalFormData[key]));
             } else {
-                updatedFormData.append(key, formData[key]);
+                updatedFormData.append(key, finalFormData[key]);
             }
         });
-
+    
         try {
             if (id) {
+                // Actualizar oferta existente
                 await axios.patch(`http://localhost:3001/ofertas/${id}`, updatedFormData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 });
             } else {
+                // Crear nueva oferta
                 await axios.post('http://localhost:3001/ofertas', updatedFormData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    }
+                    headers: { 'Content-Type': 'multipart/form-data' },
                 });
             }
             navigate('/offers');
@@ -146,10 +169,53 @@ const OfferForm = () => {
             console.error('Error al guardar la oferta:', error);
         }
     };
+    
+    const handleCategoryChange = (e) => {
+        const categoria = e.target.value;
+    
+        // Actualizar valores según la categoría del cupón
+        if (categoria === 'gratis') {
+            setFormData((prev) => ({
+                ...prev,
+                Categoria_Cupon: categoria,
+                Precio_Cupon: 'n/a', // Valor predeterminado para cupones gratis
+                Modo_Precio_Cupon: 'n/a', // Valor predeterminado para cupones gratis
+            }));
+        } else if (categoria === 'pago') {
+            setFormData((prev) => ({
+                ...prev,
+                Categoria_Cupon: categoria,
+                Precio_Cupon: null, // Reinicia el precio para cupones pagos
+                Modo_Precio_Cupon: 'automatico', // Valor predeterminado
+            }));
+        }
+    };
+    const calcularPrecioAutomatico = () => {
+        const basePrice = 0.5; // Precio base mínimo
+        const minDiscount = parseFloat(formData.Min_Descuento_Percent) || 0;
+        const maxDiscount = parseFloat(formData.Max_Descuento_Percent) || 0;
+    
+        // Calcula el promedio de descuento
+        const discountFactor = (minDiscount + maxDiscount) / 2;
+    
+        // Escalar el precio basado en el descuento promedio
+        let calculatedPrice = Math.max(
+            basePrice,
+            (basePrice + (discountFactor / 100) * 1.5).toFixed(2)
+        );
+    
+        // Limitar el precio máximo a 1.99 EUR
+        calculatedPrice = Math.min(calculatedPrice, 1.99);
+    
+        return calculatedPrice;
+    };
+    
+    
 
-    return (
-        <div>
-            <h2>{id ? 'Editar Oferta' : 'Crear Oferta'}</h2>
+  return (
+    <div>
+        <h2>{id ? 'Editar Oferta' : 'Crear Oferta'}</h2>
+        <div className="scrollable-form66">
             <form onSubmit={handleSubmit}>
                 <label>
                     Tipo de Oferta:
@@ -176,23 +242,21 @@ const OfferForm = () => {
                         onChange={handleChange}
                     />
                 </label>
-                <label>
-                    Segmentos Aplicables:
-                    {segments.map(segment => (
-                        <div key={segment}>
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    name="Segmentos_Aplicables"
-                                    value={segment}
-                                    checked={formData.Segmentos_Aplicables.includes(segment)}
-                                    onChange={() => handleSegmentChange(segment)}
-                                />
-                                {segment}
-                            </label>
-                        </div>
+                Segmentos Aplicables:
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {segments.map((segment) => (
+                        <label key={segment} style={{ display: 'inline-block', marginRight: '10px' }}>
+                            <input
+                                type="checkbox"
+                                name="Segmentos_Aplicables"
+                                value={segment}
+                                checked={formData.Segmentos_Aplicables.includes(segment)}
+                                onChange={() => handleSegmentChange(segment)}
+                            />
+                            {segment}
+                        </label>
                     ))}
-                </label>
+                </div>
                 <label>
                     Imagen:
                     <input type="file" name="Imagen" onChange={handleImageChange} />
@@ -224,11 +288,43 @@ const OfferForm = () => {
                 </label>
                 <label>
                     Categoría del Cupón:
-                    <select name="Categoria_Cupon" value={formData.Categoria_Cupon} onChange={handleChange}>
+                    <select name="Categoria_Cupon" value={formData.Categoria_Cupon} onChange={handleCategoryChange}>
                         <option value="gratis">Gratis</option>
                         <option value="pago">Pago</option>
                     </select>
                 </label>
+                {formData.Categoria_Cupon === 'pago' && (
+                    <>
+                        <label>
+                            Modo de Precio del Cupón:
+                            <select
+                                name="Modo_Precio_Cupon"
+                                value={formData.Modo_Precio_Cupon}
+                                onChange={handlePriceModeChange}
+                            >
+                                <option value="automatico">Automático</option>
+                                <option value="manual">Manual</option>
+                            </select>
+                        </label>
+
+                        {formData.Modo_Precio_Cupon === 'manual' && (
+                            <label>
+                                Precio del Cupón:
+                                <input
+                                    type="number"
+                                    name="Precio_Cupon"
+                                    value={formData.Precio_Cupon || ''}
+                                    onChange={handleChange}
+                                    placeholder="Ingrese el precio manual"
+                                />
+                            </label>
+                        )}
+
+                        {formData.Modo_Precio_Cupon === 'automatico' && (
+                            <p>El precio será calculado automáticamente.</p>
+                        )}
+                    </>
+                )}
                 <label>
                     Max Amount:
                     <input
@@ -245,7 +341,7 @@ const OfferForm = () => {
                         <option value="temporal">Temporal</option>
                     </select>
                 </label>
-    
+
                 {(formData.Tipo_Cupon === 'temporal' || formData.Tipo_Cupon === 'permanente') && (
                     <>
                         <label>
@@ -261,7 +357,7 @@ const OfferForm = () => {
                                 ))}
                             </select>
                         </label>
-    
+
                         <label>
                             Hora de Inicio:
                             <input
@@ -271,7 +367,7 @@ const OfferForm = () => {
                                 onChange={handleChange}
                             />
                         </label>
-    
+
                         <label>
                             Hora de Fin:
                             <input
@@ -283,7 +379,7 @@ const OfferForm = () => {
                         </label>
                     </>
                 )}
-    
+
                 <label>
                     Condiciones Extras:
                     <input
@@ -330,7 +426,7 @@ const OfferForm = () => {
                         </li>
                     </ul>
                 )}
-    
+
                 <label>
                     Estado:
                     <select
@@ -344,7 +440,9 @@ const OfferForm = () => {
                 <button type="submit">Guardar</button>
             </form>
         </div>
-    );
+    </div>
+);
+
     
 };
 

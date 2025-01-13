@@ -549,4 +549,10 @@ form textarea  {
 
 
 
-
+.scrollable-form66 {
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+}
