@@ -269,7 +269,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 cron.schedule('* * * * *', () => {
-  console.log('=== Cron Job Iniciado: Evaluando horarios activos ===');
+  console.log('=== Cron Job Iniciado: Evaluando horarios activos y cupones ===');
 
   // Traducción de días de la semana
   const diasEnEspanol = {
@@ -292,7 +292,7 @@ cron.schedule('* * * * *', () => {
     return;
   }
 
-  // Consultar horarios para el día actual
+  // 1. Evaluar horarios activos
   const queryHorario = `
       SELECT * 
       FROM horarios 
@@ -313,7 +313,6 @@ cron.schedule('* * * * *', () => {
 
     console.log(`✔️ Horarios encontrados para el día ${diaActual}:`, horarios);
 
-    // Verificar si la hora actual está dentro de algún horario activo
     const dentroDeHorarioActivo = horarios.some((horario) => {
       const horaInicio = horario.Hora_inicio;
       const horaFin = horario.Hora_fin === '00:00' ? '23:59' : horario.Hora_fin;
@@ -325,7 +324,6 @@ cron.schedule('* * * * *', () => {
     if (!dentroDeHorarioActivo) {
       console.log('✅ No hay horarios activos actualmente. Desactivando repartidores...');
 
-      // Actualizar estados de repartidores a 'Inactivo'
       db.run(
         'UPDATE repartidores SET estado = ? WHERE estado = ?',
         ['Inactivo', 'Activo'],
@@ -343,11 +341,94 @@ cron.schedule('* * * * *', () => {
     }
   });
 
+  // 2. Evaluar y resetear cupones si la hora fin ya pasó
+  const queryCupones = `
+      SELECT * 
+      FROM ofertas 
+      WHERE Tipo_Cupon = 'permanente' AND Estado = 'Activa'
+  `;
+
+  db.all(queryCupones, (err, cupones) => {
+    if (err) {
+      console.error('❌ Error al obtener cupones:', err);
+      return;
+    }
+
+    if (!cupones || cupones.length === 0) {
+      console.log('⚠️ No hay cupones activos para evaluar.');
+      return;
+    }
+
+    cupones.forEach((cupon) => {
+      const horaFin = moment(cupon.Hora_Fin, 'HH:mm');
+      const diasActivos = JSON.parse(cupon.Dias_Activos) || [];
+
+      // Verificar si la hora actual ha pasado la hora fin y si el día es activo
+      if (diasActivos.includes(diaActual) && moment().isSameOrAfter(horaFin)) {
+        console.log(`⏳ Reseteando cupones para la oferta ${cupon.Oferta_Id}, hora fin alcanzada.`);
+
+        const resetQuery = `
+          UPDATE ofertas 
+          SET Cupones_Disponibles = Cupones_Asignados 
+          WHERE Oferta_Id = ?
+        `;
+
+        db.run(resetQuery, [cupon.Oferta_Id], function (err) {
+          if (err) {
+            console.error(`❌ Error al resetear cupones para oferta ${cupon.Oferta_Id}:`, err);
+            return;
+          }
+
+          console.log(`✔️ Cupones reseteados para la oferta ${cupon.Oferta_Id}.`);
+        });
+      }
+    });
+  });
+
   console.log('=== Cron Job Finalizado ===\n');
 });
 
-// the get zone
 
+// the get zone
+app.get('/api/daily-challenges', (req, res) => {
+  const query = `SELECT * FROM ofertas WHERE Tipo_Oferta = 'DailyChallenge'`;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error al recuperar Daily Challenges:', err.message);
+      res.status(500).json({ error: 'Error al recuperar Daily Challenges.' });
+    } else {
+      console.log('Daily Challenges recuperados:', rows); // Log para verificar los datos
+      res.json(rows);
+    }
+  });
+});
+app.get('/api/daily-challenge/:id', (req, res) => {
+  const ofertaId = req.params.id;
+
+  const query = `SELECT * FROM ofertas WHERE Oferta_Id = ?`;
+  db.get(query, [ofertaId], (err, row) => {
+    if (err) {
+      console.error('Error al recuperar la oferta:', err.message);
+      res.status(500).json({ error: 'Error al recuperar la oferta.' });
+    } else {
+      console.log('Datos recuperados:', row); // Log para verificar los datos
+      res.json(row); // Incluye todos los campos, incluyendo Instrucciones_Link
+    }
+  });
+});
+app.get('/api/daily-challenge/:id/responses', (req, res) => {
+  const daily_challenge_id = req.params.id;
+
+  const query = `SELECT * FROM ChallengeResponses WHERE daily_challenge_id = ?`;
+  
+  db.all(query, [daily_challenge_id], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error al obtener las respuestas' });
+    }
+    res.json(rows);
+  });
+});
 app.get('/IngredientExtraPrices', (req, res) => {
   const query = 'SELECT * FROM IngredientExtraPrices';
   db.all(query, [], (err, rows) => {
@@ -491,7 +572,7 @@ app.get('/reportes/repartidores', (req, res) => {
     });
 
     const pedidosPorDiaArray = Object.entries(pedidosPorDia)
-      .sort(([fechaA], [fechaB]) => new Date(fechaA) - new Date(fechaB)) // Asegurar orden cronológico
+      .sort(([fechaA], [fechaB]) => new Date(fechaA) - new Date(fechaB)) 
       .map(([fecha, data]) => ({
         fecha,
         cantidad: data.cantidad,
@@ -942,33 +1023,6 @@ app.get('/ofertas/edit/:Oferta_Id', (req, res) => {
       "message": "success",
       "data": row
     });
-  });
-});
-app.get('/api/daily-challenge', (req, res) => {
-  const query = `SELECT * FROM DailyChallenge ORDER BY id DESC LIMIT 1`; // Obtener el último reto
-
-  db.get(query, (err, row) => {
-    if (err) {
-      console.error('Error al obtener el reto diario:', err);
-      return res.status(500).json({ error: 'Error al obtener el reto diario.' });
-    }
-    if (row) {
-      res.json(row);
-    } else {
-      res.status(404).json({ error: 'No se encontró ningún reto diario.' });
-    }
-  });
-});
-app.get('/api/daily-challenge/:id/responses', (req, res) => {
-  const daily_challenge_id = req.params.id;
-
-  const query = `SELECT * FROM ChallengeResponses WHERE daily_challenge_id = ?`;
-  
-  db.all(query, [daily_challenge_id], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error al obtener las respuestas' });
-    }
-    res.json(rows);
   });
 });
 app.get('/api/reviews', (req, res) => {
@@ -2022,31 +2076,31 @@ app.post('/api/incentivos', async (req, res) => {
     res.status(500).send({ error: 'Error al crear el incentivo' });
   }
 });
-app.post('/api/daily-challenge', upload.single('img'), (req, res) => {
-  const { comments, link, min_discount, max_discount, assigned_coupons } = req.body;
+// app.post('/api/daily-challenge', upload.single('img'), (req, res) => {
+//   const { comments, link, min_discount, max_discount, assigned_coupons } = req.body;
 
-  if (!comments || !min_discount || !max_discount || !assigned_coupons) {
-    return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
-  }
+//   if (!comments || !min_discount || !max_discount || !assigned_coupons) {
+//     return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+//   }
 
-  // Manejo de la imagen subida, si existe
-  const img_url = req.file ? `/uploads/${req.file.filename}` : null;
+//   // Manejo de la imagen subida, si existe
+//   const img_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-  const query = `
-    INSERT INTO DailyChallenge (comments, link, img_url, min_discount, max_discount, assigned_coupons)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
+//   const query = `
+//     INSERT INTO DailyChallenge (comments, link, img_url, min_discount, max_discount, assigned_coupons)
+//     VALUES (?, ?, ?, ?, ?, ?)
+//   `;
 
-  db.run(query, [comments, link, img_url, min_discount, max_discount, assigned_coupons], function (err) {
-    if (err) {
-      console.error('Error al crear el reto diario:', err);
-      return res.status(500).json({ message: 'Error al crear el reto diario.' });
-    }
+//   db.run(query, [comments, link, img_url, min_discount, max_discount, assigned_coupons], function (err) {
+//     if (err) {
+//       console.error('Error al crear el reto diario:', err);
+//       return res.status(500).json({ message: 'Error al crear el reto diario.' });
+//     }
 
-    console.log('Nuevo Daily Challenge creado con éxito:', this.lastID);
-    res.status(201).json({ success: true, daily_challenge_id: this.lastID });
-  });
-});
+//     console.log('Nuevo Daily Challenge creado con éxito:', this.lastID);
+//     res.status(201).json({ success: true, daily_challenge_id: this.lastID });
+//   });
+// });
 app.post('/api/daily-challenge/:id/participate', (req, res) => {
   const { ig_username, post_link, user_id, daily_challenge_id } = req.body;
 
@@ -2162,94 +2216,146 @@ app.post('/api/reviews', (req, res) => {
   });
 });
 app.post('/ofertas', upload.single('Imagen'), (req, res) => {
+  const moment = require('moment-timezone');
   const {
-      Cupones_Asignados, Descripcion, Segmentos_Aplicables,
-      Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-      Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
-      Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones,
-      Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon
+    // Campos que ya tenías
+    Cupones_Asignados, Descripcion, Segmentos_Aplicables,
+    Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
+    Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
+    Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
+    Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon,
+    
+    // Campos donde REALMENTE te llega la info del DailyChallenge
+    Link_DailyChallenge,
+    Instrucciones_DailyChallenge
   } = req.body;
 
   console.log('Datos recibidos del formulario:', req.body);
 
-  const Codigo_Oferta = `OFF${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+  // Asignar los valores que llegan a las columnas "Instrucciones_Link" y "Additional_Instructions"
+  const Instrucciones_Link = Link_DailyChallenge || null;           // se guardará el link
+  const Additional_Instructions = Instrucciones_DailyChallenge || null; // se guardarán las instrucciones
 
-  let parsedSegmentos, parsedDiasActivos;
+  // Parse de arrays
+  let parsedSegmentos = [];
+  let parsedDiasActivos = [];
   try {
-      parsedSegmentos = JSON.parse(Segmentos_Aplicables || '[]');
+    parsedSegmentos = JSON.parse(Segmentos_Aplicables || '[]');
+    parsedDiasActivos = JSON.parse(Dias_Activos || '[]');
   } catch (error) {
-      parsedSegmentos = [];
+    console.error('Error parseando JSON', error);
   }
 
-  try {
-      parsedDiasActivos = JSON.parse(Dias_Activos || '[]');
-  } catch (error) {
-      parsedDiasActivos = [];
-  }
-
+  // Manejo de Imagen
   const Imagen = req.file ? `/uploads/${req.file.filename}` : null;
+
+  // Calculamos cupones disponibles y fecha
   const Cupones_Disponibles = Cupones_Asignados;
   const IssueDate = moment().tz('Europe/Madrid').format('YYYY-MM-DD HH:mm:ss');
 
-  // Calcular el precio del cupón según la categoría
+  // Generar código de oferta
+  const Codigo_Oferta = `OFF${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+  // Calcular precio del cupón
+  function calculateCouponPrice(minDiscount, maxDiscount) {
+    const basePrice = 0.5;
+    const discountFactor = (parseFloat(minDiscount) + parseFloat(maxDiscount)) / 2;
+    let calculatedPrice = Math.max(
+      basePrice,
+      (basePrice + (discountFactor / 100) * 1.5).toFixed(2)
+    );
+    return Math.min(calculatedPrice, 1.99);
+  }
+
   let precioFinalCupon = null;
   let modoPrecioFinal = Modo_Precio_Cupon;
-
   if (Categoria_Cupon === 'gratis') {
-      precioFinalCupon = 'n/a';
-      modoPrecioFinal = 'n/a';
+    precioFinalCupon = 'n/a';
+    modoPrecioFinal = 'n/a';
   } else if (Categoria_Cupon === 'pago') {
-      if (Modo_Precio_Cupon === 'automatico') {
-          precioFinalCupon = calculateCouponPrice(Min_Descuento_Percent, Max_Descuento_Percent);
-      } else if (Modo_Precio_Cupon === 'manual') {
-          precioFinalCupon = Precio_Cupon ? parseFloat(Precio_Cupon) : null;
-      }
+    if (Modo_Precio_Cupon === 'automatico') {
+      precioFinalCupon = calculateCouponPrice(Min_Descuento_Percent, Max_Descuento_Percent);
+    } else if (Modo_Precio_Cupon === 'manual') {
+      precioFinalCupon = Precio_Cupon ? parseFloat(Precio_Cupon) : null;
+    }
   }
 
-  // Función para calcular el precio del cupón
-  function calculateCouponPrice(minDiscount, maxDiscount) {
-      const basePrice = 0.5; // Precio base
-      const discountFactor = (parseFloat(minDiscount) + parseFloat(maxDiscount)) / 2;
-      let calculatedPrice = Math.max(basePrice, (basePrice + (discountFactor / 100) * 1.5).toFixed(2));
-      return Math.min(calculatedPrice, 1.99); // Precio máximo permitido
-  }
-
+  // Ajustar el INSERT para usar "Instrucciones_Link" y "Additional_Instructions"
   const sql = `
-      INSERT INTO ofertas (
-          Codigo_Oferta, Cupones_Disponibles, Descripcion, Segmentos_Aplicables, Imagen,
-          Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-          Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
-          Otras_Condiciones, Estado, Cupones_Asignados, Origen, Tipo_Cupon,
-          Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones, IssueDate, Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO ofertas (
+      Codigo_Oferta,
+      Cupones_Disponibles,
+      Descripcion,
+      Segmentos_Aplicables,
+      Imagen,
+      Min_Descuento_Percent,
+      Max_Descuento_Percent,
+      Categoria_Cupon,
+      Condiciones_Extras,
+      Ticket_Promedio,
+      Dias_Ucompra,
+      Numero_Compras,
+      Max_Amount,
+      Instrucciones_Link,         -- <--- cambiamos a Instrucciones_Link
+      Additional_Instructions,    -- <--- cambiamos a Additional_Instructions
+      Estado,
+      Cupones_Asignados,
+      Origen,
+      Tipo_Cupon,
+      Dias_Activos,
+      Hora_Inicio,
+      Hora_Fin,
+      IssueDate,
+      Tipo_Oferta,
+      Precio_Cupon,
+      Modo_Precio_Cupon
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
+  // Orden de parámetros
   const params = [
-      Codigo_Oferta, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
-      Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-      Condiciones_Extras, Ticket_Promedio || null, Dias_Ucompra || null,
-      Numero_Compras || null, Max_Amount, Otras_Condiciones || null, Estado,
-      Cupones_Asignados, Origen || 'creada', Tipo_Cupon, JSON.stringify(parsedDiasActivos),
-      Hora_Inicio, Hora_Fin, Observaciones, IssueDate, Tipo_Oferta, precioFinalCupon, modoPrecioFinal
+    Codigo_Oferta,
+    Cupones_Disponibles,
+    Descripcion,
+    JSON.stringify(parsedSegmentos),
+    Imagen,
+    Min_Descuento_Percent,
+    Max_Descuento_Percent,
+    Categoria_Cupon,
+    Condiciones_Extras,
+    Ticket_Promedio || null,
+    Dias_Ucompra || null,
+    Numero_Compras || null,
+    Max_Amount || null,
+    Instrucciones_Link,           // <--- link del reto
+    Additional_Instructions,      // <--- instrucciones del reto
+    Estado,
+    Cupones_Asignados,
+    Origen || 'creada',
+    Tipo_Cupon,
+    JSON.stringify(parsedDiasActivos),
+    Hora_Inicio,
+    Hora_Fin,
+    IssueDate,
+    Tipo_Oferta,
+    precioFinalCupon,
+    modoPrecioFinal
   ];
 
   console.log('Parámetros de inserción:', params);
 
   db.run(sql, params, function (err) {
-      if (err) {
-          console.error('Error al insertar en la base de datos:', err.message);
-          res.status(400).json({ error: err.message });
-          return;
-      }
-      res.json({
-          message: 'success',
-          data: { id: this.lastID },
-      });
+    if (err) {
+      console.error('Error al insertar en la base de datos:', err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    res.json({
+      message: 'success',
+      data: { id: this.lastID }
+    });
   });
 });
-
-
 app.post('/DetallesLote', (req, res) => {
   const { IDing, producto, disponible, TiempoUso, PorcentajeXLote, referencia, InventarioID } = req.body;
   const sqlInsert = 'INSERT INTO DetallesLote (IDing, producto, disponible, TiempoUso, PorcentajeXLote, referencia, InventarioID) VALUES (?, ?, ?, ?, ?, ?, ?)';
@@ -2848,6 +2954,25 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+
+app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
+  const offerId = req.params.id;
+  const { Cupones_Disponibles } = req.body;
+
+  console.log('PATCH /reset-coupons recibido:', { offerId, Cupones_Disponibles });
+
+  try {
+    await db.run(
+      `UPDATE ofertas SET Cupones_Disponibles = ? WHERE Oferta_Id = ?`,
+      [Cupones_Disponibles, offerId]
+    );
+
+    res.status(200).json({ message: 'Cupones reseteados correctamente' });
+  } catch (error) {
+    console.error('Error en /reset-coupons:', error);
+    res.status(500).json({ error: 'Error al resetear los cupones' });
+  }
+});
 app.patch('/repartidores/:id/estado', async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -3303,10 +3428,11 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   console.log('File:', req.file);
 
   const {
-    Cupones_Asignados, Descripcion, Segmentos_Aplicables, Min_Descuento_Percent, Max_Descuento_Percent,
+    Cupones_Asignados, Descripcion, Segmentos_Aplicables,
+    Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
     Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
-    Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones,
-    Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon, Categoria_Cupon
+    Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
+    Additional_Instructions, Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon
   } = req.body;
 
   const Imagen = req.file ? `/uploads/${req.file.filename}` : req.body.Imagen;
@@ -3357,19 +3483,37 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
       Cupones_Asignados = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
       Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Categoria_Cupon = ?,
       Condiciones_Extras = ?, Ticket_Promedio = ?, Dias_Ucompra = ?, Numero_Compras = ?,
-      Max_Amount = ?, Otras_Condiciones = ?, Estado = ?, Origen = ?, Tipo_Cupon = ?,
-      Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Observaciones = ?, Tipo_Oferta = ?,
-      Precio_Cupon = ?, Modo_Precio_Cupon = ?
+      Max_Amount = ?, Instrucciones_Link = ?, Estado = ?, Origen = ?, Tipo_Cupon = ?,
+      Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?,
+      Tipo_Oferta = ?, Precio_Cupon = ?, Modo_Precio_Cupon = ?
     WHERE Oferta_Id = ?
   `;
 
   const params = [
-    Cupones_Asignados, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
-    Min_Descuento_Percent || null, Max_Descuento_Percent || null, Categoria_Cupon || 'gratis',
-    Condiciones_Extras, Ticket_Promedio || null, Dias_Ucompra || null, Numero_Compras || null,
-    Max_Amount, Otras_Condiciones || null, Estado, Origen, Tipo_Cupon,
-    JSON.stringify(parsedDiasActivos), Hora_Inicio, Hora_Fin, Observaciones, Tipo_Oferta,
-    precioFinalCupon, modoPrecioFinal, req.params.Oferta_Id
+    Cupones_Asignados,
+    Descripcion,
+    JSON.stringify(parsedSegmentos),
+    Imagen,
+    Min_Descuento_Percent || null,
+    Max_Descuento_Percent || null,
+    Categoria_Cupon || 'gratis',
+    Condiciones_Extras,
+    Ticket_Promedio || null,
+    Dias_Ucompra || null,
+    Numero_Compras || null,
+    Max_Amount,
+    Instrucciones_Link || null,           // Cambiado de Otras_Condiciones
+    Estado,
+    Origen,
+    Tipo_Cupon,
+    JSON.stringify(parsedDiasActivos),
+    Hora_Inicio,
+    Hora_Fin,
+    Additional_Instructions || null,      // Cambiado de Observaciones
+    Tipo_Oferta,
+    precioFinalCupon,
+    modoPrecioFinal,
+    req.params.Oferta_Id
   ];
 
   console.log('SQL:', sql);
@@ -3384,7 +3528,6 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     res.json({ message: 'success' });
   });
 });
-
 app.patch('/api/offers/:id/use-coupon', (req, res) => {
   const offerId = req.params.id;
 
@@ -3426,28 +3569,32 @@ app.patch('/api/daily-challenge/:id/claim-coupon', (req, res) => {
   const daily_challenge_id = req.params.id;
 
   if (!ig_username || !post_link || !user_id) {
-    console.log('Datos incompletos recibidos:', { ig_username, post_link, user_id }); // <-- Agrega este log
+    console.log('Datos incompletos recibidos:', { ig_username, post_link, user_id });
     return res.status(400).json({ message: 'Datos incompletos para reclamar el cupón.' });
   }
 
-  // Verificar si hay cupones disponibles
-  const query = `SELECT assigned_coupons, min_discount, max_discount FROM DailyChallenge WHERE id = ?`;
+  // Verificar si hay cupones disponibles y obtener información del Daily Challenge
+  const query = `
+    SELECT Cupones_Disponibles, Min_Descuento_Percent, Max_Descuento_Percent 
+    FROM ofertas 
+    WHERE Oferta_Id = ? AND Tipo_Oferta = 'DailyChallenge' AND Estado = 'Activa'
+  `;
   db.get(query, [daily_challenge_id], (err, challenge) => {
     if (err) {
-      console.error('Error al obtener el reto diario:', err);
-      return res.status(500).json({ message: 'Error al obtener el reto diario.' });
+      console.error('Error al obtener el Daily Challenge:', err);
+      return res.status(500).json({ message: 'Error al obtener el Daily Challenge.' });
     }
 
     if (!challenge) {
-      return res.status(404).json({ message: 'Reto no encontrado.' });
+      return res.status(404).json({ message: 'Daily Challenge no encontrado o no está activo.' });
     }
 
-    if (challenge.assigned_coupons <= 0) {
+    if (challenge.Cupones_Disponibles <= 0) {
       return res.status(400).json({ message: 'Lo sentimos, no hay cupones disponibles.' });
     }
 
     // Calcular el descuento
-    const discount = Math.floor(Math.random() * (challenge.max_discount - challenge.min_discount + 1)) + challenge.min_discount;
+    const discount = Math.floor(Math.random() * (challenge.Max_Descuento_Percent - challenge.Min_Descuento_Percent + 1)) + challenge.Min_Descuento_Percent;
 
     // Actualizar el registro de participación con el descuento
     const updateQuery = `
@@ -3455,7 +3602,7 @@ app.patch('/api/daily-challenge/:id/claim-coupon', (req, res) => {
       SET discount = ?
       WHERE daily_challenge_id = ? AND user_id = ? AND discount IS NULL
     `;
-    db.run(updateQuery, [discount, daily_challenge_id, user_id], function(err) {
+    db.run(updateQuery, [discount, daily_challenge_id, user_id], function (err) {
       if (err) {
         console.error('Error al actualizar la participación:', err);
         return res.status(500).json({ message: 'Error al actualizar la participación.' });
@@ -3465,16 +3612,24 @@ app.patch('/api/daily-challenge/:id/claim-coupon', (req, res) => {
         return res.status(400).json({ message: 'No se encontró una participación para actualizar o ya se ha asignado un descuento.' });
       }
 
-      // Actualizar la cantidad de cupones disponibles
-      const updateCouponsQuery = `UPDATE DailyChallenge SET assigned_coupons = assigned_coupons - 1 WHERE id = ?`;
+      // Actualizar los cupones disponibles en la tabla de ofertas
+      const updateCouponsQuery = `
+        UPDATE ofertas 
+        SET Cupones_Disponibles = Cupones_Disponibles - 1 
+        WHERE Oferta_Id = ?
+      `;
       db.run(updateCouponsQuery, [daily_challenge_id], (updateErr) => {
         if (updateErr) {
-          console.error('Error al actualizar los cupones:', updateErr);
+          console.error('Error al actualizar los cupones disponibles:', updateErr);
           return res.status(500).json({ message: 'Error al actualizar los cupones disponibles.' });
         }
 
-        console.log(`Cupón asignado: ${discount}% de descuento. Quedan ${challenge.assigned_coupons - 1} cupones.`);
-        return res.json({ success: true, coupon: { discount } });
+        console.log(`Cupón asignado: ${discount}% de descuento. Quedan ${challenge.Cupones_Disponibles - 1} cupones.`);
+        return res.json({
+          success: true,
+          coupon: { discount },
+          remainingCoupons: challenge.Cupones_Disponibles - 1
+        });
       });
     });
   });
@@ -3553,15 +3708,17 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   console.log('File:', req.file);
 
   const {
-      Cupones_Asignados, Descripcion, Segmentos_Aplicables,
-      Descuento_Percent, Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, Otras_Condiciones, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin, Observaciones
+    Cupones_Asignados, Descripcion, Segmentos_Aplicables,
+    Min_Descuento_Percent, Max_Descuento_Percent, Condiciones_Extras, Ticket_Promedio, Dias_Ucompra,
+    Numero_Compras, Max_Amount, Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos,
+    Hora_Inicio, Hora_Fin, Additional_Instructions
   } = req.body;
 
   const Imagen = req.file ? `/uploads/${req.file.filename}` : req.body.Imagen;
 
   let parsedSegmentos;
   try {
-    parsedSegmentos = JSON.parse(Segmentos_Aplicables);
+    parsedSegmentos = JSON.parse(Segmentos_Aplicables || '[]');
     console.log('Parsed Segmentos_Aplicables:', parsedSegmentos);
   } catch (error) {
     console.error('Error parsing Segmentos_Aplicables:', error);
@@ -3570,7 +3727,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
 
   let parsedDiasActivos;
   try {
-    parsedDiasActivos = JSON.parse(Dias_Activos);
+    parsedDiasActivos = JSON.parse(Dias_Activos || '[]');
     console.log('Parsed Dias_Activos:', parsedDiasActivos);
   } catch (error) {
     console.error('Error parsing Dias_Activos:', error);
@@ -3582,7 +3739,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   db.get(selectSql, [req.params.Oferta_Id], (err, row) => {
     if (err) {
       console.error('Error fetching current offer:', err.message);
-      res.status(500).json({ "error": err.message });
+      res.status(500).json({ error: err.message });
       return;
     }
 
@@ -3602,29 +3759,30 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
       UPDATE ofertas
       SET
           Cupones_Asignados = ?, Cupones_Disponibles = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
-          Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?, Dias_Ucompra = ?,
-          Numero_Compras = ?, Max_Amount = ?, Otras_Condiciones = ?, Estado = ?, Origen = ?, Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Observaciones = ?
+          Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?,
+          Dias_Ucompra = ?, Numero_Compras = ?, Max_Amount = ?, Instrucciones_Link = ?, Estado = ?,
+          Origen = ?, Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?
       WHERE Oferta_Id = ?
     `;
 
     const params = [
       Cupones_Asignados, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
-      Descuento_Percent, Condiciones_Extras, Ticket_Promedio || null, Dias_Ucompra || null, 
-      Numero_Compras || null, Max_Amount, Otras_Condiciones || null, Estado, Origen, Tipo_Cupon, JSON.stringify(parsedDiasActivos), Hora_Inicio, Hora_Fin, Observaciones, req.params.Oferta_Id
+      Min_Descuento_Percent || null, Max_Descuento_Percent || null, Condiciones_Extras,
+      Ticket_Promedio || null, Dias_Ucompra || null, Numero_Compras || null, Max_Amount,
+      Instrucciones_Link || null, Estado, Origen, Tipo_Cupon, JSON.stringify(parsedDiasActivos),
+      Hora_Inicio, Hora_Fin, Additional_Instructions || null, req.params.Oferta_Id
     ];
 
     console.log('SQL:', sql);
     console.log('Params:', params);
 
-    db.run(sql, params, function(err) {
+    db.run(sql, params, function (err) {
       if (err) {
         console.error('Error updating offer:', err.message);
-        res.status(500).json({ "error": err.message });
+        res.status(500).json({ error: err.message });
         return;
       }
-      res.json({
-        "message": "success"
-      });
+      res.json({ message: 'success' });
     });
   });
 });

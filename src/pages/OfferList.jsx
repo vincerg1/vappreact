@@ -53,7 +53,7 @@ const OfferList = () => {
                     <thead>
                         <tr>
                             <th>Codigo_Oferta</th>
-                            <th>Descripcion</th>
+                            <th>Tipo_Oferta</th>
                             <th>Cupones Asignados</th>
                             <th>Cupones Disponibles</th> {/* Nueva columna */}
                             <th>Tipo de Cupón</th> {/* Nueva columna */}
@@ -63,7 +63,7 @@ const OfferList = () => {
                             <th>Condiciones Extras</th>
                             <th>Imagen</th>
                             <th>Estado</th>
-                            <th>Origen</th>
+                            <th>Categoria_Cupon </th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -72,7 +72,7 @@ const OfferList = () => {
                             offers.map(offer => (
                                 <tr key={offer.Oferta_Id}>
                                     <td>{offer.Codigo_Oferta}</td>
-                                    <td>{offer.Descripcion}</td>
+                                    <td>{offer.Tipo_Oferta }</td>
                                     <td>{offer.Cupones_Asignados}</td>
                                     <td>{offer.Cupones_Disponibles}</td> {/* Mostrando cupones disponibles */}
                                     <td>{offer.Tipo_Cupon}</td> {/* Mostrando tipo de cupón */}
@@ -88,7 +88,7 @@ const OfferList = () => {
                                         ) : 'Agrega una Imagen'}
                                     </td>
                                     <td>{offer.Estado}</td>
-                                    <td>{offer.Origen ? offer.Origen : 'Creada'}</td>
+                                    <td>{offer.Categoria_Cupon}</td>
                                     <td>
                                         <button onClick={() => handleEdit(offer.Oferta_Id)}>Edit</button>
                                         <button onClick={() => handleDelete(offer.Oferta_Id)}>Delete</button>

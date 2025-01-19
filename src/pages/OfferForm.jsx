@@ -34,7 +34,9 @@ const OfferForm = () => {
             Hora_Inicio: '',
             Hora_Fin: '',
             Observaciones: '',
-            Tipo_Oferta: 'Basic'
+            Tipo_Oferta: 'Normal',
+            Link_DailyChallenge: '',
+            Instrucciones_DailyChallenge: '',
         });
 
 
@@ -58,25 +60,25 @@ const OfferForm = () => {
                 Imagen: offerData.Imagen || '', 
                 Min_Descuento_Percent: offerData.Min_Descuento_Percent || '',
                 Max_Descuento_Percent: offerData.Max_Descuento_Percent || '',
-                Categoria_Cupon: offerData.Categoria_Cupon || 'gratis', // Usar el nuevo campo de categoría
+                Categoria_Cupon: offerData.Categoria_Cupon || 'gratis',
                 Condiciones_Extras: offerData.Condiciones_Extras === 'true',
                 Ticket_Promedio: offerData.Ticket_Promedio || '',
                 Dias_Ucompra: offerData.Dias_Ucompra || '',
                 Numero_Compras: offerData.Numero_Compras || '',
                 Max_Amount: offerData.Max_Amount || '',
-                Otras_Condiciones: offerData.Otras_Condiciones || '',
+                Instrucciones_Link: offerData.Instrucciones_Link || '', // Nuevo campo
                 Estado: offerData.Estado || 'Inactiva',
                 Origen: offerData.Origen || '',
                 Tipo_Cupon: offerData.Tipo_Cupon || 'permanente',
                 Dias_Activos: JSON.parse(offerData.Dias_Activos || '[]'),
                 Hora_Inicio: offerData.Hora_Inicio || '',
                 Hora_Fin: offerData.Hora_Fin || '',
-                Observaciones: offerData.Observaciones || '',
-                Tipo_Oferta: offerData.Tipo_Oferta || 'Basic',
+                Additional_Instructions: offerData.Additional_Instructions || '', // Nuevo campo
+                Tipo_Oferta: offerData.Tipo_Oferta || 'Normal',
                 Precio_Cupon: offerData.Precio_Cupon || null
             });
 
-            // Verificar si hay imagen
+
             setCurrentImage(offerData.Imagen ? `http://localhost:3001${offerData.Imagen}` : null);
         } catch (error) {
             console.error('Error al obtener la oferta:', error);
@@ -169,7 +171,6 @@ const OfferForm = () => {
             console.error('Error al guardar la oferta:', error);
         }
     };
-    
     const handleCategoryChange = (e) => {
         const categoria = e.target.value;
     
@@ -220,10 +221,33 @@ const OfferForm = () => {
                 <label>
                     Tipo de Oferta:
                     <select name="Tipo_Oferta" value={formData.Tipo_Oferta} onChange={handleChange}>
-                        <option value="Basic">Básica</option>
-                        <option value="Pizza Rara">Pizza Rara</option>
+                        <option value="Normal">Normal</option>
+                        <option value="Random Pizza">Random Pizza</option>
+                        <option value="DailyChallenge">DailyChallenge</option>
                     </select>
                 </label>
+                {formData.Tipo_Oferta === 'DailyChallenge' && (
+                    <>
+                        <label>
+                        Link del Reto:
+                        <input
+                            type="text"
+                            name="Instrucciones_Link" 
+                            value={formData.Instrucciones_Link}
+                            onChange={handleChange}
+                        />
+                        </label>
+                        <label>
+                        Instrucciones Adicionales:
+                        <input
+                        type="text"
+                            name="Additional_Instructions" 
+                            value={formData.Additional_Instructions}
+                            onChange={handleChange}
+                        />
+                        </label>
+                    </>
+                    )}
                 <label>
                     Cupones Asignados:
                     <input

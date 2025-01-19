@@ -1,71 +1,269 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { _PizzaContext } from './_PizzaContext';
-import Confetti from 'react-confetti'; 
+import Confetti from 'react-confetti';
+import moment from 'moment';
+import '../styles/DailyChallengeCard.css';
 
-const DailyChallengeCard = ({ dailyChallenge, handleClaimCoupon, userCoupon, closeDailyChallenge, setCompra }) => {
-  const { sessionData } = useContext(_PizzaContext); 
-  const [igUsername, setIgUsername] = useState(''); 
-  const [igLink, setIgLink] = useState(''); 
-  const [errorMessage, setErrorMessage] = useState(''); 
-  const [showParticipationForm, setShowParticipationForm] = useState(false); 
-  const [isParticipated, setIsParticipated] = useState(false); 
-  const [showAlert, setShowAlert] = useState(false); 
-  const [showSuccessModal, setShowSuccessModal] = useState(false); 
-  const [discount, setDiscount] = useState(null); 
-  const [isSubmitting, setIsSubmitting] = useState(false); 
-  const [isCouponReady, setIsCouponReady] = useState(false); 
+const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
+  const { sessionData } = useContext(_PizzaContext);
+  const [dailyChallenge, setDailyChallenge] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isTimeBlocked, setIsTimeBlocked] = useState(false);
+  const [nextAvailableDay, setNextAvailableDay] = useState(null);
+  const [blockReason, setBlockReason] = useState('');
+  const [igUsername, setIgUsername] = useState('');
+  const [igLink, setIgLink] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showParticipationForm, setShowParticipationForm] = useState(false);
+  const [isParticipated, setIsParticipated] = useState(false);
+  const [discount, setDiscount] = useState(null);
   const [isConfettiVisible, setIsConfettiVisible] = useState(false);
-  const [showFinalModal, setShowFinalModal] = useState(false); 
+  const [showFinalModal, setShowFinalModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!setCompra || typeof setCompra !== 'function') {
-    console.error('setCompra no está definido o no es una función');
-    return null;  // Evitamos continuar si no tenemos la función setCompra
-  }
-  const validateLink = (link) => {
-    const regex = /^(https?:\/\/)?(www\.)?instagram\.com\/[A-Za-z0-9._]+(\/p\/[A-Za-z0-9-_]+\/?)?(\/)?(\?.*)?$/;
-    return regex.test(link);
+  useEffect(() => {
+    console.log('Cargando Daily Challenge...');
+    axios
+      .get('http://localhost:3001/api/daily-challenges')
+      .then((response) => {
+        // 1. Filtra los retos activos y de tipo DailyChallenge
+        const activeChallenges = response.data.filter(
+          (challenge) =>
+            challenge.Tipo_Oferta === 'DailyChallenge' &&
+            challenge.Estado === 'Activa'
+        );
+
+        // 2. Determina el día actual sin acentos
+        const currentDay = removeAccents(moment().format('dddd').toLowerCase());
+
+        // 3. Busca los challenges que tengan este día en su Dias_Activos
+        const challengesToday = activeChallenges.filter((challenge) => {
+          const diasActivos = JSON.parse(challenge.Dias_Activos).map(removeAccents);
+          return diasActivos.includes(currentDay);
+        });
+
+        if (challengesToday.length > 0) {
+          // Tomamos el primero (o define tu propia lógica si hay varios)
+          const challengeOfTheDay = challengesToday[0];
+          setDailyChallenge(challengeOfTheDay);
+        } else {
+          console.log('No hay un Daily Challenge activo para el día de hoy.');
+        }
+      })
+      .catch((error) => {
+        console.error('Error al cargar la oferta Daily Challenge:', error);
+      });
+  }, []);
+  useEffect(() => {
+    if (dailyChallenge) {
+      checkTimeAvailability(dailyChallenge);
+      // checkExtraConditions(); // ← Si existiera lógica adicional
+    }
+  }, [dailyChallenge, sessionData]);
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev > 0) {
+            const newValue = prev - 1;
+            // Al llegar a 0, hacemos el reset (si corresponde)
+            if (newValue === 0 && dailyChallenge?.Tipo_Cupon === 'permanente') {
+              console.log(
+                `Reseteando cupones para la oferta ${dailyChallenge.Oferta_Id}: Hora fin alcanzada.`
+              );
+              resetCoupons();
+            }
+            return newValue;
+          }
+          return 0;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft, dailyChallenge]);
+
+  
+
+  const validateLink = (link) => link.includes('instagram.com');
+  const removeAccents = (str) => str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  
+  const calculateTimeLeft = (timeInSeconds) => {
+    const duration = moment.duration(timeInSeconds, 'seconds');
+    return {
+      hours: Math.floor(duration.asHours()),
+      minutes: duration.minutes(),
+      seconds: duration.seconds(),
+    };
   };
-  const validateUsername = (username) => {
-    const regex = /^[a-zA-Z0-9._]{1,30}$/;
-    return regex.test(username);
+  const checkTimeAvailability = (challenge) => {
+    if (!challenge) return;
+
+    if (challenge.Estado !== 'Activa') {
+      setIsTimeBlocked(true);
+      setBlockReason('La oferta no está activa.');
+      return;
+    }
+
+    const currentDay = removeAccents(moment().format('dddd').toLowerCase());
+    const currentTime = moment();
+
+    const horaInicio = moment(challenge.Hora_Inicio, 'HH:mm');
+    const horaFin = moment(challenge.Hora_Fin, 'HH:mm');
+
+    // Validar horario
+    if (!horaInicio.isValid() || !horaFin.isValid()) {
+      console.error('Formato de hora inválido para la oferta:', challenge);
+      setIsTimeBlocked(true);
+      setBlockReason('Error en los horarios configurados.');
+      return;
+    }
+
+    // Días activos
+    const diasActivos = JSON.parse(challenge.Dias_Activos).map(removeAccents);
+
+    if (diasActivos.includes(currentDay)) {
+      // Día sí activo:
+      if (currentTime.isBefore(horaInicio)) {
+        // Aún no empieza la oferta
+        setTimeLeft(horaInicio.diff(currentTime, 'seconds'));
+        setIsTimeBlocked(true);
+        setBlockReason(`Disponible desde las ${challenge.Hora_Inicio}`);
+      } else if (currentTime.isBetween(horaInicio, horaFin)) {
+        // Está en horario
+        setTimeLeft(horaFin.diff(currentTime, 'seconds'));
+        setIsTimeBlocked(false);
+        setBlockReason(`Disponible hasta las ${challenge.Hora_Fin}`);
+      } else {
+        // Ya pasó la hora fin
+        if (challenge.Tipo_Cupon === 'permanente') {
+          console.log(
+            `Llamando a resetCoupons para oferta ${challenge.Oferta_Id}: Hora fin alcanzada.`
+          );
+          resetCoupons();
+        }
+        setIsTimeBlocked(true);
+        calculateNextCycle(challenge);
+      }
+    } else {
+      // Día no activo
+      setIsTimeBlocked(true);
+      calculateNextCycle(challenge);
+    }
+  };
+  const calculateNextCycle = (challenge) => {
+    const currentDayIndex = moment().day();
+    const diasActivos = JSON.parse(challenge.Dias_Activos).map(removeAccents);
+
+    let nextDayIndex = null;
+    for (let i = 1; i <= 7; i++) {
+      const checkDay = (currentDayIndex + i) % 7;
+      const dayName = removeAccents(moment().day(checkDay).format('dddd').toLowerCase());
+      if (diasActivos.includes(dayName)) {
+        nextDayIndex = checkDay;
+        break;
+      }
+    }
+
+    if (nextDayIndex !== null) {
+      const nextDay = moment()
+        .day(nextDayIndex)
+        .startOf('day')
+        .set({
+          hour: challenge.Hora_Inicio.split(':')[0],
+          minute: challenge.Hora_Inicio.split(':')[1],
+        });
+
+      const formattedDayName = moment().day(nextDayIndex).format('dddd');
+      const formattedDate = nextDay.format('DD/MM/YYYY');
+
+      setNextAvailableDay(`${formattedDayName} ${formattedDate}`);
+      setTimeLeft(nextDay.diff(moment(), 'seconds'));
+      setBlockReason(
+        `Disponible el próximo ${formattedDayName} a las ${challenge.Hora_Inicio}`
+      );
+    }
+  };
+  const resetCoupons = () => {
+    if (!dailyChallenge) return;
+
+    axios
+      .patch(`http://localhost:3001/api/offers/${dailyChallenge.Oferta_Id}/reset-coupons`, {
+        Cupones_Disponibles: dailyChallenge.Cupones_Asignados,
+      })
+      .then((response) => {
+        console.log('Respuesta del servidor al reset:', response.data);
+        setDailyChallenge((prev) =>
+          prev ? { ...prev, Cupones_Disponibles: prev.Cupones_Asignados } : prev
+        );
+        console.log(`Cupones reiniciados para la oferta ${dailyChallenge.Oferta_Id}.`);
+      })
+      .catch((error) => {
+        console.error(
+          `Error al reiniciar los cupones para la oferta ${dailyChallenge.Oferta_Id}:`,
+          error
+        );
+      });
+  };
+  const renderTimeLeft = () => {
+    if (!dailyChallenge) return '';
+
+    // Sold out
+    if (dailyChallenge.Cupones_Disponibles === 0) {
+      return (
+        <>
+          Sold Out
+          <br />
+          🚫🚫🚫
+        </>
+      );
+    }
+
+    // Bloqueado por horario o día
+    if (isTimeBlocked) {
+      return blockReason;
+    } else {
+      // Mostrar cuenta regresiva
+      const { hours, minutes, seconds } = calculateTimeLeft(timeLeft);
+      return `Disponible hasta: ${hours}h ${minutes}m ${seconds}s`;
+    }
   };
   const handleParticipation = () => {
     if (!igUsername || !igLink) {
       setErrorMessage('Por favor, completa todos los campos antes de participar.');
       return;
     }
+
     if (!validateLink(igLink)) {
-      setErrorMessage('El enlace no parece ser válido. Por favor, ingresa un enlace de Instagram válido.');
+      setErrorMessage('El enlace debe ser de Instagram. Verifícalo de nuevo.');
       return;
     }
-    if (!validateUsername(igUsername)) {
-      setErrorMessage('El nombre de usuario no parece ser válido. Por favor, ingresa un nombre de usuario correcto.');
-      return;
-    }
-  
+
     setErrorMessage('');
     setIsSubmitting(true);
-  
+
     const participationData = {
       ig_username: igUsername,
       post_link: igLink,
-      daily_challenge_id: dailyChallenge.id,
+      daily_challenge_id: dailyChallenge.Oferta_Id,
       user_id: sessionData.id_cliente,
     };
-  
-    axios.post(`http://localhost:3001/api/daily-challenge/${dailyChallenge.id}/participate`, participationData)
+
+    axios
+      .post(
+        `http://localhost:3001/api/daily-challenge/${dailyChallenge.Oferta_Id}/participate`,
+        participationData
+      )
       .then((response) => {
         console.log('Participación registrada:', response.data);
         setIsParticipated(true);
-        setShowAlert(false);
         setShowParticipationForm(false);
-        setIsCouponReady(true);
-        setShowSuccessModal(true);
       })
       .catch((error) => {
-        console.error('Error al enviar la participación:', error);
-        setErrorMessage('Hubo un error al enviar la participación. Inténtalo de nuevo.');
+        console.error('Error al registrar la participación:', error);
+        setErrorMessage('Error al enviar la participación. Intenta de nuevo.');
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -73,148 +271,191 @@ const DailyChallengeCard = ({ dailyChallenge, handleClaimCoupon, userCoupon, clo
   };
   const handleClaimCouponWrapper = () => {
     if (!isParticipated) {
-      setShowAlert(true); 
+      setErrorMessage('No puedes reclamar el cupón sin haber participado.');
       return;
     }
 
-    axios.patch(`http://localhost:3001/api/daily-challenge/${dailyChallenge.id}/claim-coupon`, {
-      ig_username: igUsername,
-      post_link: igLink,
-      user_id: sessionData.id_cliente, 
-    })
+    axios
+      .patch(
+        `http://localhost:3001/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`,
+        {
+          ig_username: igUsername,
+          post_link: igLink,
+          user_id: sessionData.id_cliente,
+        }
+      )
       .then((response) => {
         const { discount } = response.data.coupon;
-        console.log('Cupón asignado:', discount);
-        setDiscount(discount); 
-        setIsConfettiVisible(true); 
-        setShowSuccessModal(false); 
-        setShowFinalModal(true); 
+        console.log('Cupón reclamado con éxito:', discount);
 
-        // Actualizar el estado de la compra con el cupón del Daily Challenge
-        setCompra((prevCompra) => {
-          const descuentoDecimal = discount / 100;
-          const descuentoAplicado = prevCompra.total_sin_descuento * descuentoDecimal;
+        const nuevoCupon = {
+          Oferta_Id: dailyChallenge.Oferta_Id,
+          Descuento: discount / 100,
+          Max_Amount: dailyChallenge.Max_Descuento_Percent,
+          PrecioCupon: dailyChallenge.Precio_Cupon,
+        };
 
-          // Crear el objeto del cupón del Daily Challenge para agregar al array
-          const dailyChallengeCoupon = {
-            tipo: 'DailyChallenge',
-            descuento: descuentoDecimal,
-            totalAplicado: descuentoAplicado,
-          };
+        // Actualizar la compra global
+        setCompra((prevCompra) => ({
+          ...prevCompra,
+          cupones: [...(prevCompra.cupones || []), nuevoCupon],
+          total_descuentos:
+            prevCompra.total_descuentos +
+            prevCompra.total_sin_descuento * (discount / 100),
+        }));
 
-          return {
-            ...prevCompra,
-            DescuentosDailyChallenge: descuentoDecimal,  // Actualizar DescuentosDailyChallenge
-            cupones: [...prevCompra.cupones, dailyChallengeCoupon], // Agregar el cupón al array de cupones
-            total_a_pagar_con_descuentos: prevCompra.total_sin_descuento - descuentoAplicado,
-          };
-        });
-
-        console.log('Cupón del Daily Challenge añadido a la compra:', discount);
-
+        setDiscount(discount);
+        setIsConfettiVisible(true);
+        setShowFinalModal(true);
       })
       .catch((error) => {
         console.error('Error al reclamar el cupón:', error);
-        setErrorMessage('Lo sentimos, no hay cupones disponibles o hubo un error. Inténtalo más tarde.');
+        setErrorMessage('Error al reclamar el cupón. Intenta de nuevo.');
       });
   };
   const closeAllModals = () => {
-    setShowFinalModal(false); 
-    setIsConfettiVisible(false); 
-    closeDailyChallenge(); 
+    setShowFinalModal(false);
+    setIsConfettiVisible(false);
+    closeDailyChallenge();
   };
+
 
   return (
     <div className="daily-challenge-card">
-      <h2>{dailyChallenge.comments}</h2>
-      {dailyChallenge.img_url && (
-        <img src={dailyChallenge.img_url} alt="Daily Challenge" className="challenge-image" />
-      )}
-      <p><strong>Link:</strong> <a href={dailyChallenge.link} target="_blank" rel="noopener noreferrer">{dailyChallenge.link}</a></p>
-      <p><strong>Rango de Descuento:</strong> {dailyChallenge.min_discount}% - {dailyChallenge.max_discount}%</p>
-      <p><strong>Cupones Disponibles:</strong> {dailyChallenge.assigned_coupons}</p>
-
-      <button className="participate-button" onClick={() => setShowParticipationForm(!showParticipationForm)}>
-        {showParticipationForm ? 'Ocultar Participación' : 'Participa'}
-      </button>
-
-      {showParticipationForm && (
-        <div className="participation-form">
-          <ul className="participation-list">
-            <li>
-              <label>
-                Usuario:
-                <input
-                  type="text"
-                  value={igUsername}
-                  onChange={(e) => setIgUsername(e.target.value)}
-                  placeholder="Tu usuario de Instagram"
-                  required
+      {/* Si no hay reto disponible para hoy */}
+      {!dailyChallenge ? (
+        <p style={{ textAlign: 'center' }}>
+          No hay un Daily Challenge activo en este momento.
+        </p>
+      ) : (
+        <>
+          {/* Muestra la info del challenge si sí hay */}
+          {!isParticipated ? (
+            <>
+              {dailyChallenge.Imagen && (
+                <img
+                  src={`http://localhost:3001${dailyChallenge.Imagen}`}
+                  alt="Challenge"
+                  className="challenge-image"
                 />
-              </label>
-            </li>
-            <li>
-              <label>
-                Link de la Publicación:
-                <input
-                  type="text"
-                  value={igLink}
-                  onChange={(e) => setIgLink(e.target.value)}
-                  placeholder="https://instagram.com/p/..."
-                  required
-                />
-              </label>
-            </li>
-          </ul>
-          <button className="submit-participation-button" onClick={handleParticipation} disabled={isSubmitting}>
-            {isSubmitting ? 'Enviando...' : 'Enviar Participación'}
-          </button>
-        </div>
+              )}
+  
+              <p>
+                <strong>Link:</strong>{' '}
+                {dailyChallenge.Instrucciones_Link ? (
+                  <a
+                    href={dailyChallenge.Instrucciones_Link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {dailyChallenge.Instrucciones_Link}
+                  </a>
+                ) : (
+                  'No disponible'
+                )}
+              </p>
+  
+              {/* Contenedor de detalles del challenge */}
+              <div className="challenge-details">
+                <p>
+                  <strong>Instrucciones:</strong> {dailyChallenge.Additional_Instructions}
+                </p>
+                <p>
+                  <strong>Rango de Descuento:</strong>{' '}
+                  {dailyChallenge.Min_Descuento_Percent}% -{' '}
+                  {dailyChallenge.Max_Descuento_Percent}%
+                </p>
+                <p>
+                  <strong>Cupon_Id:</strong> {dailyChallenge.Codigo_Oferta}
+                </p>
+                <p>
+                  <strong>Cupones Disponibles:</strong>{' '}
+                  {dailyChallenge.Cupones_Disponibles}
+                </p>
+                <p>
+                  <strong>Precio_cupon:</strong> {dailyChallenge.Precio_Cupon}€
+                </p>
+              </div>
+  
+              {/* Tiempo restante */}
+              <p className="time-left">{renderTimeLeft()}</p>
+  
+              <button
+                className="participate-button"
+                onClick={() => setShowParticipationForm(!showParticipationForm)}
+                disabled={
+                  isTimeBlocked ||
+                  (dailyChallenge && dailyChallenge.Cupones_Disponibles === 0)
+                }
+              >
+                {showParticipationForm ? 'Ocultar Participación' : 'Participa'}
+              </button>
+  
+              {/* Formulario de participación */}
+              {showParticipationForm && (
+                <div className="participation-form">
+                  <ul className="participation-list">
+                    <li>
+                      <label className="input-label">
+                        Usuario:
+                      </label>
+                      <input
+                        type="text"
+                        value={igUsername}
+                        onChange={(e) => setIgUsername(e.target.value)}
+                        placeholder="Tu usuario de Instagram"
+                        className="input-field"
+                        required
+                      />
+                    </li>
+                    <li>
+                      <label className="input-label">
+                        Link de la Publicación:
+                      </label>
+                      <input
+                        type="text"
+                        value={igLink}
+                        onChange={(e) => setIgLink(e.target.value)}
+                        placeholder="https://instagram.com/p/..."
+                        className="input-field"
+                        required
+                      />
+                    </li>
+                  </ul>
+                  <button
+                    className="submit-participation-button"
+                    onClick={handleParticipation}
+                    disabled={isSubmitting}
+                  >
+                    Enviar Participación
+                  </button>
+                </div>
+              )}
+              {errorMessage && <p className="error-message">{errorMessage}</p>}
+            </>
+          ) : (
+            <div className="claim-coupon-container">
+              ⚠️{' '}
+              <button onClick={handleClaimCouponWrapper}>
+                Reclamar Cupón
+              </button>{' '}
+              ⚠️
+            </div>
+          )}
+  
+          {showFinalModal && (
+            <div className="modal">
+              {isConfettiVisible && <Confetti />}
+              <h2>¡Felicidades!</h2>
+              <p>Has obtenido un descuento del {discount}%</p>
+              <button onClick={closeAllModals}>Cerrar</button>
+            </div>
+          )}
+        </>
       )}
-
-      {errorMessage && <p className="error-message">{errorMessage}</p>}
-
-      {showSuccessModal && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2 style={{ fontSize: '15px', fontStyle: 'italic', animation: 'none' }}>¡Participación Registrada con Éxito...!</h2> 
-            <button
-              className="claim-coupon-button flashing" 
-              onClick={handleClaimCouponWrapper}
-              style={{ fontSize: '18px', padding: '20px 20px' }} 
-            >
-              Reclamar Cupón
-            </button>
-          </div>
-        </div>
-      )}
-
-      {showFinalModal && (
-        <div className="modal">
-          <div className="modal-content">
-            {isConfettiVisible && <Confetti />}
-            <h2>¡Felicidades!</h2>
-            <p>Has obtenido un {discount}% de descuento en tu próxima compra.</p>
-            <button onClick={closeAllModals}>Cerrar</button>
-          </div>
-        </div>
-      )}
-
-      <style>
-        {`
-          @keyframes flash {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-          }
-          .flashing {
-            animation: flash 1.5s infinite;
-          }
-        `}
-      </style>
     </div>
   );
+  
 };
 
 export default DailyChallengeCard;
-

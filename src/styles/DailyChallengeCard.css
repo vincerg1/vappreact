@@ -1,0 +1,154 @@
+
+
+.claim-coupon-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%; 
+    background-color: #e7e700;
+    
+  }
+.review-form-container button {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.3s;
+} 
+  .claim-coupon-button:hover {
+    background-color: #0056b3;
+  }
+  @keyframes backgroundPulse {
+    0% {
+      background-color: #E6E700; /* Color inicial */
+    }
+    50% {
+      background-color: rgb(235, 235, 135); /* Color ligeramente más claro */
+    }
+    100% {
+      background-color: #E6E700; /* Regreso al color inicial */
+    }
+  }  
+  .modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #E6E700; /* Color inicial del fondo */
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.8);
+    animation: backgroundPulse .125s infinite; /* Aplicar la animación */
+    z-index: 1000; /* Asegura que el modal esté encima de otros elementos */
+  } 
+  .modal h2 {
+    color: #000;
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+  .modal p {
+    color: #333;
+    font-size: 18px;
+    margin: 15px 0;
+  }
+  .modal button {
+    background-color: #000;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+  }
+  .modal button:hover {
+    background-color: #333;
+  }
+
+  @keyframes zoomIn {
+    0% {
+      transform: scale(0.5); /* Inicio más pequeño */
+      opacity: 0; /* Totalmente transparente */
+    }
+    50% {
+      transform: scale(1.2); /* Más grande que el tamaño normal */
+      opacity: 0.8; /* Semi-transparente */
+    }
+    100% {
+      transform: scale(1.5); /* Tamaño normal */
+      opacity: 1; /* Totalmente visible */
+    }
+  }
+  .modal h2, .modal p {
+    animation: zoomIn 2s ease-out; /* Efecto de zoom-in */
+  }
+
+  .daily-challenge-card {
+    margin: 20px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .challenge-image {
+    max-width: 100%;
+    margin-bottom: 15px;
+  }
+  
+  .challenge-details {
+    background-color: #f4f4f4;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+    line-height: .75;
+  }
+  
+  .participation-form {
+    margin-top: 20px;
+  }
+  
+  .input-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+    text-align: center;
+  }
+  
+  .input-field {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  
+  .submit-participation-button {
+    background-color: #000;
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .submit-participation-button:hover {
+    background-color: #333;
+  }
+  
+  .time-left {
+    margin: 15px 0;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .error-message {
+    color: red;
+    font-weight: bold;
+    text-align: center;
+  }
+  

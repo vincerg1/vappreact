@@ -6,8 +6,6 @@ import moment from 'moment';
 import FloatingCart from './FloatingCart'; 
 import DeliveryForm from './DeliveryForm';  
 import '../styles/CustomerMenu.css';
-import { v4 as uuidv4 } from 'uuid';
-
 
 const CustomerMenu = () => {
   const { activePizzas, sessionData, updateSessionData } = useContext(_PizzaContext);
@@ -132,9 +130,6 @@ const CustomerMenu = () => {
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
   
-
-  
-  
   const [isFormVisible, setFormVisible] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState(location.state?.selectedPizza || null);
   const [pizzaDetails, setPizzaDetails] = useState(null);
@@ -246,8 +241,6 @@ const CustomerMenu = () => {
       });
     }
   };
-  
-  
   const handleRemoveExtraIngredient = (ingredientIDI) => {
     setExtraIngredients((prevExtras) => {
       // Filtramos los ingredientes actualizando el array de extras
@@ -299,7 +292,6 @@ const CustomerMenu = () => {
     setSelectedPizza(null);
     setSizeError("");
   };
-  
   const renderIngredientDescription = () => {
     if (pizzaDetails && pizzaDetails.ingredientes.length > 0) {
       const ingredientes = pizzaDetails.ingredientes.map((ing) => ing.ingrediente);
@@ -388,8 +380,9 @@ const CustomerMenu = () => {
 
   return (
     <>
+
+    
       {/* Carrito flotante */}
-      
       <FloatingCart 
       compra={compra} 
       setCompra={setCompra} 

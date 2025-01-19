@@ -33,20 +33,22 @@
     background-color: #E6E700; /* Regreso al color inicial */
   }
 }
-.review-form-container {
+.review-form-container  {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 20px auto; /* Centrado vertical y horizontal con margen */
-  background-color: #E6E700; /* Color base */
-  animation: backgroundPulse 0.5s infinite ease-in-out; /* Activar animación */
-  width: 100%; /* Ocupar todo el ancho */
-  min-height: 300px; /* Altura mínima para evitar que varíe */
+  margin: 20px auto; 
+  background-color: #000000; 
+  animation: backgroundPulse 0.5s infinite ease-in-out; 
+  width: 100%; 
+  min-height: 300px; 
 }
 .review-form-container form {
-  background-color: #ffffff;
-  padding: 20px; 
-  max-width: 350px;
+  width: 100%;
+  max-width: 450px; 
+  text-align: center; 
+  background-color: #fad901;
+  border-radius: none;
 }
 .review-form-container label {
   color: #b6b602;
@@ -54,35 +56,25 @@
   display: block; /* Hacer que ocupe toda la fila */
   margin-bottom: 8px; /* Espacio con respecto al input */
 }
-.review-form-container button {
-  background-color: #000000;
-  color: #ffffff;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: transform 0.2s, background-color 0.3s;
-}
+
 .review-form-container button:hover {
   background-color: #333333; /* Cambio de color al pasar el mouse */
   transform: scale(1.05); /* Efecto de escala */
 }
 .daily-challenge-card {
   width: 100%;
-  max-width: 350px; /* Tamaño máximo */
-  /* max-height: 400px; */
-  text-align: center; /* Centra texto e imágenes */
-  background-color: #f9f9f9; /* Color de fondo */
- 
-
+  max-width: 520px; 
+  text-align: center; 
+  color: #b6b602;
+  background-color: #fad901;
 }
 .daily-challenge-card img {
   width: 100px;
-  max-width: 200px; /* Control del tamaño de la imagen */
+  max-width: 100px; 
   height: auto;
   display: block;
-  margin: 0 auto 15px; /* Centrado con espacio inferior */
-  border-radius: 8px; /* Bordes redondeados */
+  margin: 0 auto 15px; 
+  border-radius: 10px; 
 }
 .contact-info {
   display: flex;
@@ -404,8 +396,9 @@
 
 .order-now-button-container {
   display: flex;
-  justify-content: center; /* Centrar horizontalmente */
-  align-items: center;     /* Centrar verticalmente */
+  justify-content: center; 
+  align-items: center;
+  margin-top: 1rem;    
 }
 .order-now-button {
   width: 60%;
@@ -438,36 +431,38 @@
 
 .buttons-container {
   display: flex;
-  justify-content: space-evenly; /* Espaciado uniforme entre botones */
-  gap: 15px;                    /* Espacio entre botones */
-  margin: 20px 0;               /* Margen superior e inferior */
-  flex-wrap: wrap;              /* Permitir que los botones se acomoden en varias líneas si es necesario */
+  justify-content: space-evenly; 
+  gap: 15px;                   
+  margin: 20px 0;             
+  flex-wrap: wrap;             
 }
 
 .buttons-container button {
-  flex: 1;                      /* Deja que los botones crezcan uniformemente */
-  max-width: 250px;             /* Define un ancho máximo para los botones */
-  min-width: 150px;             /* Define un ancho mínimo */
-  height: 50px;                 /* Altura estándar */
-  padding: 12px 18px;           /* Espaciado interno */
-  font-size: 18px;              /* Tamaño de texto */
-  font-weight: bold;            /* Negrita */
-  color: #ffffff;               /* Letras blancas */
-  background-color: #000000;    /* Fondo negro */
-  border: none;                 /* Sin bordes */
-  border-radius: 8px;           /* Bordes redondeados */
+  flex: 1;                     
+  max-width: 250px;          
+  min-width: 150px;          
+  height: 50px;                
+  padding: 12px 18px;        
+  font-size: 18px;             
+  font-weight: bold;           
+  color: #ffffff;              
+  background-color: #000000;    
+  border: none;                
+  border-radius: 8px;         
   cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); 
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
 
 .buttons-container button:hover {
-  background-color: #505050;   /* Oscurecer ligeramente el fondo */
-  transform: scale(1.05);      /* Aumentar ligeramente el tamaño */
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
+  background-color: #505050;  
+  transform: scale(1.05);      
+  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); 
 }
-
+.buttons-container button.go-back {
+  color: #E6E700; /* Cambiar el color del texto a amarillo */
+}
 .create-random-pizza-button {
   background: linear-gradient(90deg, #ff7e5f, #feb47b); /* Gradiente inicial */
   flex: 2;                     /* Este botón ocupará el doble de espacio que los demás */
@@ -521,7 +516,6 @@
   padding: 10px 20px;
   font-size: 16px;
 }
-
 .create-random-pizza-button .badge {
   position: absolute;
   top: -5px;
@@ -530,13 +524,36 @@
   color: white;
   font-size: 12px;
   font-weight: bold;
-  border-radius: 50%;
-  padding: 5px 8px;
+  border-radius: 40%;
+  padding: 5px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
+.daily-challenge-button {
+  position: relative; 
+  background-color: black;
+  color: white;
+  padding: 10px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.daily-challenge-button .badge {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  background-color: red;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 40%;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .custom-tooltip {
   background-color: #f0d314 !important;
   color: #1c1b1b !important;
@@ -622,7 +639,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.8); 
+  background-color: rgba(255, 255, 255, 0.75); 
   z-index: 1;
 }
 
@@ -631,7 +648,7 @@
   z-index: 2; /* Contenido sobre la capa de fondo */
   text-align: center;
   padding: 20px;
-  background: rgba(255, 255, 255, 0.9); 
+  background: rgba(255, 255, 255, .9); 
   border-radius: 8px;
 }
 
@@ -658,3 +675,49 @@
   background-color: #ccc;
   cursor: not-allowed;
 }
+
+
+/* Botón con efecto Neón Glow */
+.button-neon {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #fff;
+  background: linear-gradient(90deg, #f0e43c, #e2c103);
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  cursor: pointer;
+  text-shadow: 0 0 5px #00f260, 0 0 10px #0575e6, 0 0 20px #00f260;
+  box-shadow: 0 0 5px #00f260, 0 0 10px #0575e6, 0 0 20px #00f260;
+  animation: glow 1.5s infinite alternate;
+  transition: all 0.3s ease-in-out;
+}
+
+.button-neon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px #00f260, 0 0 20px #0575e6, 0 0 30px #00f260;
+}
+
+.button-default {
+  font-size: 1rem;
+  background: #ebd80b;
+  color: #000;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Animación Neón */
+@keyframes glow {
+  from {
+    text-shadow: 0 0 2.5px #e7ed92, 0 0 5px #e17e0d;
+    box-shadow: 0 0 2.55px #e7ed92, 0 0 5px #e17e0d;
+  }
+  to {
+    text-shadow: 0 0 8px #ede72e, 0 0 16px #dcc301;
+    box-shadow: 0 0 8px #ede72e, 0 0 16px #dcc301;
+  }
+}
+

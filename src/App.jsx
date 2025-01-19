@@ -33,7 +33,6 @@ import OfferList from './pages/OfferList.jsx';
 import Clientes from './pages/Clientes.jsx';
 import Seguimiento from './pages/Seguimiento.jsx';
 import ReviewForm from './components/ReviewForm.jsx';
-import DailyChallengeForm from './pages/DailyChallengeForm.jsx';
 import MakeYourPizza from './pages/MakeYourPizza.jsx';
 import MakeARarePizza from './pages/MakeARarePizza.jsx';
 import IncentivoForm from './pages/IncentivoForm.jsx';
@@ -51,6 +50,7 @@ import RRep from './pages/RRep.jsx';
 import CrearAdmin from './pages/CrearAdmin.jsx';
 import GestionarIngredientesExtras from './pages/GestionarIngredientesExtras.jsx';
 
+
 function App() {
   const [menus, setMenus] = useState([]);
 
@@ -58,6 +58,7 @@ function App() {
     <PizzaProvider>
       <BrowserRouter>
         <Routes>
+       
          <Route path="/GestionarIngredientesExtras" element={<GestionarIngredientesExtras />} />
          <Route path="/register" element={<CrearAdmin />} />
          <Route path="/repartidores-reportes" element={<RRep />} />
@@ -79,7 +80,7 @@ function App() {
           <Route path="/offers/create" element={<OfferForm />} />
           <Route path="/offers/existing" element={<OfferList />} />
           <Route path="/offers/edit/:id" element={<OfferForm />} />
-          <Route path="/offers/daily-challenge/create" element={<DailyChallengeForm />} />
+          
 
           {/* Otras Rutas */}
           <Route path="/ReviewForm" element={<ReviewForm />} />

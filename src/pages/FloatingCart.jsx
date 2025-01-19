@@ -4,7 +4,7 @@ import axios from 'axios';
 import QRCode from 'qrcode.react';
 import moment from 'moment';
 import '../styles/FloatingCart.css';
-import { v4 as uuidv4 } from 'uuid';
+
 
 const generarOrderId = () => {
   return 'ORD' + Math.floor(100000 + Math.random() * 9000);  
@@ -153,7 +153,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         fecha,
         hora,
         id_cliente: sessionData.id_cliente,
-        email, // Incluimos el email en los datos que se envían al servidor
+        email, 
         metodo_pago,
         total_con_descuentos: compra.total_a_pagar_con_descuentos || totalSinDescuentosNum,
         total_productos: totalSinDescuentosNum,
@@ -281,11 +281,11 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     let totalTicketExpress = (compra.Entrega?.Delivery?.costoTicketExpress || 0) + (compra.Entrega?.PickUp?.costoTicketExpress || 0);
     let totalCupones = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
     
-    console.log("Costos Adicionales:", {
+    /*console.log("Costos Adicionales:", {
       totalDelivery,
       totalTicketExpress,
       totalCupones
-    });
+    });*/
 
     return {
       totalDelivery,
@@ -377,7 +377,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       };
     });
   };
-  
   const handleRemoveExtraIngredient = (productoId, ingredientIDI) => {
     setCompra((prevCompra) => {
       const nuevaVenta = prevCompra.venta.map((producto) => {

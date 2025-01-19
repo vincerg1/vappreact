@@ -85,7 +85,6 @@ const getSessionData = () => {
   };
 }
 
-
 export const PizzaProvider = ({ children }) => {
   
   const [currentPizza, setCurrentPizza] = useState(null);
@@ -127,6 +126,8 @@ export const PizzaProvider = ({ children }) => {
   const ranking = useRanking();
   const [pizzasSugeridasPara2x1, setPizzasSugeridasPara2x1] = useState([]);
   const [ofertaPizzaMasCompradaDisponible , setOfertaPizzaMasCompradaDisponible ] = useState(false);
+  const [isServiceSuspended, setIsServiceSuspended] = useState(false);
+  const [suspensionEndTime, setSuspensionEndTime] = useState(null);
   const [compra, setCompra] = useState({
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -141,12 +142,6 @@ export const PizzaProvider = ({ children }) => {
     venta: [],
     Delivery: { opcion: false, costo: 0 },
   });
-  const [isServiceSuspended, setIsServiceSuspended] = useState(false);
-  const [suspensionEndTime, setSuspensionEndTime] = useState(null);
-
-
-
-
 
 // console.log('pizzasSugeridasPara2x1 desde el contexto', pizzasSugeridasPara2x1)
 // console.log("ofertas por segmento desde el contexto", ofertasPorSegmento)
@@ -191,7 +186,6 @@ cargarInventario();
 useEffect(() => {
   setSessionData(getSessionData());
 }, []);
-//carga de TLimites
 useEffect(() => {
   const cargarLimites = async () => {
     setEstaCargandoLimites(true);
@@ -215,7 +209,6 @@ useEffect(() => {
   };
   cargarLimites();
 }, []);
-// carga Zona de Riesgo
 useEffect(() => {
   if (typeof limites === 'object' && !Array.isArray(limites) && Array.isArray(ingredientes)) {
     const zonasDeRiesgoPorIDI = {};
@@ -248,7 +241,6 @@ useEffect(() => {
     console.error('Error: la estructura de limites o ingredientes no es la esperada.');
   }
 }, [ingredientes, limites]);
-//contdaores de riesgos para el panel de control
 useEffect(() => {
   const calcularRiesgosPorIDI = () => {
     const estadoRiesgos = {
@@ -282,7 +274,6 @@ useEffect(() => {
     calcularRiesgosPorIDI();
   }
 }, [ingredientes, limites]); 
-//carga ingredientes inactivos
 useEffect(() => {
   if (Object.keys(zonasDeRiesgoPorIDI).length > 0) {
     // Filtrar los IDI que tienen una zona de riesgo mayor a 4 (inactivos)
@@ -297,7 +288,6 @@ useEffect(() => {
     //  console.log("Ingredientes inactivos calculados:", ingredientesInactivosCalculados);
   }
 }, [zonasDeRiesgoPorIDI, setIngredientesInactivos]);
-//carga Pizzas de la database
 useEffect(() => {
   const cargarPizzas = async () => {
     try {
@@ -312,7 +302,6 @@ useEffect(() => {
     cargarPizzas();
   }
 }, [pizzas]);
-// pizzasConEstadoActualizado
 useEffect(() => {
   //  console.log('Ingredientes inactivos:', ingredientesInactivos);
   // console.log('Lista de pizzas antes de actualizar el estado:', pizzas);
@@ -336,13 +325,11 @@ useEffect(() => {
     setPizzasConEstadoActualizado(pizzasConEstado);
   }
 }, [ingredientesInactivos, pizzas]);
-// cargar solo pizzas activas
 useEffect(() => {
   const activePizzas = pizzasConEstadoActualizado.filter(pizza => pizza.estado === 'Activa');
   // console.log("pizzas activas calculadas en el contexto:", activePizzas);
   setActivePizzas(activePizzas);
 }, [pizzasConEstadoActualizado]);
-//cargar ingredientes proximos a caducar
 useEffect(() => {
   const cargarProximosACaducar = async () => {
     try {
@@ -373,7 +360,6 @@ useEffect(() => {
   cargarProximosACaducar();
 // Dependencias del efecto; asegúrate de que 'inventario' sea parte de tu estado o contexto si es necesario
 }, []); 
-//cargar RankING
 useEffect(() => {
 //  console.log('Ranking de ingredientes actualizado EN EL CONTEXT:', ranking);
 }, [ranking]);
@@ -391,7 +377,7 @@ useEffect(() => {
 
 
 const setSuspensionState = (isSuspended, endTime) => {
-  console.log("Estado de suspensión actualizado:", isSuspended, endTime); // Verifica el estado actualizado
+  // console.log("Estado de suspensión actualizado:", isSuspended, endTime); 
   setIsServiceSuspended(isSuspended);
   setSuspensionEndTime(endTime);
 };

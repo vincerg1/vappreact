@@ -75,15 +75,15 @@
     margin-top: 10px; /* Opcional: agrega margen superior para separación */
 }
 
-.pizza-card {
+/* .pizza-card {
     background-color: #fff;
     border: 1px solid #ddd;
     border-radius: 8px;
     padding: 10px;
     text-align: center;
-    width: 180px; /* Ajuste del tamaño de las tarjetas */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra ligera */
-}
+    width: 180px; 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); 
+} */
 
 .chart-type-selector {
     display: block; /* Garantiza el flujo de bloque */
