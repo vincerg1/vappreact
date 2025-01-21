@@ -21,7 +21,6 @@
   border-radius: 8px;
 }
 
-/*review zone*/
 @keyframes backgroundPulse {
   0% {
     background-color: #E6E700; /* Color inicial */
@@ -45,18 +44,30 @@
 }
 .review-form-container form {
   width: 100%;
-  max-width: 450px; 
-  text-align: center; 
+  max-width: 350px;
+  text-align: center;
   background-color: #fad901;
-  border-radius: none;
+  border-radius: 10px; 
+  padding: 10px; 
+  margin: 20px auto; 
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+.review-form-container textarea {
+  width: 100%;
+  height: 50px; 
+  border: 1px solid #ccc;
+  border-radius: 10px; 
+  margin-bottom: 15px; 
+  padding: 10px; 
+  font-size: 14px; 
+  box-sizing: border-box; 
 }
 .review-form-container label {
   color: #b6b602;
-  font-weight: bold; /* Mayor énfasis */
-  display: block; /* Hacer que ocupe toda la fila */
-  margin-bottom: 8px; /* Espacio con respecto al input */
+  font-weight: bold; 
+  display: block; 
+  margin-bottom: 8px;
 }
-
 .review-form-container button:hover {
   background-color: #333333; /* Cambio de color al pasar el mouse */
   transform: scale(1.05); /* Efecto de escala */
@@ -97,17 +108,12 @@
 .contact-info strong {
   color: #000; /* Resaltar el texto fuerte */
 }
-
-
-
-
-
 .offers-section {
   display: flex;
-  flex-wrap: nowrap; /* Asegura que las tarjetas no se envuelvan */
-  gap: 10px; /* Espacio entre tarjetas */
-  overflow-x: auto; /* Habilita desplazamiento horizontal */
-  overflow-y: hidden; /* Oculta cualquier scrollbar vertical */
+  flex-wrap: nowrap; 
+  gap: 10px; 
+  overflow-x: auto; 
+  overflow-y: hidden;
   max-width: 100%;
   padding: 10px;
   box-sizing: border-box;
@@ -115,7 +121,7 @@
   background-color: #f9f9f9;
   border-radius: 10px;
   cursor: grab;
-  scroll-behavior: smooth; /* Desplazamiento suave */
+  scroll-behavior: smooth;
 }
 .offers-section:active {
   cursor: grabbing;
@@ -129,7 +135,7 @@
   border-radius: 10px;
   text-align: center;
   background-color: #fff;
-  transition: all 0.3s ease-in-out;
+  transition: none;
   width: 180px; 
   height: 300px; 
   flex-shrink: 0; 
@@ -177,20 +183,20 @@
 }
 .offer-icons {
   display: flex;
-  justify-content: flex-end; /* Iconos alineados a la derecha */
+  justify-content: flex-end; 
   margin-bottom: 10px;
   padding: 0 5px;
   position: absolute;
   top: 5px;
-  right: 5px; /* Alineados a la derecha */
+  right: 5px; 
 }
 .icon {
-  font-size: 1.2rem; /* Tamaño más pequeño */
+  font-size: 1.2rem; 
   border: 1px solid #ddd;
   padding: 2px;
   background-color: #f8f8f8;
   color: #555;
-  transition: all 0.3s ease-in-out;
+  transition: none;
   position: relative;
 }
 .offer-icons .icon {
@@ -201,12 +207,11 @@
   align-items: center;
   justify-content: center;
 }
-
 /* Tooltips */
 .icon::after {
-  content: attr(data-tooltip); /* El contenido del tooltip */
+  content: attr(data-tooltip); 
   position: absolute;
-  bottom: 100%; /* Posición por encima del icono */
+  bottom: 100%; 
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.75);
@@ -220,7 +225,6 @@
   transition: opacity 0.3s ease-in-out;
   visibility: hidden;
 }
-
 .icon:hover::after {
   opacity: 1;
   visibility: visible;
@@ -292,18 +296,15 @@
   white-space: nowrap;
   margin-top: 20px;
 }
-
 .ticker-text {
   display: inline-block;
   padding-left: 0; /* Empezar justo en el borde */
-  animation: ticker 60s linear infinite; /* Ajusta la duración según el texto */
+  animation: ticker 60s linear infinite;
 }
-
 .ticker-text span {
   display: inline-block;
   padding-right: 50px; /* Ajusta el espacio entre mensajes si tienes varios */
 }
-
 @keyframes ticker {
   0% {
     transform: translateX(100%);
@@ -312,7 +313,6 @@
     transform: translateX(-100%);
   }
 }
-
 
 /* Importamos los estilos de slick-carousel */
 
@@ -355,16 +355,14 @@
 .slick-slide {
   transition: all 0.3s ease-in-out;
 }
-
 /* Control del tamaño de los puntos */
 .slick-dots li button:before {
   font-size: 12px;
   color: #ff6347; /* Puedes cambiar el color de los puntos aquí */
 }
-
 /* Hover effects */
 .carousel-image:hover {
-  transform: scale(1.05); /* Efecto de zoom al pasar el cursor por la imagen */
+  transform: scale(1.05); 
   transition: transform 0.3s ease-in-out;
 }
 .slick-slider {
@@ -387,13 +385,10 @@
 }
 
 /*ORDER NOW*/
-
-
 @keyframes blink-text {
   0%, 100% { opacity: 1; } /* Texto completamente visible */
   50% { opacity: 0.4; }    /* Texto ligeramente transparente */
 }
-
 .order-now-button-container {
   display: flex;
   justify-content: center; 
@@ -402,22 +397,22 @@
 }
 .order-now-button {
   width: 60%;
-  max-width: 450px;         /* Tamaño máximo */
-  padding: 20px 25px;       /* Espaciado interno */
-  font-size: 22px;          /* Tamaño del texto */
-  font-weight: bold;        /* Letras en negrita */
-  color: #ffffff;           /* Letras blancas */
-  background-color: #000000; /* Color naranja del botón */
-  border: none;             /* Sin borde */
-  border-radius: 12px;      /* Bordes redondeados */
+  max-width: 450px;         
+  padding: 20px 25px;     
+  font-size: 22px;          
+  font-weight: bold;       
+  color: #ffffff;          
+  background-color: #000000; 
+  border: none;           
+  border-radius: 12px;    
   cursor: pointer;
   text-transform: uppercase;
   box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
 .order-now-button span {
-  display: inline-block;       /* El span se comporta como bloque */
-  animation: blink-text 1.5s infinite; /* Animación de parpadeo */
+  display: inline-block;   
+  animation: blink-text 1.5s infinite;
   font-size: 2rem;
   font-weight: bold;
 }
@@ -436,7 +431,6 @@
   margin: 20px 0;             
   flex-wrap: wrap;             
 }
-
 .buttons-container button {
   flex: 1;                     
   max-width: 250px;          
@@ -454,7 +448,6 @@
   transition: all 0.3s ease;
   text-transform: uppercase;
 }
-
 .buttons-container button:hover {
   background-color: #505050;  
   transform: scale(1.05);      
@@ -478,10 +471,9 @@
   animation: random-blink 2s infinite; /* Animación aleatoria */
   transition: transform 0.3s, box-shadow 0.3s;
 }
-
 .create-random-pizza-button:hover {
-  transform: scale(1.1); /* Aumenta ligeramente el tamaño al pasar el mouse */
-  box-shadow: 0 8px 10px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada */
+  transform: scale(1.1); 
+  box-shadow: 0 8px 10px rgba(0, 0, 0, 0.3); 
 }
 
 /* Animación de parpadeo aleatorio */
@@ -570,7 +562,6 @@
   filter: blur(5px);
   pointer-events: none;
 }
-
 .suspension-notice {
   position: fixed;
   top: 0;
@@ -582,12 +573,10 @@
   padding: 20px;
   z-index: 1000;
 }
-
 .customer-page.blurred {
   filter: blur(8px);  /* Difumina todo el contenido */
   pointer-events: none; /* Inhabilita cualquier interacción */
 }
-
 .suspension-modal {
   position: fixed;
   top: 0;
@@ -600,7 +589,6 @@
   align-items: center;
   z-index: 1000;
 }
-
 .suspension-content {
   background: white;
   padding: 30px;
@@ -609,30 +597,28 @@
   color: #dadada;
   box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
 }
-
 .suspension-content h2 {
   font-size: 24px;
   margin-bottom: 10px;
 }
-
 .suspension-content p {
   font-size: 18px;
 }
 
+/*offer card*/
 
 .offer-card {
   position: relative;
   border: 1px solid #ccc;
   border-radius: 8px;
   overflow: hidden;
-  height: 300px; /* Ajustar según tu diseño */
+  height: 300px; 
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  color: #060606; /* Para buen contraste sobre el fondo */
+  color: #060606; 
 }
-
 .offer-card .offer-overlay {
   position: absolute;
   top: 0;
@@ -642,26 +628,22 @@
   background-color: rgba(255, 255, 255, 0.75); 
   z-index: 1;
 }
-
 .offer-card .offer-content {
   position: relative;
-  z-index: 2; /* Contenido sobre la capa de fondo */
+  z-index: 2; 
   text-align: center;
   padding: 20px;
-  background: rgba(255, 255, 255, .9); 
+  background: rgba(255, 255, 255, .8); 
   border-radius: 8px;
 }
-
 .offer-content h3 {
   font-size: 1.2rem;
   font-weight: bold;
   margin-bottom: 10px;
 }
-
 .offer-content p {
   margin: 5px 0;
 }
-
 .offer-button {
   background-color: #ffc107;
   color: #000;
@@ -670,34 +652,22 @@
   border-radius: 5px;
   cursor: pointer;
 }
-
 .offer-button.disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
-
-
-/* Botón con efecto Neón Glow */
 .button-neon {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: bold;
   color: #fff;
   background: linear-gradient(90deg, #f0e43c, #e2c103);
   border: none;
   border-radius: 5px;
-  padding: 10px 20px;
+  padding: 10px 10px;
   cursor: pointer;
-  text-shadow: 0 0 5px #00f260, 0 0 10px #0575e6, 0 0 20px #00f260;
-  box-shadow: 0 0 5px #00f260, 0 0 10px #0575e6, 0 0 20px #00f260;
-  animation: glow 1.5s infinite alternate;
-  transition: all 0.3s ease-in-out;
+  animation: glow 0.25s infinite ; 
+  transition: all 0.1s ;  
 }
-
-.button-neon:hover {
-  transform: scale(1.1);
-  box-shadow: 0 0 10px #00f260, 0 0 20px #0575e6, 0 0 30px #00f260;
-}
-
 .button-default {
   font-size: 1rem;
   background: #ebd80b;
@@ -706,18 +676,25 @@
   border-radius: 5px;
   border: none;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
 }
-
-/* Animación Neón */
 @keyframes glow {
-  from {
-    text-shadow: 0 0 2.5px #e7ed92, 0 0 5px #e17e0d;
-    box-shadow: 0 0 2.55px #e7ed92, 0 0 5px #e17e0d;
+  0% {
+    text-shadow: 0 0 4px #e7ed92, 0 0 5px #e17e0d;
+    box-shadow: 0 0 4px #e7ed92, 0 0 5px #e17e0d;
+    transform: scale(1); 
   }
-  to {
+  50% {
+    transform: scale(1.1); 
     text-shadow: 0 0 8px #ede72e, 0 0 16px #dcc301;
     box-shadow: 0 0 8px #ede72e, 0 0 16px #dcc301;
   }
-}
+  100% {
+    text-shadow: 0 0 4px #e7ed92, 0 0 5px #e17e0d;
+    box-shadow: 0 0 4px #e7ed92, 0 0 5px #e17e0d;
+    transform: scale(1); 
+  }
+} 
+
+
+
 

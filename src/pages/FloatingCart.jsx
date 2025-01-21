@@ -587,12 +587,12 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         }
         {compra.total_descuentos > 0 && (
           <p>
-            <b>Total Descuento:</b> {(compra.total_descuentos || 0).toFixed(2)}€
+             <b>Total Descuento:</b> {(typeof compra.total_descuentos === "number" ? compra.total_descuentos.toFixed(2) : "0.00")}€
           </p>
         )}
 
         <p>
-          <b>Total a Pagar:</b> {(compra.total_a_pagar_con_descuentos || 0).toFixed(2)}€
+        <b>Total a Pagar:</b> {(typeof compra.total_a_pagar_con_descuentos === "number" ? compra.total_a_pagar_con_descuentos.toFixed(2) : "0.00")}€
         </p>
       </div>
       )}

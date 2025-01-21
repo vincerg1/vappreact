@@ -100,26 +100,48 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       });
   };
   const calculateNextCycle = () => {
-    const currentDayIndex = moment().day();
+    const currentDayIndex = moment().day(); 
+    const currentHour = moment().hour(); 
+    const currentMinute = moment().minute(); 
     const diasActivos = JSON.parse(offer.Dias_Activos).map(removeAccents);
   
     let nextDayIndex = null;
-    for (let i = 1; i <= 7; i++) {
+   console.log(offer)
+    // Iterar para encontrar el próximo día activo
+    for (let i = 0; i < 7; i++) {
       const checkDay = (currentDayIndex + i) % 7;
       if (diasActivos.includes(removeAccents(moment().day(checkDay).format('dddd').toLowerCase()))) {
         nextDayIndex = checkDay;
+  
+        // Verificar si el día encontrado es hoy y ya pasó la Hora_Fin
+        if (i === 0) {
+          const [endHour, endMinute] = offer.Hora_Fin.split(':').map(Number);
+          if (currentHour > endHour || (currentHour === endHour && currentMinute >= endMinute)) {
+            continue; // Saltar al próximo día si la oferta ya terminó hoy
+          }
+        }
+  
         break;
       }
     }
   
     if (nextDayIndex !== null) {
-      const nextDay = moment().day(nextDayIndex).startOf('day').set({
-        hour: offer.Hora_Inicio.split(':')[0],
-        minute: offer.Hora_Inicio.split(':')[1],
-      });
+      // Calcular el momento exacto del próximo ciclo
+      const nextDay = moment()
+        .day(nextDayIndex)
+        .startOf('day')
+        .set({
+          hour: offer.Hora_Inicio.split(':')[0],
+          minute: offer.Hora_Inicio.split(':')[1],
+        });
   
-      const formattedDay = moment().day(nextDayIndex).format('ddd');
-      const formattedDate = nextDay.format('DD/MM/YYYY');
+      // Si el día es hoy pero la hora ya pasó, ajustar al próximo día activo
+      if (nextDay.isBefore(moment())) {
+        nextDay.add(1, 'week'); // Avanzar una semana al próximo ciclo válido
+      }
+  
+      const formattedDay = nextDay.format('ddd');
+      const formattedDate = nextDay.format('DD/MM/YY');
   
       setNextAvailableDay(`${formattedDay} ${formattedDate}`);
       setTimeLeft(nextDay.diff(moment(), 'seconds'));
@@ -216,8 +238,8 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         cupones: [...(prevCompra.cupones || []), newCoupon],
       }));
   
-      setIsCouponApplied(true); // Activar el efecto Neón
-      setTimeout(() => setIsCouponApplied(false), 3000); // Desactivar después de 3 segundos
+      setIsCouponApplied(true);
+      setTimeout(() => setIsCouponApplied(false), 1000); 
     } catch (error) {
       console.error("Error al utilizar el cupón:", error);
       alert(
@@ -264,7 +286,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   return (
     <div className="offer-card-container">
       {showNeonEffect && (
-        <div className="neon-glow">
+        <div className="neon-glow1">
           ¡Cupón Aplicado con Éxito!
         </div>
       )}
@@ -286,7 +308,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
             Precio:
             {offer.Categoria_Cupon === "gratis"
               ? "Today Free"
-              : `Today ${offer.Precio_Cupon || "n/a"}€`}
+              : `Today ${offer.Precio_Cupon || 0}€`}
           </p>
   
           <button
@@ -701,8 +723,6 @@ const CustomerPage = (offer) => {
     };
     fetchCuponesDisponibles();
   }, []);
- 
- 
   useEffect(() => {
     const checkRandomPizzaAvailability = () => {
       if (!offers || offers.length === 0) return;
@@ -995,24 +1015,56 @@ const CustomerPage = (offer) => {
     navigate('/order-now', { state: { compra } });
   };
   const calculateNextCycle = (offer) => {
-    const currentDayIndex = moment().day();
+    const currentDayIndex = moment().day(); // Día actual (0 = domingo, 6 = sábado)
+    const currentTime = moment(); // Momento actual
+    
     const diasActivos = JSON.parse(offer.Dias_Activos).map((day) =>
       removeDiacritics(day.toLowerCase())
     );
-
-    for (let i = 1; i <= 7; i++) {
-      const nextDayIndex = (currentDayIndex + i) % 7;
-      const nextDay = moment().day(nextDayIndex).format('dddd').toLowerCase();
+  
+    console.log("Días activos:", diasActivos);
+    console.log("Día actual:", moment().format("dddd").toLowerCase());
+    console.log("Hora actual:", currentTime.format("HH:mm"));
+  
+    for (let i = 0; i < 7; i++) {
+      const nextDayIndex = (currentDayIndex + i) % 7; // Índice del próximo día
+      const nextDay = removeDiacritics(moment().day(nextDayIndex).format("dddd").toLowerCase()); // Texto del día
+  
+      console.log("Validando día:", nextDay);
+  
       if (diasActivos.includes(nextDay)) {
-        const nextMoment = moment().day(nextDayIndex).startOf('day').set({
-          hour: offer.Hora_Inicio.split(':')[0],
-          minute: offer.Hora_Inicio.split(':')[1],
-        });
-        return nextMoment.format('ddd DD/MM/YY');
+        // Momento del inicio de la oferta en el próximo día activo
+        const nextMoment = moment()
+          .day(nextDayIndex)
+          .startOf("day")
+          .set({
+            hour: parseInt(offer.Hora_Inicio.split(":")[0], 10),
+            minute: parseInt(offer.Hora_Inicio.split(":")[1], 10),
+          });
+  
+        // Si es el mismo día y la hora actual ya pasó la hora de fin, continuar validando
+        if (i === 0) {
+          const [horaFin, minutoFin] = offer.Hora_Fin.split(":").map(Number);
+          const endMoment = moment().set({ hour: horaFin, minute: minutoFin });
+  
+          if (currentTime.isAfter(endMoment)) {
+            console.log("Hora actual ya pasó el fin de hoy, pero verificaremos días activos consecutivos.");
+            continue; // Saltar al siguiente día activo
+          }
+        }
+  
+        console.log("Siguiente ciclo válido encontrado:", nextMoment.format("ddd DD/MM/YY"));
+        return nextMoment.format("ddd DD/MM/YY"); // Retornar el próximo ciclo válido
       }
     }
-    return null;
+  
+    console.log("No se encontró ningún próximo ciclo válido en la semana.");
+    return null; // No hay días activos en la semana (caso muy raro)
   };
+  
+  
+  
+   
   const resetCoupons = async (offer) => {
     try {
       await axios.patch(`http://localhost:3001/api/offers/${offer.Oferta_Id}/reset-coupons`, {
@@ -1125,7 +1177,6 @@ const CustomerPage = (offer) => {
           />
           </div>
             )}
-            
             {showContactInfo && companyInfo && (
               <div className="review-form-container">
                 <div className="contact-info">
@@ -1135,9 +1186,6 @@ const CustomerPage = (offer) => {
                 </div>
               </div>
             )}
-
- 
-
             <div className="offers-section">
               {offers.length > 0 ? (
                 <OffersSection

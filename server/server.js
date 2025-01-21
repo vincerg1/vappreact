@@ -2270,8 +2270,8 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
   let precioFinalCupon = null;
   let modoPrecioFinal = Modo_Precio_Cupon;
   if (Categoria_Cupon === 'gratis') {
-    precioFinalCupon = 'n/a';
-    modoPrecioFinal = 'n/a';
+    precioFinalCupon = 0;
+    modoPrecioFinal = 'Today Free';
   } else if (Categoria_Cupon === 'pago') {
     if (Modo_Precio_Cupon === 'automatico') {
       precioFinalCupon = calculateCouponPrice(Min_Descuento_Percent, Max_Descuento_Percent);
@@ -3467,8 +3467,8 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   let modoPrecioFinal = Modo_Precio_Cupon;
 
   if (Categoria_Cupon === 'gratis') {
-    precioFinalCupon = 'n/a';
-    modoPrecioFinal = 'n/a';
+    precioFinalCupon = 0;
+    modoPrecioFinal = 'Today Free';
   } else if (Categoria_Cupon === 'pago') {
     if (Modo_Precio_Cupon === 'automatico') {
       precioFinalCupon = calculateCouponPrice(Min_Descuento_Percent, Max_Descuento_Percent);

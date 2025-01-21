@@ -84,40 +84,79 @@ const CustomerMenu = () => {
           (sum, ing) => sum + parseFloat(ing.precio || 0),
           0
         ) || 0; // Maneja el caso donde no haya ingredientes extras
-        return acc + (item.basePrice * item.cantidad || 0) + precioIngredientesExtras;
+  
+        const basePrice = parseFloat(item.basePrice || 0);
+        const cantidad = parseInt(item.cantidad || 1);
+  
+        return acc + basePrice * cantidad + precioIngredientesExtras;
       }, 0);
   
-      let costoDelivery = compra.Entrega?.Delivery?.costo || 0;
-      if (compra.incentivos?.some(incentivo => incentivo.incentivo === "Delivery Free Pass")) {
-        costoDelivery = 0; // Anular el costo de entrega si se alcanzó el incentivo
-      }
-      const costoTicketExpress = (compra.Entrega?.Delivery?.costoTicketExpress || 0) + (compra.Entrega?.PickUp?.costoTicketExpress || 0);
-      const costoCupon = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
+      console.log("Total productos inicial:", totalProductos, typeof totalProductos);
   
-      // Total de productos incluyendo todos los costos adicionales
+      // Manejar costos adicionales (delivery, ticket express, cupones)
+      let costoDelivery = parseFloat(compra.Entrega?.Delivery?.costo || 0);
+        if (isNaN(costoDelivery)) costoDelivery = 0;
+
+        const costoTicketExpress = parseFloat(
+          (compra.Entrega?.Delivery?.costoTicketExpress || 0) +
+          (compra.Entrega?.PickUp?.costoTicketExpress || 0)
+        );
+        if (isNaN(costoTicketExpress)) costoTicketExpress = 0;
+
+        const costoCupon = compra.cupones.reduce((acc, cupon) => {
+          const precioCupon = parseFloat(cupon.PrecioCupon || 0); // Si es "gratis", será 0
+          return acc + (isNaN(precioCupon) ? 0 : precioCupon);
+        }, 0);
+  
+      // Actualizar total de productos incluyendo costos adicionales
       totalProductos += costoDelivery + costoTicketExpress + costoCupon;
   
-      // Calcular el total del descuento basado en los cupones
+      console.log("Total productos después de costos adicionales:", totalProductos, typeof totalProductos);
+  
+      // Calcular descuentos por cupones
       if (compra.cupones.length > 0 && totalProductos > 0) {
         compra.cupones.forEach((cupon) => {
-          const descuentoAplicado = totalProductos * (cupon.Descuento || 0);
-          const descuentoFinal = Math.min(descuentoAplicado, cupon.Max_Amount || 0);
+          const descuentoAplicado = totalProductos * parseFloat(cupon.Descuento || 0);
+          const descuentoFinal = Math.min(descuentoAplicado, parseFloat(cupon.Max_Amount || 0));
           totalDescuentos += descuentoFinal;
+  
+          console.log("Descuento aplicado:", {
+            descuentoAplicado,
+            descuentoFinal,
+            cupon,
+          });
         });
       }
   
-      // Calcular el total a pagar con descuento aplicado
+      console.log("Total descuentos:", totalDescuentos, typeof totalDescuentos);
+  
+      // Calcular total con descuento aplicado
       let totalConDescuento = totalProductos - totalDescuentos;
       if (totalConDescuento < 0) {
-        totalConDescuento = 0; // No permitir un total negativo
+        totalConDescuento = 0; 
       }
   
-      // Actualizar el estado de compra con los nuevos valores
+      console.log("Total con descuento:", totalConDescuento, typeof totalConDescuento);
+  
+      if (isNaN(totalProductos) || isNaN(totalDescuentos) || isNaN(totalConDescuento)) {
+        console.error("Error: Valores no numéricos detectados", {
+          totalProductos,
+          totalDescuentos,
+          totalConDescuento,
+        });
+        return;
+      }
       setCompra((prevCompra) => ({
         ...prevCompra,
-        total_productos: parseFloat(totalProductos.toFixed(2)), // Total incluyendo todos los elementos
-        total_descuentos: parseFloat(totalDescuentos.toFixed(2)), // Total de descuentos aplicados
-        total_a_pagar_con_descuentos: parseFloat(totalConDescuento.toFixed(2)), // Total a pagar después de aplicar los descuentos
+        total_productos: typeof totalProductos === "number" && !isNaN(totalProductos)
+          ? parseFloat(totalProductos.toFixed(2))
+          : 0,
+        total_descuentos: typeof totalDescuentos === "number" && !isNaN(totalDescuentos)
+          ? parseFloat(totalDescuentos.toFixed(2))
+          : 0,
+        total_a_pagar_con_descuentos: typeof totalConDescuento === "number" && !isNaN(totalConDescuento)
+          ? parseFloat(totalConDescuento.toFixed(2))
+          : 0,
       }));
     };
   
@@ -129,6 +168,7 @@ const CustomerMenu = () => {
     compra.Entrega?.Delivery?.costoTicketExpress,
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
+  
   
   const [isFormVisible, setFormVisible] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState(location.state?.selectedPizza || null);
@@ -259,8 +299,15 @@ const CustomerMenu = () => {
       0
     );
   
-    const newTotalPrice = parseFloat((basePrice + extraIngredientsPrice).toFixed(2));
-    setTotalPrice(newTotalPrice);
+    const newTotalPrice =
+  typeof basePrice === "number" &&
+  !isNaN(basePrice) &&
+  typeof extraIngredientsPrice === "number" &&
+  !isNaN(extraIngredientsPrice)
+    ? parseFloat((basePrice + extraIngredientsPrice).toFixed(2))
+    : 0;
+
+setTotalPrice(newTotalPrice);
   };
   const handleAddAnotherPizza = () => {
     if (!selectedSize) {
@@ -277,8 +324,10 @@ const CustomerMenu = () => {
       basePrice: pizzaDetails.PriceBySize[selectedSize],
       extraIngredients: extraIngredients.map((ing) => ({
         IDI: ing.IDI,
-        nombre: ing.nombre || "Sin nombre", // Aseguramos que el nombre esté presente
-        precio: parseFloat(ing.precio.toFixed(2)), // Aseguramos formato numérico
+        nombre: ing.nombre || "Sin nombre",
+        precio: typeof ing.precio === "number" && !isNaN(ing.precio)
+          ? parseFloat(ing.precio.toFixed(2))
+          : 0,
       })),
     };
   
@@ -312,12 +361,19 @@ const CustomerMenu = () => {
             ...producto,
             size: selectedSize,
             cantidad: quantity,
-            total: parseFloat(totalPrice.toFixed(2)),
-            price: parseFloat(pizzaDetails.PriceBySize[selectedSize]), // Actualizar el precio
+            total: typeof totalPrice === "number" && !isNaN(totalPrice)
+              ? parseFloat(totalPrice.toFixed(2))
+              : 0,
+            price: typeof pizzaDetails.PriceBySize[selectedSize] === "number" &&
+              !isNaN(pizzaDetails.PriceBySize[selectedSize])
+              ? parseFloat(pizzaDetails.PriceBySize[selectedSize])
+              : 0,
             extraIngredients: extraIngredients.map((ing) => ({
               IDI: ing.IDI,
-              nombre: ing.nombre || "Sin nombre", // Verificamos que tenga nombre
-              precio: parseFloat(ing.precio.toFixed(2)) || 0,
+              nombre: ing.nombre || "Sin nombre",
+              precio: typeof ing.precio === "number" && !isNaN(ing.precio)
+                ? parseFloat(ing.precio.toFixed(2))
+                : 0,
             })),
           };
           return updatedProduct;
@@ -334,11 +390,14 @@ const CustomerMenu = () => {
       return {
         ...prevCompra,
         venta: nuevaVenta,
-        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
-        total_a_pagar_con_descuentos: parseFloat(
-          (nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)
-        ),
+        total_productos: typeof nuevoTotalProductos === "number" 
+          ? parseFloat(nuevoTotalProductos.toFixed(2)) 
+          : 0, // Asigna 0 si no es un número válido
+        total_a_pagar_con_descuentos: typeof nuevoTotalProductos === "number" && typeof prevCompra.total_descuentos === "number"
+          ? parseFloat((nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)) 
+          : 0, // Asigna 0 si alguno de los valores no es un número
       };
+      
     });
   
     setFormVisible(false);
@@ -495,7 +554,7 @@ const CustomerMenu = () => {
             <ul className="extra-ingredients-list">
               {extraIngredients.map((ing, index) => (
                 <li key={index}>
-                  {ing.nombre || ing.ingrediente} ({parseFloat(ing.precio).toFixed(2)}€)
+                  {ing.nombre || ing.ingrediente} ({typeof ing.precio === "number" ? parseFloat(ing.precio).toFixed(2) : "0.00"}€)
                   <button onClick={() => handleRemoveExtraIngredient(ing.IDI)}>Eliminar</button>
                 </li>
               ))}
