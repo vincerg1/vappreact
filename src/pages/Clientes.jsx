@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import '../styles/Clientes.css'; // Importar la hoja de estilos
+import '../styles/Clientes.css'; 
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -32,11 +32,9 @@ export default function Clientes() {
   const handleMostrarFormulario = () => {
     setMostrarFormulario(!mostrarFormulario);
   };
-
   const handleVerClientes = () => {
     setMostrarLista(!mostrarLista);
   };
-
   const handleEliminarCliente = async (id_cliente) => {
     try {
       await axios.delete(`http://localhost:3001/clientes/${id_cliente}`);
@@ -45,7 +43,6 @@ export default function Clientes() {
       console.error('Error deleting cliente', error);
     }
   };
-
   const handleSuspenderCliente = async (id_cliente, suspensionPeriod) => {
     try {
       await axios.put(`http://localhost:3001/clientes/suspender/${id_cliente}`, {
@@ -57,7 +54,6 @@ export default function Clientes() {
       console.error('Error suspending cliente', error);
     }
   };
-
   const handleReactivarCliente = async (id_cliente) => {
     try {
       await axios.put(`http://localhost:3001/clientes/reactivar/${id_cliente}`);
@@ -67,7 +63,6 @@ export default function Clientes() {
       console.error('Error reactivating cliente', error);
     }
   };
-
   const handleFiltroChange = (e) => {
     setFiltro(e.target.value);
   };
@@ -91,7 +86,7 @@ export default function Clientes() {
         <FormularioCliente
           onClienteAgregado={() => {
             fetchClientes();
-            setMostrarFormulario(false); // Regresar automáticamente después de crear un cliente
+            setMostrarFormulario(false); 
           }}
         />
       )}

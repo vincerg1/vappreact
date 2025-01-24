@@ -401,125 +401,249 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
   );
 };
 const NotificationTicker = () => {
-  const { sessionData } = useContext(_PizzaContext);
-  const [offerMessage, setOfferMessage] = useState('');
-  const [pizzaDiscountMessage, setPizzaDiscountMessage] = useState('');
-  const [dailyChallengeInfo, setDailyChallengeInfo] = useState(null);
-
-  const dayMap = {
-    1: 'domingo',
-    2: 'lunes',
-    3: 'martes',
-    4: 'miercoles',
-    5: 'jueves',
-    6: 'viernes',
-    7: 'sabado'
-  };
-
-  const formatDiasActivos = (dias) => {
-    if (dias.length === 1) return dias[0];
-    return `${dias.slice(0, -1).join(', ')} y ${dias[dias.length - 1]}`;
-  };
+  const [incentiveMessage, setIncentiveMessage] = useState('');
+  const [offerMessages, setOfferMessages] = useState('');
+  const [closingMessage, setClosingMessage] = useState('');
 
   useEffect(() => {
-    const fetchOffersForDay = async () => {
+    const fetchActiveIncentives = async () => {
       try {
-        if (sessionData.segmento && sessionData.diaMasComprado) {
-          // console.log('Segmento del usuario:', sessionData.segmento);
-          // console.log('Día más comprado (número):', sessionData.diaMasComprado);
+        const response = await axios.get('http://localhost:3001/api/incentivos');
+        const incentives = Array.isArray(response.data) ? response.data : [];
+        const activeIncentives = incentives.filter((incentive) => incentive.activo === 1);
 
-          const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
-          const offers = response.data.data;
-          // console.log('Ofertas obtenidas:', offers);
-
-          const diaMasCompradoNombre = dayMap[sessionData.diaMasComprado];
-          // console.log('Día equivalente (nombre):', diaMasCompradoNombre);
-
-          const matchingOffers = offers.filter(offer => {
-            const diasActivos = JSON.parse(offer.Dias_Activos); 
-            // console.log('Días activos en oferta:', diasActivos);
-            return diasActivos.includes(diaMasCompradoNombre);
-          });
-
-          if (matchingOffers.length > 0) {
-            const selectedOffer = matchingOffers.reduce((prev, current) => {
-              return prev.Cupones_Asignados < current.Cupones_Asignados ? prev : current;
-            });
-
-            const horaInicio = selectedOffer.Hora_Inicio;
-            const cuponesDisponibles = selectedOffer.Cupones_Asignados;
-            // console.log('Oferta seleccionada:', selectedOffer);
-
-            const message = `El próximo ${diaMasCompradoNombre} a partir de las ${horaInicio}, ${cuponesDisponibles} cupones disponibles para que lo disfrutes en tu día.`;
-            setOfferMessage(message);
-          } else {
-            setOfferMessage('No hay ofertas disponibles para tu día más comprado.');
-          }
-
-          const maxDiscountOffer = offers.reduce((prev, current) => {
-            return prev.Descuento_Percent > current.Descuento_Percent ? prev : current;
-          });
-
-          const diasActivos = JSON.parse(maxDiscountOffer.Dias_Activos);
-          const allDays = [1, 2, 3, 4, 5, 6, 7].every(day => diasActivos.includes(dayMap[day]));
-
-          const pizzaDiscountMessage = allDays
-            ? `🎉 Disfruta hasta un ${maxDiscountOffer.Descuento_Percent}% de descuento en el cupón ${maxDiscountOffer.Codigo_Oferta} disponible Todos los días a partir de las ${maxDiscountOffer.Hora_Inicio}.`
-            : `🎉 Disfruta hasta un ${maxDiscountOffer.Descuento_Percent}% de descuento en el cupón ${maxDiscountOffer.Codigo_Oferta} disponible los ${formatDiasActivos(diasActivos)} a partir de las ${maxDiscountOffer.Hora_Inicio}.`;
-
-          setPizzaDiscountMessage(pizzaDiscountMessage);
+        if (activeIncentives.length > 0) {
+          const messages = activeIncentives.map(
+            (incentive) =>
+              `🎁 Disfruta de un <span class="incentive-animated">${incentive.incentivo}</span> en compras mayores a ${incentive.TO_minimo} EUR.`
+          );
+          setIncentiveMessage(messages.join(' | '));
+        } else {
+          setIncentiveMessage('🎁 No hay incentivos activos en este momento.');
         }
       } catch (error) {
-        console.error('Error al obtener las ofertas:', error);
+        console.error('Error al obtener incentivos:', error);
+        setIncentiveMessage('⚠️ Hubo un problema al cargar los incentivos.');
       }
     };
 
-    if (sessionData.diaMasComprado) {
-      fetchOffersForDay();
-    }
-  }, [sessionData.diaMasComprado, sessionData.segmento]);
+    const fetchOffers = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/ofertas');
+        const offers = Array.isArray(response.data.data) ? response.data.data : [];
+        const activeOffers = offers.filter((offer) => offer.Estado === 'Activa');
+        const messages = [];
 
+        // DailyChallenge
+        const dailyChallengeOffers = activeOffers.filter((offer) => offer.Tipo_Oferta === 'DailyChallenge');
+        if (dailyChallengeOffers.length > 0) {
+          const bestDailyChallenge = dailyChallengeOffers.reduce((prev, current) =>
+            prev.Max_Descuento_Percent > current.Max_Descuento_Percent ? prev : current
+          );
+          messages.push(
+            `🏆 Participa en el <span class="daily-challenge-animated">DailyChallenge</span> para obtener hasta un ${bestDailyChallenge.Max_Descuento_Percent}% de descuento!`
+          );
+        }
 
+        // RandomPizza
+        const randomPizzaOffers = activeOffers.filter((offer) => offer.Tipo_Oferta === 'Random Pizza');
+        if (randomPizzaOffers.length > 0) {
+          const bestRandomPizza = randomPizzaOffers.reduce((prev, current) =>
+            prev.Max_Descuento_Percent > current.Max_Descuento_Percent ? prev : current
+          );
+          messages.push(
+            `🍕 Anímate a crear una <span class="random-pizza-animated">Random Pizza</span> y obtén hasta un ${bestRandomPizza.Max_Descuento_Percent}% menos!`
+          );
+        }
 
-  let satisfactionMessage = "⭐ Aún no tienes suficientes reseñas. ¡Deja tu reseña hoy!"; 
+        // Delivery Free Pass
+        const deliveryOffers = activeOffers.filter((offer) => offer.Tipo_Oferta === 'Delivery Free Pass');
+        if (deliveryOffers.length > 0) {
+          messages.push(
+            `🚚 Consigue un <span class="delivery-free-pass-animated">Delivery Free Pass</span> hoy mismo!`
+          );
+        }
 
-if (sessionData.nivelSatisfaccion > 0) {
-  if (sessionData.nivelSatisfaccion < 3.0) {
-    satisfactionMessage = "Tu opinión nos importa. ¡Ayúdanos a mejorar con tu reseña!";
-  } else if (sessionData.nivelSatisfaccion >= 3.0 && sessionData.nivelSatisfaccion < 4.0) {
-    satisfactionMessage = "Gracias por tu apoyo. ¿Dejarías otra reseña para seguir mejorando?";
-  } else if (sessionData.nivelSatisfaccion >= 4.0) {
-    satisfactionMessage = "¡Nos alegra que estés satisfecho! ¿Te animas a dejarnos otra reseña?";
+        setOfferMessages(messages.join(' | '));
+      } catch (error) {
+        console.error('Error al obtener las ofertas:', error);
+        setOfferMessages('⚠️ No se pudo cargar la información de las ofertas.');
+      }
+    };
+
+    const fetchClosingTime = async () => {
+      try {
+        const dayMap = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+        const today = new Date().getDay();
+        const dayName = dayMap[today];
+
+        const response = await axios.get(`http://localhost:3001/api/horarios/${dayName}`);
+        if (response.data.length > 0) {
+          const { Hora_fin } = response.data[0];
+          setClosingMessage(
+            `⏰ Hoy cerramos a las ${Hora_fin} hrs. <span class="closing-time-animated">¡Haz tu pedido a tiempo!</span>`
+          );
+        } else {
+          setClosingMessage('⚠️ No hay información de horarios para hoy.');
+        }
+      } catch (error) {
+        console.error('Error al obtener el horario de cierre:', error);
+        setClosingMessage('⚠️ Hubo un problema al cargar el horario de cierre.');
+      }
+    };
+
+    fetchActiveIncentives();
+    fetchOffers();
+    fetchClosingTime();
+  }, []);
+
+  return (
+    <div className="notification-ticker" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+      <marquee behavior="scroll" direction="left" scrollamount="10">
+        <span dangerouslySetInnerHTML={{ __html: `${closingMessage} | ${incentiveMessage} | ${offerMessages}` }} />
+      </marquee>
+      <style>
+        {`
+          .closing-time-animated {
+            animation: drop 1s ease-out;
+            color: #d60404;
+            font-weight: bold;
+          }
+
+          @keyframes drop {
+            0% {
+              transform: translateY(-100%);
+              opacity: 0;
+            }
+            100% {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+
+       
+
+          @keyframes color-change {
+            0% {
+              color: #d60404;
+            }
+            25% {
+              color: #fa3939;
+            }
+            50% {
+              color: #f2a6a0;
+            }
+            75% {
+              color: #fa3939;
+            }
+            100% {
+              color: #d60404;
+            }
+          }
+
+          .random-pizza-animated {
+            display: inline-block;
+            animation: bounce 1.5s infinite;
+            color: #d60404;
+            font-weight: bold;
+          }
+
+          .daily-challenge-animated {
+            display: inline-block;
+            animation: fade 2s infinite;
+            color: #d60404;
+            font-weight: bold;
+          }
+
+ .incentive-animated {
+  position: relative;
+  font-weight: bold;
+  color: #d60404;
+  display: inline-block;
+  animation: float 2s infinite ease-in-out;
+}
+
+.incentive-animated::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: #d60404;
+  bottom: -2px;
+  left: 0;
+  animation: slide-in-out 2s infinite ease-in-out;
+}
+
+@keyframes slide-in-out {
+  0% {
+    width: 0;
   }
-
-  if (sessionData.necesitaNuevaReview) {
-    satisfactionMessage += " ¡Hace más de 5 días que no recibimos tu opinión!";
+  50% {
+    width: 100%;
+  }
+  100% {
+    width: 0;
   }
 }
 
-  const ticketObjetivo = sessionData.ticketPromedio * 1.1;
-  const diferenciaTicket = (ticketObjetivo - sessionData.ticketPromedio).toFixed(2);
+@keyframes float {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
 
-  const ticketMessage = diferenciaTicket > 0
-    ? `🎯 ¡Estás a solo ${diferenciaTicket} EUR de obtener beneficios adicionales! Aumenta ese monto en tu próxima compra y accede a más recompensas.`
-    : `🎯 ¡Ya has alcanzado tu ticket objetivo! Sigue disfrutando de nuestras ofertas y beneficios.`;
 
-  const dailyChallengeMessage = dailyChallengeInfo
-    ? `🏆 ¡Participa en el Daily Challenge y gana hasta ${dailyChallengeInfo.max_discount}% de descuento! Quedan ${dailyChallengeInfo.assigned_coupons} cupones disponibles.`
-    : `🏆 ¡No olvides participar en el Daily Challenge para ganar grandes descuentos y sorpresas!`;
 
-  return (
-    <div className="notification-ticker">
-      <div className="ticker-text">
-        <span>{satisfactionMessage}</span>
-        <span>{pizzaDiscountMessage}</span> 
-        <span>{offerMessage}</span>
-        <span>{ticketMessage}</span> 
-        <span>{dailyChallengeMessage}</span> 
-      </div>
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+              transform: translateY(0);
+            }
+            40% {
+              transform: translateY(-10px);
+            }
+            60% {
+              transform: translateY(-5px);
+            }
+          }
+
+          @keyframes fade {
+            0% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+            100% {
+              opacity: 1;
+            }
+          }
+
+          @keyframes pulse {
+            0% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+            100% {
+              transform: scale(1);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };
+
+
+
+
 const CustomerPage = (offer) => {
   const { sessionData, activePizzas, isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -540,6 +664,7 @@ const CustomerPage = (offer) => {
   const [cuponesDisponibles, setCuponesDisponibles] = useState(null);
   const [isRandomPizzaEnabled, setIsRandomPizzaEnabled] = useState(false);
   const [randomPizzaTooltip, setRandomPizzaTooltip] = useState('');
+  const [cuponesRandomPizza, setCuponesRandomPizza] = useState(0);
   const [cuponesDailyChallenge, setCuponesDailyChallenge] = useState(0);
   const [dailyChallengeTooltip, setDailyChallengeTooltip] = useState("");
   const [isDailyChallengeEnabled, setIsDailyChallengeEnabled] = useState(false);
@@ -726,18 +851,23 @@ const CustomerPage = (offer) => {
   useEffect(() => {
     const checkRandomPizzaAvailability = () => {
       if (!offers || offers.length === 0) return;
-
-      const ofertaPizzaRara = offers.find((offer) => offer.Tipo_Oferta === 'Random Pizza');
-      if (!ofertaPizzaRara) {
+  
+      // Filtrar únicamente las ofertas de tipo Random Pizza
+      const randomPizzaOffers = offers.filter((offer) => offer.Tipo_Oferta === 'Random Pizza');
+      if (randomPizzaOffers.length === 0) {
         setIsRandomPizzaEnabled(false);
-        setRandomPizzaTooltip('Oferta no disponible actualmente.');
+        setRandomPizzaTooltip('No hay ofertas disponibles actualmente.');
+        setCuponesRandomPizza(0); // Usar el estado específico
         return;
       }
-
+  
+      // Selecciona la primera oferta válida
+      const ofertaPizzaRara = randomPizzaOffers[0];
       const currentTime = moment();
       const horaInicio = moment(ofertaPizzaRara.Hora_Inicio, 'HH:mm');
       const horaFin = moment(ofertaPizzaRara.Hora_Fin, 'HH:mm');
-
+  
+      // Validaciones
       if (ofertaPizzaRara.Cupones_Disponibles === 0 && currentTime.isBefore(horaFin)) {
         setIsRandomPizzaEnabled(false);
         setRandomPizzaTooltip('Sold Out!');
@@ -755,26 +885,36 @@ const CustomerPage = (offer) => {
         setIsRandomPizzaEnabled(true);
         setRandomPizzaTooltip('');
       }
+  
+      // Actualizar los cupones específicos para Random Pizza
+      setCuponesRandomPizza(ofertaPizzaRara.Cupones_Disponibles || 0);
     };
-
+  
     checkRandomPizzaAvailability();
   }, [offers]);
+  
   useEffect(() => {
     const fetchOffers = async () => {
       try {
         const response = await axios.get("http://localhost:3001/ofertas");
         const allOffers = response.data.data;
   
-        // Daily Challenge Logic
+        // Obtener el día actual en texto
+        const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
+        const currentTime = moment();
+  
+        // Ajustar la validación del día activo en Daily Challenge
         const dailyChallengeOffer = allOffers.find(
-          (offer) => offer.Tipo_Oferta === "DailyChallenge" && offer.Estado === "Activa"
+          (offer) =>
+            offer.Tipo_Oferta === "DailyChallenge" &&
+            offer.Estado === "Activa" &&
+            JSON.parse(offer.Dias_Activos).map(removeDiacritics).includes(currentDay)
         );
   
         if (dailyChallengeOffer) {
           setDailyChallenge(dailyChallengeOffer);
           setCuponesDailyChallenge(dailyChallengeOffer.Cupones_Disponibles || 0);
   
-          const currentTime = moment();
           const startTime = moment(dailyChallengeOffer.Hora_Inicio, "HH:mm");
           const endTime = moment(dailyChallengeOffer.Hora_Fin, "HH:mm");
   
@@ -783,7 +923,9 @@ const CustomerPage = (offer) => {
             setDailyChallengeTooltip("Sold Out!");
           } else if (currentTime.isBefore(startTime)) {
             setIsDailyChallengeEnabled(false);
-            setDailyChallengeTooltip(`Disponible a partir de las ${dailyChallengeOffer.Hora_Inicio}`);
+            setDailyChallengeTooltip(
+              `Disponible a partir de las ${dailyChallengeOffer.Hora_Inicio}`
+            );
           } else if (currentTime.isAfter(endTime)) {
             if (dailyChallengeOffer.Tipo_Cupon === "permanente") {
               resetCoupons(dailyChallengeOffer);
@@ -796,6 +938,8 @@ const CustomerPage = (offer) => {
             setDailyChallengeTooltip("");
           }
         } else {
+          setDailyChallenge(null);
+          setCuponesDailyChallenge(0);
           setIsDailyChallengeEnabled(false);
           setDailyChallengeTooltip("No hay retos disponibles actualmente.");
         }
@@ -808,7 +952,6 @@ const CustomerPage = (offer) => {
         if (randomPizzaOffer) {
           setCuponesDisponibles(randomPizzaOffer.Cupones_Disponibles || 0);
   
-          const currentTime = moment();
           const startTime = moment(randomPizzaOffer.Hora_Inicio, "HH:mm");
           const endTime = moment(randomPizzaOffer.Hora_Fin, "HH:mm");
   
@@ -817,7 +960,9 @@ const CustomerPage = (offer) => {
             setRandomPizzaTooltip("Sold Out!");
           } else if (currentTime.isBefore(startTime)) {
             setIsRandomPizzaEnabled(false);
-            setRandomPizzaTooltip(`Disponible a partir de las ${randomPizzaOffer.Hora_Inicio}`);
+            setRandomPizzaTooltip(
+              `Disponible a partir de las ${randomPizzaOffer.Hora_Inicio}`
+            );
           } else if (currentTime.isAfter(endTime)) {
             if (randomPizzaOffer.Tipo_Cupon === "permanente") {
               resetCoupons(randomPizzaOffer);
@@ -842,6 +987,7 @@ const CustomerPage = (offer) => {
   
     fetchOffers();
   }, []);
+  
   
 
   
@@ -1016,55 +1162,56 @@ const CustomerPage = (offer) => {
   };
   const calculateNextCycle = (offer) => {
     const currentDayIndex = moment().day(); // Día actual (0 = domingo, 6 = sábado)
-    const currentTime = moment(); // Momento actual
-    
+    const currentTime = moment(); // Hora actual
+
     const diasActivos = JSON.parse(offer.Dias_Activos).map((day) =>
-      removeDiacritics(day.toLowerCase())
+        removeDiacritics(day.toLowerCase())
     );
-  
-    console.log("Días activos:", diasActivos);
-    console.log("Día actual:", moment().format("dddd").toLowerCase());
-    console.log("Hora actual:", currentTime.format("HH:mm"));
-  
-    for (let i = 0; i < 7; i++) {
-      const nextDayIndex = (currentDayIndex + i) % 7; // Índice del próximo día
-      const nextDay = removeDiacritics(moment().day(nextDayIndex).format("dddd").toLowerCase()); // Texto del día
-  
-      console.log("Validando día:", nextDay);
-  
-      if (diasActivos.includes(nextDay)) {
-        // Momento del inicio de la oferta en el próximo día activo
-        const nextMoment = moment()
-          .day(nextDayIndex)
-          .startOf("day")
-          .set({
+
+
+
+    // Revisar primero si el día actual es válido y estamos dentro del horario
+    const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
+    if (diasActivos.includes(currentDay)) {
+        const startMoment = moment().set({
             hour: parseInt(offer.Hora_Inicio.split(":")[0], 10),
             minute: parseInt(offer.Hora_Inicio.split(":")[1], 10),
-          });
-  
-        // Si es el mismo día y la hora actual ya pasó la hora de fin, continuar validando
-        if (i === 0) {
-          const [horaFin, minutoFin] = offer.Hora_Fin.split(":").map(Number);
-          const endMoment = moment().set({ hour: horaFin, minute: minutoFin });
-  
-          if (currentTime.isAfter(endMoment)) {
-            console.log("Hora actual ya pasó el fin de hoy, pero verificaremos días activos consecutivos.");
-            continue; // Saltar al siguiente día activo
-          }
+        });
+
+        const endMoment = moment().set({
+            hour: parseInt(offer.Hora_Fin.split(":")[0], 10),
+            minute: parseInt(offer.Hora_Fin.split(":")[1], 10),
+        });
+
+        if (currentTime.isBefore(endMoment)) {
+            console.log("Oferta activa hoy:", currentDay);
+            return startMoment.format("ddd DD/MM/YY");
         }
-  
-        console.log("Siguiente ciclo válido encontrado:", nextMoment.format("ddd DD/MM/YY"));
-        return nextMoment.format("ddd DD/MM/YY"); // Retornar el próximo ciclo válido
-      }
     }
-  
-    console.log("No se encontró ningún próximo ciclo válido en la semana.");
-    return null; // No hay días activos en la semana (caso muy raro)
-  };
-  
-  
-  
+
+    // Iterar por los próximos días activos
+    for (let i = 1; i <= 7; i++) {
+        const nextDayIndex = (currentDayIndex + i) % 7;
+        const nextDay = removeDiacritics(moment().day(nextDayIndex).format("dddd").toLowerCase());
+
+      
+
+        if (diasActivos.includes(nextDay)) {
+            const nextMoment = moment()
+                .add(i >= 7 ? 1 : 0, 'weeks') // Asegurarse de agregar una semana si ya pasamos el ciclo
+                .day(nextDayIndex)
+                .startOf("day")
+                .set({
+                    hour: parseInt(offer.Hora_Inicio.split(":")[0], 10),
+                    minute: parseInt(offer.Hora_Inicio.split(":")[1], 10),
+                });
+            return nextMoment.format("ddd DD/MM/YY");
+        }
+    }
+
    
+    return null; // No hay días activos en la semana
+  };
   const resetCoupons = async (offer) => {
     try {
       await axios.patch(`http://localhost:3001/api/offers/${offer.Oferta_Id}/reset-coupons`, {
@@ -1086,28 +1233,104 @@ const CustomerPage = (offer) => {
 
   return (
     <div className="customer-page">
-          <div>
-
-    </div>
         <div className={`customer-page ${isServiceSuspended ? 'blurred' : ''}`}>
         {renderSuspensionMessage()}
       </div>
       {sessionData ? (
         <>
          {renderSuspensionMessage()}
-          <header className="customer-header">
-            <h1>Hola de nuevo, {emailUsername}!</h1>
-            {reviews.length > 0 && <p>⭐ Promedio de Satisfacción: {averageRating} / 5</p>}
-          </header>
+         <header 
+          className="customer-header" 
+          style={{ marginBottom: '20px' }}
+        >
+          <h1 style={{ margin: 0 }}>
+            Hola de nuevo, {emailUsername}!
+          </h1>
+        </header>
 
           <div className="content-container">
             {reviews.length > 0 && (
-              <div className="reviews-container">
-                <div className="reviews-slide">
-                  <p>{reviews[currentReviewIndex].review}</p>
-                  <p>⭐ {reviews[currentReviewIndex].rating} / 5</p>
-                </div>
+           <div className="reviews-container">
+              {/* Promedio de Satisfacción (fijo) */}
+              <div 
+                  className="satisfaction-rating" 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    marginBottom: '15px', 
+                    cursor: 'pointer' 
+                  }}
+                  title={`Promedio de Satisfacción: ${averageRating} / 5`} 
+                >
+                  {[...Array(Math.floor(averageRating))].map((_, i) => (
+                    <span 
+                      key={`filled-star-${i}`} 
+                      className="star filled-star" 
+                      style={{ 
+                        color: '#FFD700', 
+                        fontSize: '2rem', 
+                        marginRight: '2px', 
+                        transition: 'transform 0.3s ease, text-shadow 0.3s ease',
+                        textShadow: '0 0 5px #FFD700' 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.transform = 'scale(1.3)';
+                        e.target.style.textShadow = '0 0 5px #FFD700, 0 0 2px #FFA500';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'scale(1)';
+                        e.target.style.textShadow = '0 0 10px #FFD700';
+                      }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                  {[...Array(5 - Math.floor(averageRating))].map((_, i) => (
+                    <span 
+                      key={`empty-star-${i}`} 
+                      className="star empty-star" 
+                      style={{ 
+                        color: '#D3D3D3', 
+                        fontSize: '2rem', 
+                        marginRight: '2px', 
+                        transition: 'transform 0.3s ease, text-shadow 0.3s ease', 
+                        textShadow: 'none' 
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.transform = 'scale(1.2)';
+                        e.target.style.textShadow = '0 0 10px #C0C0C0';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.transform = 'scale(1)';
+                        e.target.style.textShadow = 'none';
+                      }}
+                    >
+                      ☆
+                    </span>
+                    
+                  ))}
               </div>
+              {/* Comentarios (dinámicos en una línea) */}
+              <div
+                className="reviews-slide"
+                style={{ textAlign: 'center', fontSize: '1rem', marginTop: '10px' }}
+              >
+                {reviews.length > 0 ? (
+                  <p>
+                    <span style={{ fontWeight: 'bold', color: '#333' }}>
+                      {reviews[currentReviewIndex]?.email || 'Email no disponible'}
+                    </span>{" "}
+                    - {reviews[currentReviewIndex]?.review || 'Sin comentario disponible'} -{" "}
+                    <span style={{ color: '#FFD700' }}>
+                      ⭐ {reviews[currentReviewIndex]?.rating || '0'} / 5
+                    </span>
+                  </p>
+                ) : (
+                  <p>No hay comentarios disponibles.</p>
+                )}
+              </div>
+           </div>
             )}
 
             <div className="buttons-container">
@@ -1117,7 +1340,7 @@ const CustomerPage = (offer) => {
                 >
                   {showContactInfo ? 'Go Back' : 'Contacts'}
                 </button>
-            <button 
+               <button 
                   onClick={handleReviewButtonClick} 
                   className={showReviewForm ? 'go-back' : ''}
                 >
@@ -1125,38 +1348,40 @@ const CustomerPage = (offer) => {
                 </button>
                
                 <button
-                  className={`daily-challenge-button ${
-                    !isDailyChallengeEnabled ? "button-disabled" : ""
-                  }`}
-                  onClick={handleDailyChallengeClick}
-                  disabled={!isDailyChallengeEnabled}
-                  data-tooltip-id="dailyChallengeTooltip"
-                >
-                  Daily Challenge
-                  <span className="badge">{cuponesDailyChallenge}</span>
-                </button>
+                    onClick={handleDailyChallengeClick}
+                    className={`${showDailyChallenge ? 'go-back' : 'daily-challenge-button'} ${
+                      !isDailyChallengeEnabled ? 'button-disabled' : ''
+                    }`}
+                    disabled={!isDailyChallengeEnabled}
+                    data-tooltip-id="dailyChallengeTooltip"
+                  >
+                    {showDailyChallenge ? 'Go Back' : 'Daily Challenge'}
+                    {!showDailyChallenge && <span className="badge">{cuponesDailyChallenge}</span>}
+                  </button>
                 <Tooltip id="dailyChallengeTooltip" place="top" type="dark" effect="solid">
                   {dailyChallengeTooltip}
                 </Tooltip>
 
 
 
-              <button
-                  className={`create-random-pizza-button ${!isRandomPizzaEnabled ? 'button-disabled' : ''}`}
-                  onClick={() => navigate('/rare-pizza')}
-                  disabled={!isRandomPizzaEnabled}
-                  data-tooltip-id="randomPizzaTooltip"
-                >
-                  MakeARandomPizza
-                  {cuponesDisponibles !== null && (
-                    <span className="badge">
-                      {cuponesDisponibles === 0 ? '0' : cuponesDisponibles}
-                    </span>
-                  )}
-                </button>
-                <Tooltip id="randomPizzaTooltip" place="top" type="dark" effect="solid">
-                  {randomPizzaTooltip}
-                </Tooltip>
+                <button
+                className={`create-random-pizza-button ${!isRandomPizzaEnabled ? 'button-disabled' : ''}`}
+                onClick={() => navigate('/rare-pizza')}
+                disabled={!isRandomPizzaEnabled}
+                data-tooltip-id="randomPizzaTooltip"
+              >
+                MakeARandomPizza
+                {cuponesRandomPizza !== null && ( // Usamos cuponesRandomPizza aquí
+                  <span className="badge">
+                    {cuponesRandomPizza === 0 ? '0' : cuponesRandomPizza}
+                  </span>
+                )}
+              </button>
+              <Tooltip id="randomPizzaTooltip" place="top" type="dark" effect="solid">
+                {randomPizzaTooltip}
+              </Tooltip>
+
+
            </div>
 
             {showReviewForm && (

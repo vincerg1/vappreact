@@ -1,0 +1,73 @@
+.FormIS-login,
+.FormIS-register {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #ffffff; 
+    border: 1px solid #ddd; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
+    margin-top: 5rem;
+}
+.FormIS-form-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.FormIS-form-tab:hover {
+  color: #ffffff;
+  background-color: #fedb88; 
+}
+
+
+
+  .FormIS-form-tab {
+    color: #000000;
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: 2rem;
+  }
+  .FormIS-hidden-input input,
+  .FormIS-underline-input input {
+    border-radius: 0 !important;
+  }
+  .FormIS-form-tab.active {
+    border-bottom: 2px solid rgb(5, 1, 1);
+    font-weight: bold;
+  }
+
+
+  
+
+  
+  .FormIS-botonAcceso {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    background-color: #000000; 
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    margin-top: 4rem;
+  }
+  
+  .FormIS-botonAcceso:hover {
+    background-color: #fedb88;
+  }
+  
+  .FormIS-linkIS p {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #666;
+  }
+  

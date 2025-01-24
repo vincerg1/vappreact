@@ -56,10 +56,6 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
               </div>
               <div className="carousel-details">
                 <h3>{pizza.nombre}</h3>
-                <p>{pizza.descripcion || 'Deliciosa pizza artesanal.'}</p>
-                <p>
-                  Desde <strong>{pizza.price ? `${pizza.price}€` : 'Consultar'}</strong>
-                </p>
               </div>
             </div>
           ))}

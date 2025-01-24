@@ -1,38 +1,88 @@
-form{
+/* form{
     display: grid;
     align-items: center;
     justify-content: center;
     margin-top: 25px;
-    background-color: rgba(123, 123, 123, 0.7);
-    color: var(--tx2_color);
+    background-color: rgba(188, 215, 107, 0.7);
+    color: red;
     padding: 40px;
     width: 25%;
-    border-radius: 10px;
     border: none;
     margin: auto;
+}  */
+.form-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.Formulario {
+  width: 100%;
+  max-width: 400px;
+}
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.form-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+}
+.form-tab.active {
+  border-bottom: 2px solid black;
+  font-weight: bold;
+}
+.hidden-input input,
+.underline-input input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box; /* Asegura que el padding no altere las dimensiones */
+}
+.botonAcceso {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background-color: #ff5722; /* Color naranja */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.botonAcceso:hover {
+  background-color: #e64a19;
 }
 .FINF_EMP {
   background-color: blanchedalmond ;
     margin-top: -2.5rem;
 }
-
 .botones_info_emp{
   background-color: aqua;
 }
-
-.Formulario {
+ .Formulario {
     display: grid;
     align-items: center;
     justify-content: center;
-   
-}
-
+} 
 .checkbox  {
     color: var(--tx2_color);
     font-size: 10px;
     margin-right: 10px;
 }
-
 .botones_info_emp{
     background-color:var(--tx2_color);
     color: rgb(255, 255, 255);
@@ -45,7 +95,8 @@ form{
     text-transform: uppercase;
     font-weight: 500;
     
-}.botones_info_emp:hover{
+}
+.botones_info_emp:hover{
     background-color: var(--tx1_color);
     transition: background-color 0.3s, color 0.3s;
     cursor: pointer;
@@ -62,7 +113,6 @@ form{
     cursor: pointer;
     text-transform: uppercase;
 }
-
 .botonAcceso{
     background-color:var(--tx2_color);
     color: rgb(255, 255, 255);
@@ -75,13 +125,11 @@ form{
     margin-bottom: 20px;
     cursor: pointer;
     text-transform: uppercase;
- }  
- 
- .botonAcceso:hover{
+}  
+.botonAcceso:hover{
     background-color: rgb(53, 46, 46);
- }
-
- .underline-input {
+}
+.underline-input {
     border: none;
     background: transparent; /* Hace que el fondo sea transparente */
     padding: 5px; /* Agrega un pequeño espacio entre el texto y la línea */
@@ -91,11 +139,9 @@ form{
     text-align: center;
     font-size: 12px;text-align: left;
 }
-
 .isesion{
     margin-top: 5rem;
 }
-
 .Form_info {
     display: grid;
     grid-template-columns: .75fr 1fr 1fr 1fr;
@@ -104,7 +150,6 @@ form{
     border-radius: 10px;
     margin: 5rem 2rem;
 }
-
 .Form_info2{
     display: grid;
     grid-template-columns: .75fr 1fr 1fr 1fr ;
@@ -113,7 +158,6 @@ form{
     border-radius: 10px;
     margin: 5rem 2rem;
 }
-
 .Form_info_button  {
     font-family: poppins;
     background-color: blue;
@@ -124,23 +168,21 @@ form{
     color: #ffffff;
     cursor: pointer;
     font-size: 30px;
-}.Form_info_button:hover{
+}
+.Form_info_button:hover{
     background-color: rgb(53, 46, 46);
- }
-
- .h1_Form_info{
+}
+.h1_Form_info{
 font-size: 60px;
 text-align: left;
 margin-top: 6rem;
 line-height: 3.5rem;
- }
-
- .MenuContainer {
+}
+.MenuContainer {
     display: flex;
     justify-content: right;
-  }
-  
-  .MenuOverview {
+}
+.MenuOverview {
     font-family: poppins;
     background-color: rgb(179, 194, 65);
     padding: 1.5rem;
@@ -150,21 +192,16 @@ line-height: 3.5rem;
     color: #ffffff;
     cursor: pointer;
     font-size: 30px;
-  }
-  
-  .MenuOverview:hover {
+}
+.MenuOverview:hover {
     background-color: rgb(53, 46, 46);
-  }
-
- .linkIS p {
+}
+.linkIS p {
 font-size: 10px;
 color: #ffffff;
 line-height: .25rem;
 margin-top: .5rem;
- }
-
-/* formularios.css */
-/* Contenedor principal otros medios de pago */
+}
 .Otros_MP {
     display: flex;
     flex-direction: column; /* Organiza los elementos en líneas verticales */
@@ -177,8 +214,6 @@ margin-top: .5rem;
     margin: auto;
 
 }
-
-/* Estilo para los elementos individuales */
 .Otros_MP label {
     color: var(--tx2_color);
     font-weight: bold;
@@ -189,14 +224,12 @@ margin-top: .5rem;
     text-align: right; /* Alinea el texto al centro si es necesario */
     margin-right: 20px; /* Espacio entre el label y el Switch */
 }
-
 .Otros_MP .react-switch {
     color: red;
     display: flex;
     flex-direction: column; 
     width: 100%;
 }
-
 .Otros_MP input[type="text"] {
     border: none;
     border-radius: 10px;
@@ -204,11 +237,9 @@ margin-top: .5rem;
     margin: 10px;
     padding: 6px;
 }
-
 .Otros_MP label  {
     margin-bottom: .5rem;
 }
-
 .Otros_MP input[placeholder="Información de Bizum"],
 .Otros_MP input[placeholder="Información de PayPal"],
 .Otros_MP input[placeholder="Información de MetaMask"],
@@ -219,7 +250,7 @@ margin-top: .5rem;
 }
 
  @media (max-width: 768px) {
-    /* Agrega tus estilos aquí */
+   
     form{
         display: grid;
         align-items: center;
@@ -293,9 +324,6 @@ form textarea  {
   padding: 8px;
   width: 95%; /* Asegura que los elementos ocupen todo el ancho del formulario */
 }
-
-
-
 .react-time-picker__inputGroup input{
     background-color: red;
     padding: 2rem;
@@ -305,7 +333,6 @@ form textarea  {
     z-index: auto; /* Elimina estilos de z-index */
     border: none;
 }
-
 .sHour{
     background-color: rgb(204, 204, 204);
     border: none;
@@ -314,84 +341,67 @@ form textarea  {
     height: 25px;
     margin-right: .5rem;
 }
-
 .txxx{
     margin-bottom: -1rem;
 }
-
 .txxx1 {
     margin-bottom: .20rem;
 }
-
 .info_rest_gral {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 25px; /* Esto establece el espacio entre las columnas */
     margin: 2rem;
-  }
-
-  .f1_info_rest {
+}
+.f1_info_rest {
     width: auto;
     height: auto;
-  }
-
-  .f2_info_rest{
+}
+.f2_info_rest{
     width: auto;
     height: 360px;
-  }
-
-  .h1_Form_info_ir{
+}
+.h1_Form_info_ir{
     font-size: 40px;
     text-align: left;
     margin-top: -1rem;
-  }
-
-  /* ------------- */
-
-  .form_crearpizza{
+}
+.form_crearpizza{
     width:35%;
-  }
-
-  .TamañosSeleccionados {
+}
+.TamañosSeleccionados {
     width: 40px; /* Ancho deseado */
     height: 10px; /* Alto deseado */
     padding: 2px 5px; /* Ajustar el relleno según lo necesites */
-  }
-  .ingredientes-container {
+}
+.ingredientes-container {
     list-style: none;
     padding: 0;
-  }
-  
-  .ingredientes-container li {
+}
+.ingredientes-container li {
     display: flex;
     align-items: center;
     margin-bottom: 5px;
-  }
-  
-  .tamanos-inputs {
+}
+.tamanos-inputs {
     display: flex;
     flex-direction: row;
     align-items: center;
-  }
-  
-  .tamanos-inputs label {
+} 
+.tamanos-inputs label {
     margin-right: 2.5px;
- }  
-
- .pizza-name {
+}  
+.pizza-name {
   font-weight: bold; /* Puedes ajustar otros estilos según tus preferencias */
   color: #ff0404; /* Cambia el color según tus preferencias */
 }
-
 .tamaño-precio-container {
   display: flex; /* Utiliza un contenedor flexible (flexbox) */
   flex-wrap: wrap; /* Permite que los elementos fluyan a la siguiente fila si no caben en el ancho disponible */
 }
-
 .tamaño-precio-item {
   margin-right: 20px; /* Agrega margen derecho para separar cada par de tamaño y precio */
 }
-
 .tamaño-item {
   display: inline-block; /* Cambiar la visualización a en línea */
   margin-right: 5px; /* Otra configuración de estilo según sea necesario */
@@ -401,9 +411,9 @@ form textarea  {
   font-weight: 600;
  
 }
- .tamaño-precio-item {
+.tamaño-precio-item {
    margin: 2.5px;
- }
+}
 .Preciopt{
   padding: 1px 2px;
   width: 60px;
@@ -413,34 +423,29 @@ form textarea  {
   border-radius: 10px;
 
  }
-
- .Preciopt::placeholder {
+.Preciopt::placeholder {
   font-size: 10px;
   font-style: italic;
   color: #999;
  text-align: center;
 }
-  /* Ajusta los márgenes y el espaciado según tus necesidades */
-  .Precio_menu{
+.Precio_menu{
     width: 50px; /* Ancho deseado */
     height: 10px; /* Alto deseado */
     padding: 2px 5px; /* Ajustar el relleno según lo necesites */
-  }
-
-   .sizes-prices-container{
+}
+.sizes-prices-container{
     display: flex;
     flex-wrap: wrap;
     gap: 10px; 
     margin-top: 0;
     margin-bottom: 1rem;
     width: auto;
-  }
-
+}
 .SizeAndPriceSection{
   margin-top: 10px;
-}
-  
-  .size-price {
+} 
+.size-price {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -449,26 +454,24 @@ form textarea  {
     border-radius: 10px;
     width: 80px;
 
-  }
-  
-  .size-checkbox {
+}
+.size-checkbox {
     margin-bottom: 5px; /* Espacio entre checkbox y input */
-  }
-  .image-preview {
+}
+.image-preview {
     width: 100%; /* o el ancho que prefieras */
     max-width: 500px; /* o el máximo ancho que prefieras */
     height: auto; /* esto mantendrá la relación de aspecto de la imagen */
     display: block; /* para evitar cualquier espacio extra alrededor de la imagen */
     margin: 0 auto; /* si quieres centrar la imagen */
-  }
-  .image-preview {
+}
+.image-preview {
     /* ...otros estilos... */
     border: 1px solid #ccc; /* un borde sutil, cambia el color y tamaño como prefieras */
     box-shadow: 2px 2px 5px rgba(0,0,0,0.2); /* una sombra suave para darle profundidad */
     border-radius: 4px; /* bordes redondeados si prefieres */
-  }
-  
-  .price-input {
+}
+.price-input {
     width: 65px; /* Ancho del input */
     height: 30px; /* Altura del input */
     border: none;
@@ -478,14 +481,10 @@ form textarea  {
     margin-left: .5rem;
     margin-right: .5rem;
    
-  }
-  
-  /* Estilo para el contenedor de cada ingrediente y sus cantidades */
+}
 .ingrediente-container {
   margin-bottom: 15px; /* Espacio entre cada ingrediente */
 }
-
-/* Estilo para el select de ingredientes */
 .ingrediente-select {
   width: 100%; /* Ocupa todo el ancho disponible */
   padding: 5px; /* Espaciado interno para mejor legibilidad */
@@ -493,15 +492,11 @@ form textarea  {
   border: 1px solid #ccc; /* Borde sutil */
   border-radius: 4px; /* Bordes redondeados */
 }
-
-/* Estilo para el contenedor de inputs de cantidad */
 .cantidad-container {
   display: flex;
   flex-wrap: wrap; /* Asegura que los elementos pasen a la siguiente línea si no caben */
   gap: 10px; /* Espacio entre inputs */
 }
-
-/* Estilo para los inputs de cantidad */
 .cantidad-input {
   width: 60px; /* Ancho fijo para los inputs de cantidad */
   padding: 5px; /* Espaciado interno para mejor legibilidad */
@@ -509,8 +504,6 @@ form textarea  {
   border: 1px solid #ccc; /* Borde sutil */
   border-radius: 4px; /* Bordes redondeados */
 }
-
-/* Estilo para el botón de eliminar ingrediente */
 .ingrediente-remove-btn {
   padding: 5px 10px; /* Espaciado interno */
   margin-top: 5px; /* Espacio encima del botón */
@@ -520,12 +513,9 @@ form textarea  {
   border-radius: 4px; /* Bordes redondeados */
   cursor: pointer; /* Cursor en forma de mano al pasar sobre el botón */
 }
-
-/* Añade hover para mejorar la interactividad */
 .ingrediente-remove-btn:hover {
   background-color: #d32f2f; /* Un rojo ligeramente más oscuro al pasar el mouse */
 }
-
 .buscador-productos {
   border: 2px solid #000000;
   background-color: #eef208;
@@ -539,16 +529,9 @@ form textarea  {
   width: 100%;
   float: right;
 }
-
-
 .close-modal-button{
   background-color: #d32f2f;
 }
-
-
-
-
-
 .scrollable-form66 {
   max-height: 80vh;
   overflow-y: auto;

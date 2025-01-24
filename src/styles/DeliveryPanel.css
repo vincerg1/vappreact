@@ -250,7 +250,8 @@
   justify-content: flex-start; /* Alineación a la izquierda */
   align-items: center; /* Centrado vertical */
   gap: 15px; /* Espaciado uniforme entre botones */
-  margin: 20px 0; /* Margen superior e inferior */
+  margin: 40px;
+  margin-bottom: 1rem;
 }
 .buttons-container button, .delivery-button {
   width: 200px; /* Ancho uniforme */

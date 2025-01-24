@@ -429,7 +429,8 @@
   justify-content: space-evenly; 
   gap: 15px;                   
   margin: 20px 0;             
-  flex-wrap: wrap;             
+  flex-wrap: wrap;   
+       
 }
 .buttons-container button {
   flex: 1;                     

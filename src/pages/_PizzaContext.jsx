@@ -454,78 +454,78 @@ const agruparInventarioPorIDI = (inventario) => {
   
     return inventarioAgrupado;
 };
-const calcularPromedioReviewsUsuario = useCallback(async (email) => {
-  try {
-    // console.log(`Calculando promedio de reviews para el usuario con email: ${email}`);
-    const response = await axios.get(`http://localhost:3001/api/reviews/${email}`);
-    const reviews = response.data;
+// const calcularPromedioReviewsUsuario = useCallback(async (email) => {
+//   try {
+//     // console.log(`Calculando promedio de reviews para el usuario con email: ${email}`);
+//     const response = await axios.get(`http://localhost:3001/api/reviews/${email}`);
+//     const reviews = response.data;
 
-    // console.log('Reviews obtenidas:', reviews);
+//     // console.log('Reviews obtenidas:', reviews);
 
-    if (reviews.length > 0) {
-      // Filtrar solo las reviews que tienen un rating válido
-      const validReviews = reviews.filter(review => typeof review.rating === 'number' && !isNaN(review.rating));
+//     if (reviews.length > 0) {
+//       // Filtrar solo las reviews que tienen un rating válido
+//       const validReviews = reviews.filter(review => typeof review.rating === 'number' && !isNaN(review.rating));
 
-      if (validReviews.length > 0) {
-        // Calcular el promedio de las calificaciones de las reviews válidas
-        const sumRatings = validReviews.reduce((sum, review) => sum + review.rating, 0);
-        const promedioRating = (sumRatings / validReviews.length).toFixed(1);
+//       if (validReviews.length > 0) {
+//         // Calcular el promedio de las calificaciones de las reviews válidas
+//         const sumRatings = validReviews.reduce((sum, review) => sum + review.rating, 0);
+//         const promedioRating = (sumRatings / validReviews.length).toFixed(1);
 
-        // Obtener la fecha de la última review y procesar el campo 'created_at'
-        const ultimaReviewFecha = new Date(validReviews[validReviews.length - 1].created_at);
+//         // Obtener la fecha de la última review y procesar el campo 'created_at'
+//         const ultimaReviewFecha = new Date(validReviews[validReviews.length - 1].created_at);
 
-        if (isNaN(ultimaReviewFecha.getTime())) {
-          console.error('La fecha de la última review no es válida.');
-        } else {
-          const hoy = new Date();
-          const diferenciaDias = Math.floor((hoy - ultimaReviewFecha) / (1000 * 60 * 60 * 24));
+//         if (isNaN(ultimaReviewFecha.getTime())) {
+//           console.error('La fecha de la última review no es válida.');
+//         } else {
+//           const hoy = new Date();
+//           const diferenciaDias = Math.floor((hoy - ultimaReviewFecha) / (1000 * 60 * 60 * 24));
 
-          // console.log(`Promedio de reviews: ${promedioRating}`);
-          // console.log(`Días desde la última review: ${diferenciaDias}`);
+//           // console.log(`Promedio de reviews: ${promedioRating}`);
+//           // console.log(`Días desde la última review: ${diferenciaDias}`);
 
-          // Si han pasado más de 5 días, motivar a dejar una nueva review
-          const necesitaNuevaReview = diferenciaDias > 5;
+//           // Si han pasado más de 5 días, motivar a dejar una nueva review
+//           const necesitaNuevaReview = diferenciaDias > 5;
 
-          // Actualizar sessionData con el promedio y la fecha de la última review
-          updateSessionData({
-            nivelSatisfaccion: promedioRating,
-            ultimaReview: ultimaReviewFecha.toISOString().split('T')[0], // Guardar la fecha como cadena
-            necesitaNuevaReview: necesitaNuevaReview,
-          });
+//           // Actualizar sessionData con el promedio y la fecha de la última review
+//           updateSessionData({
+//             nivelSatisfaccion: promedioRating,
+//             ultimaReview: ultimaReviewFecha.toISOString().split('T')[0], // Guardar la fecha como cadena
+//             necesitaNuevaReview: necesitaNuevaReview,
+//           });
 
-          // console.log('Datos de sesión actualizados con el promedio de reviews y la última fecha');
-        }
-      } else {
-        console.log('No hay reviews válidas para calcular el promedio.');
-        updateSessionData({
-          nivelSatisfaccion: 0,
-          ultimaReview: null,
-          necesitaNuevaReview: true,
-        });
-      }
-    } else {
-      // Si no tiene reviews, reiniciar valores en sessionData
-      updateSessionData({
-        nivelSatisfaccion: 0,
-        ultimaReview: null,
-        necesitaNuevaReview: true,
-      });
-      // console.log('No hay reviews disponibles. Se reinician los valores en sessionData.');
-    }
-  } catch (error) {
-    console.error('Error al calcular el promedio de reviews del usuario:', error);
-  }
-}, [updateSessionData]);
+//           // console.log('Datos de sesión actualizados con el promedio de reviews y la última fecha');
+//         }
+//       } else {
+//         console.log('No hay reviews válidas para calcular el promedio.');
+//         updateSessionData({
+//           nivelSatisfaccion: 0,
+//           ultimaReview: null,
+//           necesitaNuevaReview: true,
+//         });
+//       }
+//     } else {
+//       // Si no tiene reviews, reiniciar valores en sessionData
+//       updateSessionData({
+//         nivelSatisfaccion: 0,
+//         ultimaReview: null,
+//         necesitaNuevaReview: true,
+//       });
+//       // console.log('No hay reviews disponibles. Se reinician los valores en sessionData.');
+//     }
+//   } catch (error) {
+//     // console.error('Error al calcular el promedio de reviews del usuario:', error);
+//   }
+// }, [updateSessionData]);
 
  
-useEffect(() => {
-  if (sessionData.email) {
-    // console.log('ID del cliente disponible. Ejecutando cálculo de reviews...');
-    calcularPromedioReviewsUsuario(sessionData.email);
-  } else {
-    // console.log('ID del cliente no disponible.');
-  }
-}, [sessionData.email, calcularPromedioReviewsUsuario]);
+// useEffect(() => {
+//   if (sessionData.email) {
+//     // console.log('ID del cliente disponible. Ejecutando cálculo de reviews...');
+//     calcularPromedioReviewsUsuario(sessionData.email);
+//   } else {
+//     // console.log('ID del cliente no disponible.');
+//   }
+// }, [sessionData.email, calcularPromedioReviewsUsuario]);
  
   return (
     <_PizzaContext.Provider value={{

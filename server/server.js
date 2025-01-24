@@ -12,11 +12,12 @@ const moment = require('moment-timezone');
 const PDFDocument = require('pdfkit'); 
 const nodemailer = require('nodemailer');
 const fs = require('fs');
+const { OAuth2Client } = require('google-auth-library');
 module.exports = open({
   filename: path.join(__dirname, 'miBaseDeDatos.db'),
   driver: sqlite3.Database
 });
-
+const client = new OAuth2Client('718859045648-ac01g0oqu3pdd87tc84n195harhp5t57.apps.googleusercontent.com')
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -1026,7 +1027,7 @@ app.get('/ofertas/edit/:Oferta_Id', (req, res) => {
   });
 });
 app.get('/api/reviews', (req, res) => {
-  const query = `SELECT review, rating FROM reviews ORDER BY created_at DESC LIMIT 5`;
+  const query = `SELECT email, review, rating, created_at FROM reviews ORDER BY created_at DESC LIMIT 5`;
   
   db.all(query, [], (err, rows) => {
     if (err) {
@@ -1667,6 +1668,129 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+
+app.post('/api/auth/remember-me', (req, res) => {
+  const { email } = req.body;
+
+  const query = `SELECT password FROM clientes WHERE email = ?`;
+
+  db.get(query, [email], (err, row) => {
+    if (err) {
+      console.error('Error al consultar la base de datos:', err);
+      return res.status(500).json({ message: 'Error en el servidor' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ message: 'Correo no registrado.' });
+    }
+
+    // Retorna la contraseña al frontend
+    return res.json({ password: row.password });
+  });
+});
+app.post('/api/auth/google-login', async (req, res) => {
+  const { token } = req.body;
+
+  try {
+    // Verificar el token con Google
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: '718859045648-ac01g0oqu3pdd87tc84n195harhp5t57.apps.googleusercontent.com',
+    });
+
+    const payload = ticket.getPayload();
+    const { email } = payload;
+
+    // Verificar si el usuario ya existe en la base de datos
+    const userQuery = `SELECT * FROM clientes WHERE email = ?`;
+    db.get(userQuery, [email], (err, user) => {
+      if (err) {
+        console.error('Error en la base de datos:', err);
+        return res.status(500).json({ message: 'Error en el servidor' });
+      }
+
+      if (user) {
+        // Usuario existente: iniciar sesión
+        return res.json({
+          id_cliente: user.id_cliente,
+          email: user.email,
+        });
+      } else {
+        // Usuario nuevo: registrar y enviar correo de bienvenida
+        const secuenciaSql = `SELECT COUNT(*) as count FROM clientes WHERE DATE(created_at) = DATE('now')`;
+        db.get(secuenciaSql, [], (err, row) => {
+          if (err) {
+            console.error('Error al obtener la secuencia:', err);
+            res.status(500).json({ message: 'Error generating sequence' });
+            return;
+          }
+
+          const secuencia = row.count + 1;
+          const id_cliente = `CLNT${new Date().toISOString().split('T')[0].replace(/-/g, '')}${String(secuencia).padStart(3, '0')}`;
+          const defaultPassword = 'google_default_password'; // Contraseña predeterminada
+
+          const insertQuery = `
+            INSERT INTO clientes (id_cliente, email, password) 
+            VALUES (?, ?, ?)
+          `;
+
+          db.run(insertQuery, [id_cliente, email, defaultPassword], function (err) {
+            if (err) {
+              console.error('Error al registrar usuario:', err);
+              return res.status(500).json({ message: 'Error en el servidor' });
+            }
+
+            // Enviar correo de bienvenida
+            const transporter = nodemailer.createTransport({
+              service: 'gmail',
+              auth: {
+                user: 'mycrushpizzaspain@gmail.com',
+                pass: 'pfpjczrsksoytvhv', // Contraseña de aplicación
+              },
+            });
+
+            const mailOptions = {
+              from: 'mycrushpizzaspain@gmail.com',
+              to: email,
+              subject: 'Welcome to MyPizzaCrush!',
+              text: `
+                ¡Hola!
+
+                Gracias por registrarte en MyPizzaCrush con tu cuenta de Google. Aquí están tus credenciales:
+
+                - Email: ${email}
+                - id_cliente: ${id_cliente}
+
+                Aunque te registraste con Google, puedes usar esta contraseña para acceder directamente en el futuro.
+
+                ¡Gracias por unirte a nuestra comunidad!
+
+                MyPizzaCrush Team
+              `,
+            };
+
+            transporter.sendMail(mailOptions, (mailErr, info) => {
+              if (mailErr) {
+                console.error('Error al enviar el correo de bienvenida:', mailErr.message);
+              } else {
+                console.log('Correo de bienvenida enviado con éxito:', info.response);
+              }
+            });
+
+            // Responder con éxito
+            return res.json({
+              id_cliente,
+              email,
+            });
+          });
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error en la verificación de Google:', error);
+    res.status(401).json({ message: 'Token inválido' });
+  }
+});
 app.post('/admin/register', async (req, res) => {
   const { nombre, correo, contrasena } = req.body;
 
@@ -2830,34 +2954,88 @@ app.post('/agregar_cliente', (req, res) => {
 
   console.log('Datos recibidos en el servidor:', { email, password, bday, mapsUrl });
 
-  const secuenciaSql = `SELECT COUNT(*) as count FROM clientes WHERE DATE(created_at) = DATE('now')`;
-
-  db.get(secuenciaSql, [], (err, row) => {
+  // Verificar si el email ya está registrado
+  const emailCheckSql = `SELECT email FROM clientes WHERE email = ?`;
+  db.get(emailCheckSql, [email], (err, row) => {
     if (err) {
-      console.error('Error al obtener la secuencia:', err);
-      res.status(500).json({ error: err.message });
+      console.error('Error al verificar email:', err.message);
+      res.status(500).json({ error: 'Error checking email in the database' });
       return;
     }
 
-    const secuencia = row.count + 1;
-    const id_cliente = `CLNT${new Date().toISOString().split('T')[0].replace(/-/g, '')}${String(secuencia).padStart(3, '0')}`;
+    if (row) {
+      res.status(400).json({ error: 'This email is already registered.' });
+      return;
+    }
 
-    console.log('Generado id_cliente:', id_cliente);
-
-    const insertClienteSql = `
-      INSERT INTO clientes (id_cliente, email, password, bday, address_1)
-      VALUES (?, ?, ?, ?, ?);
-    `;
-
-    db.run(insertClienteSql, [id_cliente, email, password, bday, mapsUrl], function (err) {
+    // Continuar con el registro del cliente si el email no está registrado
+    const secuenciaSql = `SELECT COUNT(*) as count FROM clientes WHERE DATE(created_at) = DATE('now')`;
+    db.get(secuenciaSql, [], (err, row) => {
       if (err) {
-        console.error('Error al agregar cliente:', err);
-        res.status(500).json({ error: err.message });
+        console.error('Error al obtener la secuencia:', err.message);
+        res.status(500).json({ error: 'Error generating sequence' });
         return;
       }
 
-      console.log('Cliente agregado con éxito, ID:', id_cliente);
-      res.json({ message: 'Cliente agregado con éxito', id_cliente: id_cliente });
+      const secuencia = row.count + 1;
+      const id_cliente = `CLNT${new Date().toISOString().split('T')[0].replace(/-/g, '')}${String(secuencia).padStart(3, '0')}`;
+
+      console.log('Generado id_cliente:', id_cliente);
+
+      const insertClienteSql = `
+        INSERT INTO clientes (id_cliente, email, password, bday, address_1)
+        VALUES (?, ?, ?, ?, ?);
+      `;
+
+      db.run(insertClienteSql, [id_cliente, email, password, bday, mapsUrl], function (err) {
+        if (err) {
+          console.error('Error al agregar cliente:', err.message);
+          res.status(500).json({ error: 'Error adding client to the database' });
+          return;
+        }
+
+        console.log('Cliente agregado con éxito, ID:', id_cliente);
+
+        // Configurar nodemailer para enviar el correo de bienvenida
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: 'mycrushpizzaspain@gmail.com', // Tu correo electrónico
+            pass: 'pfpjczrsksoytvhv', // Contraseña de aplicación generada
+          },
+        });
+
+        const mailOptions = {
+          from: 'mycrushpizzaspain@gmail.com',
+          to: email,
+          subject: 'Welcome to MyPizzaCrush!',
+          text: `
+            ¡Hola!
+
+            Gracias por registrarte en MyPizzaCrush. Aquí están tus credenciales:
+
+            - Email: ${email}
+            - id_cliente: ${id_cliente}
+            
+
+            Te recomendamos guardar este correo para futuras referencias.
+
+            ¡Gracias por unirte a nuestra comunidad!
+
+            MyPizzaCrush Team
+          `,
+        };
+
+        transporter.sendMail(mailOptions, (mailErr, info) => {
+          if (mailErr) {
+            console.error('Error al enviar el correo de bienvenida:', mailErr.message);
+          } else {
+            console.log('Correo de bienvenida enviado con éxito:', info.response);
+          }
+        });
+
+        res.json({ message: 'Cliente agregado con éxito y correo de bienvenida enviado', id_cliente });
+      });
     });
   });
 });

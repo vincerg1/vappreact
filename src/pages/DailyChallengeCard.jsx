@@ -374,7 +374,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                 </p>
                 <p>
                   <strong>Precio_cupon:</strong> 
-                  {dailyChallenge.Precio_Cupon === 'n/a' ? ' Today Free' : `${dailyChallenge.Precio_Cupon}€`}
+                  {dailyChallenge.Precio_Cupon === 0 ? ' Today Free' : `${dailyChallenge.Precio_Cupon}€`}
                 </p>
               </div>
   
