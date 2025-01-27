@@ -14,11 +14,10 @@ const InicioSesion = () => {
   const { updateSessionData } = useContext(_PizzaContext);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('login');
-
   const handleEmailChange = (e) => setEmail(e.target.value);
   const handlePasswordChange = (e) => setPassword(e.target.value);
 
-  // Maneja el inicio de sesión o "Remember Me"
+
   const handleLoginOrRememberMe = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -60,9 +59,6 @@ const InicioSesion = () => {
       }
     }
   };
-  
-
-  // Maneja el registro de usuarios
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -88,8 +84,6 @@ const InicioSesion = () => {
       console.error('Error registering user:', error);
     }
   };
-
-  // Maneja el inicio de sesión con Google
   const handleGoogleSuccess = async (credentialResponse) => {
     const { credential } = credentialResponse;
     try {
@@ -113,7 +107,6 @@ const InicioSesion = () => {
       setErrorMessage('Google login failed. Please try again.');
     }
   };
-
   const handleGoogleFailure = () => {
     setErrorMessage('Google login failed. Please try again.');
   };

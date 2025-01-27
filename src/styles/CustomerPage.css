@@ -21,6 +21,16 @@
   border-radius: 8px;
 }
 
+/* .satisfaction-rating{
+  background-color: #000;
+  margin-bottom: 10rem;
+} */
+
+.reviews-container{
+
+  margin-bottom: 2.5rem;
+}
+
 @keyframes backgroundPulse {
   0% {
     background-color: #E6E700; /* Color inicial */
@@ -385,42 +395,56 @@
 }
 
 /*ORDER NOW*/
-@keyframes blink-text {
-  0%, 100% { opacity: 1; } /* Texto completamente visible */
-  50% { opacity: 0.4; }    /* Texto ligeramente transparente */
-}
 .order-now-button-container {
   display: flex;
-  justify-content: center; 
+  justify-content: center;
   align-items: center;
-  margin-top: 1rem;    
+  margin-top: 1rem;
 }
-.order-now-button {
-  width: 60%;
-  max-width: 450px;         
-  padding: 20px 25px;     
-  font-size: 22px;          
-  font-weight: bold;       
-  color: #ffffff;          
-  background-color: #000000; 
-  border: none;           
-  border-radius: 12px;    
+
+.order-now-button  {
+  width: 65%;
+  max-width: 500px;
+  padding: 20px 30px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffffff;
+  background-color: #000000;
+  border: none;
+  border-radius: 12px;
   cursor: pointer;
   text-transform: uppercase;
   box-shadow: 0 5px 8px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden; 
 }
-.order-now-button span {
-  display: inline-block;   
-  animation: blink-text 1.5s infinite;
-  font-size: 2rem;
+
+.rotating-text-container {
+  height: 2rem; 
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.rotating-text {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  font-size: 3rem;
   font-weight: bold;
+  color: #fff;
 }
+
 .order-now-button:hover {
-  background-color: #505050;   
-  transform: scale(1.08);
+  background-color: #505050;
+  transform: scale(1.1);
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.4);
 }
+
+
 
 /*BOTENES DEL CONTENEDOR DE PARTICIPACION*/
 

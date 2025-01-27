@@ -78,12 +78,13 @@ const CustomerMenu = () => {
     const calcularTotalDescuentos = () => {
       let totalDescuentos = 0;
   
-      // Calcular el total de productos incluyendo costos adicionales (delivery, ticket express, precio del cupón)
+      // Calcular el total de productos (precio base + ingredientes extras)
       let totalProductos = compra.venta.reduce((acc, item) => {
-        const precioIngredientesExtras = item.extraIngredients?.reduce(
-          (sum, ing) => sum + parseFloat(ing.precio || 0),
-          0
-        ) || 0; // Maneja el caso donde no haya ingredientes extras
+        const precioIngredientesExtras =
+          item.extraIngredients?.reduce(
+            (sum, ing) => sum + parseFloat(ing.precio || 0),
+            0
+          ) || 0;
   
         const basePrice = parseFloat(item.basePrice || 0);
         const cantidad = parseInt(item.cantidad || 1);
@@ -91,72 +92,83 @@ const CustomerMenu = () => {
         return acc + basePrice * cantidad + precioIngredientesExtras;
       }, 0);
   
-      console.log("Total productos inicial:", totalProductos, typeof totalProductos);
+      // Costos adicionales (delivery, ticket express, precio del cupón)
+      let costoDelivery = parseFloat(compra.Entrega?.Delivery?.costo || 0) || 0;
+      let costoTicketExpress =
+        parseFloat(compra.Entrega?.Delivery?.costoTicketExpress || 0) +
+        parseFloat(compra.Entrega?.PickUp?.costoTicketExpress || 0) || 0;
+      let costoCupon = compra.cupones.reduce((acc, cupon) => {
+        const precioCupon = parseFloat(cupon.PrecioCupon || 0);
+        return acc + (isNaN(precioCupon) ? 0 : precioCupon);
+      }, 0);
   
-      // Manejar costos adicionales (delivery, ticket express, cupones)
-      let costoDelivery = parseFloat(compra.Entrega?.Delivery?.costo || 0);
-        if (isNaN(costoDelivery)) costoDelivery = 0;
-
-        const costoTicketExpress = parseFloat(
-          (compra.Entrega?.Delivery?.costoTicketExpress || 0) +
-          (compra.Entrega?.PickUp?.costoTicketExpress || 0)
-        );
-        if (isNaN(costoTicketExpress)) costoTicketExpress = 0;
-
-        const costoCupon = compra.cupones.reduce((acc, cupon) => {
-          const precioCupon = parseFloat(cupon.PrecioCupon || 0); // Si es "gratis", será 0
-          return acc + (isNaN(precioCupon) ? 0 : precioCupon);
-        }, 0);
-  
-      // Actualizar total de productos incluyendo costos adicionales
       totalProductos += costoDelivery + costoTicketExpress + costoCupon;
   
-      console.log("Total productos después de costos adicionales:", totalProductos, typeof totalProductos);
-  
-      // Calcular descuentos por cupones
+      // Aplicar descuentos por cupones
       if (compra.cupones.length > 0 && totalProductos > 0) {
         compra.cupones.forEach((cupon) => {
-          const descuentoAplicado = totalProductos * parseFloat(cupon.Descuento || 0);
-          const descuentoFinal = Math.min(descuentoAplicado, parseFloat(cupon.Max_Amount || 0));
-          totalDescuentos += descuentoFinal;
+          const { Descuento, Max_Amount, quantity_condition } = cupon;
   
-          console.log("Descuento aplicado:", {
-            descuentoAplicado,
-            descuentoFinal,
-            cupon,
-          });
+          if (quantity_condition > 0) {
+            // Validar que se cumpla la condición de cantidad
+            const productosValidos = compra.venta.filter(
+              (_, index) => index % 2 !== 0
+            ); // Posiciones impares
+            if (productosValidos.length < quantity_condition) {
+              console.log(
+                "No se cumple la condición de cantidad mínima para aplicar el cupón."
+              );
+              return;
+            }
+  
+            // Aplicar el descuento a las posiciones impares
+            let descuentoAplicado = 0;
+            for (let i = 0; i < productosValidos.length; i++) {
+              const producto = productosValidos[i];
+              const descuentoProducto =
+                producto.basePrice * parseFloat(Descuento || 0);
+  
+              // Validar contra el Max_Amount
+              if (
+                descuentoAplicado + descuentoProducto >
+                parseFloat(Max_Amount || 0)
+              ) {
+                const restante = parseFloat(Max_Amount || 0) - descuentoAplicado;
+                totalDescuentos += restante;
+                descuentoAplicado += restante;
+                break;
+              } else {
+                totalDescuentos += descuentoProducto;
+                descuentoAplicado += descuentoProducto;
+              }
+            }
+          } else {
+            // Descuento general para cupones sin condiciones
+            console.log("Aplicando descuento general para cupones sin condiciones");
+            const descuentoAplicado = totalProductos * parseFloat(Descuento || 0);
+            const descuentoFinal = Math.min(
+              descuentoAplicado,
+              parseFloat(Max_Amount || 0)
+            );
+            totalDescuentos += descuentoFinal;
+  
+            console.log(
+              `Descuento aplicado: ${descuentoFinal}, Total descuentos: ${totalDescuentos}`
+            );
+          }
         });
       }
   
-      console.log("Total descuentos:", totalDescuentos, typeof totalDescuentos);
-  
-      // Calcular total con descuento aplicado
+      // Calcular el total con descuentos aplicados
       let totalConDescuento = totalProductos - totalDescuentos;
-      if (totalConDescuento < 0) {
-        totalConDescuento = 0; 
-      }
+      totalConDescuento = totalConDescuento < 0 ? 0 : totalConDescuento;
   
-      console.log("Total con descuento:", totalConDescuento, typeof totalConDescuento);
-  
-      if (isNaN(totalProductos) || isNaN(totalDescuentos) || isNaN(totalConDescuento)) {
-        console.error("Error: Valores no numéricos detectados", {
-          totalProductos,
-          totalDescuentos,
-          totalConDescuento,
-        });
-        return;
-      }
+      // Actualizar el estado de compra
       setCompra((prevCompra) => ({
         ...prevCompra,
-        total_productos: typeof totalProductos === "number" && !isNaN(totalProductos)
-          ? parseFloat(totalProductos.toFixed(2))
-          : 0,
-        total_descuentos: typeof totalDescuentos === "number" && !isNaN(totalDescuentos)
-          ? parseFloat(totalDescuentos.toFixed(2))
-          : 0,
-        total_a_pagar_con_descuentos: typeof totalConDescuento === "number" && !isNaN(totalConDescuento)
-          ? parseFloat(totalConDescuento.toFixed(2))
-          : 0,
+        total_productos: parseFloat(totalProductos.toFixed(2)),
+        total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(totalConDescuento.toFixed(2)),
       }));
     };
   
@@ -168,6 +180,7 @@ const CustomerMenu = () => {
     compra.Entrega?.Delivery?.costoTicketExpress,
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
+  
   
   
   const [isFormVisible, setFormVisible] = useState(false);
@@ -315,12 +328,13 @@ setTotalPrice(newTotalPrice);
       return;
     }
   
-    const pizzaToAdd = {
+    // Crear una entrada para cada unidad seleccionada
+    const pizzasToAdd = Array.from({ length: quantity }, () => ({
       id: selectedPizza.id,
       nombre: selectedPizza.nombre,
       size: selectedSize,
-      cantidad: quantity,
-      total: totalPrice,
+      cantidad: 1, // Cada entrada es una sola unidad
+      total: totalPrice / quantity, // Dividir el precio total por la cantidad seleccionada
       basePrice: pizzaDetails.PriceBySize[selectedSize],
       extraIngredients: extraIngredients.map((ing) => ({
         IDI: ing.IDI,
@@ -329,11 +343,12 @@ setTotalPrice(newTotalPrice);
           ? parseFloat(ing.precio.toFixed(2))
           : 0,
       })),
-    };
+    }));
   
+    // Actualizar el array de ventas
     setCompra((prevCompra) => ({
       ...prevCompra,
-      venta: [...prevCompra.venta, pizzaToAdd],
+      venta: [...prevCompra.venta, ...pizzasToAdd], // Agregar cada pizza como entrada individual
       total_productos: prevCompra.total_productos + totalPrice,
     }));
   
@@ -341,6 +356,7 @@ setTotalPrice(newTotalPrice);
     setSelectedPizza(null);
     setSizeError("");
   };
+  
   const renderIngredientDescription = () => {
     if (pizzaDetails && pizzaDetails.ingredientes.length > 0) {
       const ingredientes = pizzaDetails.ingredientes.map((ing) => ing.ingrediente);

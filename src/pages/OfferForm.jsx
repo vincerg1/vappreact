@@ -23,6 +23,7 @@ const OfferForm = () => {
             Modo_Precio_Cupon: 'automatico', 
             Condiciones_Extras: false,
             Ticket_Promedio: '',
+            quantity_condition: '',
             Dias_Ucompra: '',
             Numero_Compras: '',
             Max_Amount: '',
@@ -63,6 +64,7 @@ const OfferForm = () => {
                 Categoria_Cupon: offerData.Categoria_Cupon || 'gratis',
                 Condiciones_Extras: offerData.Condiciones_Extras === 'true',
                 Ticket_Promedio: offerData.Ticket_Promedio || '',
+                quantity_condition: offerData.quantity_condition || '',
                 Dias_Ucompra: offerData.Dias_Ucompra || '',
                 Numero_Compras: offerData.Numero_Compras || '',
                 Max_Amount: offerData.Max_Amount || '',
@@ -422,6 +424,17 @@ const OfferForm = () => {
                                     type="number"
                                     name="Ticket_Promedio"
                                     value={formData.Ticket_Promedio}
+                                    onChange={handleChange}
+                                />
+                            </label>
+                        </li>
+                        <li>
+                            <label>
+                                quantity_condition:
+                                <input
+                                    type="number"
+                                    name="quantity_condition"
+                                    value={formData.quantity_condition}
                                     onChange={handleChange}
                                 />
                             </label>

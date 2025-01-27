@@ -74,57 +74,67 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
 
       const numeroDeCompras = ventas.length;
       if (numeroDeCompras === 0) {
-        // Cliente sin compras, segmento POTENCIAL (S1)
-        const segmento = 1;
-        db.run(`
-          UPDATE clientes
-          SET segmento = ?
-          WHERE id_cliente = ?
-        `, [segmento, id_cliente], function(err) {
-          if (err) {
-            callback(err);
-            return;
+        // Cliente sin compras
+        const segmento = 1; // POTENCIAL
+        db.run(
+          `UPDATE clientes SET segmento = ?, numDelivery = 0, numPickUp = 0, diaMasComprado = NULL, diaDelMesMasComprado = NULL, horaMasComprada = NULL, ofertaMasUsada = NULL, totalDescuentos = 0, MetodoDePago = NULL, id_pizzaMasComprada = NULL, precio_pizzaMasComprada = NULL, size_pizzaMasComprada = NULL WHERE id_cliente = ?`,
+          [segmento, id_cliente],
+          function (err) {
+            if (err) {
+              callback(err);
+              return;
+            }
+            callback(null);
           }
-          callback(null);
-        });
+        );
         return;
       }
 
-      // Calcular los indicadores
-      const MontoTotalCompras = ventas.reduce((sum, venta) => sum + venta.totalPagado, 0);
+      // Calcular indicadores básicos
+      const MontoTotalCompras = ventas.reduce((sum, venta) => sum + venta.total_con_descuentos, 0);
+      const totalDescuentos = ventas.reduce((sum, venta) => sum + venta.total_descuentos, 0);
       const ticketPromedio = MontoTotalCompras / numeroDeCompras;
-      const ultimaCompra = ventas[ventas.length - 1];
-      const diasDesdeUltimaCompra = Math.floor((new Date(fecha_actualizacion) - new Date(ultimaCompra.fecha)) / (1000 * 60 * 60 * 24));
+      const ticketObjetivo = ticketPromedio * 1.15; // 15% mayor que el ticket promedio
 
-      // Determinar el segmento basado en los datos del cliente
-      let segmento;
-      if (numeroDeCompras > 1 && diasDesdeUltimaCompra > 30) {
-        segmento = 2; // INACTIVO
-      } else if (numeroDeCompras > 1 && diasDesdeUltimaCompra < 30 && ticketPromedio > 15) {
-        segmento = 3; // ACTIVO
-      } else if (numeroDeCompras > 5 && diasDesdeUltimaCompra < 15 && ticketPromedio > 20) {
-        segmento = 4; // MVC
-      } else {
-        segmento = 2; // Default a INACTIVO si no cumple con las otras condiciones
-      }
-
-      // Determinar la pizza más comprada
-      const pizzaMasComprada = ventas.reduce((acc, venta) => {
-        acc[venta.id_pizza] = (acc[venta.id_pizza] || 0) + venta.cantidad;
+      // Calcular el método de pago más usado
+      const metodoDePagoData = ventas.reduce((acc, venta) => {
+        acc[venta.metodo_pago] = (acc[venta.metodo_pago] || 0) + 1;
         return acc;
       }, {});
-      const id_pizzaMasComprada = Object.keys(pizzaMasComprada).reduce((a, b) => pizzaMasComprada[a] > pizzaMasComprada[b] ? a : b);
-      const ventaPizzaMasComprada = ventas.find(venta => venta.id_pizza == id_pizzaMasComprada);
-      const precio_pizzaMasComprada = ventaPizzaMasComprada ? ventaPizzaMasComprada.price : 0;
-      const size_pizzaMasComprada = ventaPizzaMasComprada ? ventaPizzaMasComprada.size : '';
+      const MetodoDePago = Object.keys(metodoDePagoData).reduce((a, b) => metodoDePagoData[a] > metodoDePagoData[b] ? a : b, null);
 
-      // Día de la semana y día del mes más comprados
+      let numDelivery = 0;
+      let numPickUp = 0;
+
+      ventas.forEach((venta) => {
+        const metodoEntrega = JSON.parse(venta.metodo_entrega || '{}');
+
+        // Validar Delivery correctamente
+        if (metodoEntrega.Delivery && metodoEntrega.Delivery.address) {
+          numDelivery += 1; // Incrementar si existe un Delivery válido
+        }
+
+        // Validar PickUp correctamente
+        if (metodoEntrega.PickUp && metodoEntrega.PickUp.nombre) {
+          numPickUp += 1; // Incrementar si existe un PickUp válido
+        }
+      });
+
+        // Validar coherencia entre numeroDeCompras y métodos de entrega
+        if (numDelivery + numPickUp > numeroDeCompras) {
+          console.warn(
+            `Inconsistencia detectada: Total métodos (${numDelivery + numPickUp}) > número de compras (${numeroDeCompras})`
+          );
+        }
+
+      // Días y horas más frecuentes
+      const diasSemana = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
       const diaMasComprado = ventas.reduce((acc, venta) => {
         const dia = new Date(venta.fecha).getDay();
         acc[dia] = (acc[dia] || 0) + 1;
         return acc;
       }, {});
-      const diaMasCompradoId = Object.keys(diaMasComprado).reduce((a, b) => diaMasComprado[a] > diaMasComprado[b] ? a : b);
+      const diaMasCompradoId = diasSemana[Object.keys(diaMasComprado).reduce((a, b) => diaMasComprado[a] > diaMasComprado[b] ? a : b)];
 
       const diaDelMesMasComprado = ventas.reduce((acc, venta) => {
         const dia = new Date(venta.fecha).getDate();
@@ -133,65 +143,125 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
       }, {});
       const diaDelMesMasCompradoId = Object.keys(diaDelMesMasComprado).reduce((a, b) => diaDelMesMasComprado[a] > diaDelMesMasComprado[b] ? a : b);
 
-      // Hora más comprada
-      const horaMasComprada = ventas.reduce((acc, venta) => {
-        const hora = new Date(`1970-01-01T${venta.hora}Z`).getHours();
-        acc[hora] = (acc[hora] || 0) + 1;
+      const horaMasComprada = Math.round(
+        ventas.reduce((sum, venta) => {
+          const hora = new Date(`1970-01-01T${venta.hora}Z`).getHours();
+          return sum + hora;
+        }, 0) / numeroDeCompras
+      );
+
+      // Identificar la pizza más comprada
+      const pizzaData = ventas.reduce((acc, venta) => {
+        const productos = JSON.parse(venta.productos || '[]');
+        productos.forEach((producto) => {
+          acc[producto.id_pizza] = (acc[producto.id_pizza] || 0) + producto.cantidad;
+        });
         return acc;
       }, {});
-      const horaMasCompradaId = Object.keys(horaMasComprada).reduce((a, b) => horaMasComprada[a] > horaMasComprada[b] ? a : b);
+      const id_pizzaMasComprada = Object.keys(pizzaData).reduce((a, b) => pizzaData[a] > pizzaData[b] ? a : b, null);
+      let precio_pizzaMasComprada = null;
+      let size_pizzaMasComprada = null;
 
-      // Insertar en el historial del cliente
-      const insertHistorialSql = `
-        INSERT INTO HistorialCliente (
-          id_cliente, fecha_actualizacion, numeroDeCompras, MontoTotalCompras, ticketPromedio,
-          id_pizzaMasComprada, size_pizzaMasComprada, precio_pizzaMasComprada,
-          diaMasComprado, diaDelMesMasComprado, horaMasComprada, segmento, nivelSatisfaccion
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-      `;
+      if (id_pizzaMasComprada) {
+        ventas.forEach((venta) => {
+          const productos = JSON.parse(venta.productos || '[]');
+          productos.forEach((producto) => {
+            if (producto.id_pizza == id_pizzaMasComprada) {
+              precio_pizzaMasComprada = producto.price;
+              size_pizzaMasComprada = producto.size;
+            }
+          });
+        });
+      }
 
-      db.run(insertHistorialSql, [
-        id_cliente, fecha_actualizacion, numeroDeCompras, MontoTotalCompras, ticketPromedio,
-        id_pizzaMasComprada, size_pizzaMasComprada, precio_pizzaMasComprada,
-        diaMasCompradoId, diaDelMesMasCompradoId, horaMasCompradaId, segmento, 0 // Se puede ajustar `nivelSatisfaccion`
-      ], function(err) {
-        if (err) {
-          callback(err);
-          return;
-        }
+      // Calcular la oferta más usada
+      const cuponesData = ventas.reduce((acc, venta) => {
+        const cupones = JSON.parse(venta.cupones || '[]');
+        cupones.forEach((cupon) => {
+          acc[cupon.Oferta_Id] = (acc[cupon.Oferta_Id] || 0) + 1;
+        });
+        return acc;
+      }, {});
+      const ofertaMasUsada = Object.keys(cuponesData).reduce((a, b) => cuponesData[a] > cuponesData[b] ? a : b, null);
 
-        // Actualizar los datos del cliente
-        db.run(`
-          UPDATE clientes
-          SET
+      // Calcular el segmento
+      let segmento;
+      const diasDesdeUltimaCompra = Math.floor((new Date(fecha_actualizacion) - new Date(ventas[ventas.length - 1].fecha)) / (1000 * 60 * 60 * 24));
+
+          // Priorizar condiciones más específicas (MVC) primero
+          if (numeroDeCompras > 5 && diasDesdeUltimaCompra < 15 && ticketPromedio > 20) {
+            segmento = 4; // MVC
+          } else if (numeroDeCompras > 1 && diasDesdeUltimaCompra < 30 && ticketPromedio > 15) {
+            segmento = 3; // ACTIVO
+          } else if (numeroDeCompras > 1 && diasDesdeUltimaCompra > 30) {
+            segmento = 2; // INACTIVO
+          } else {
+            segmento = 1; // POTENCIAL
+          }
+
+
+      // Actualizar la tabla clientes con los datos calculados
+      db.run(
+        `
+        UPDATE clientes
+        SET
             numeroDeCompras = ?,
             MontoTotalCompras = ?,
             ticketPromedio = ?,
-            segmento = ?,
-            id_pizzaMasComprada = ?,
-            precio_pizzaMasComprada = ?,
-            size_pizzaMasComprada = ?,
+            ticketObjetivo = ?,
+            Dias_Ucompra = ?,
+            Max_Amount = ?,
+            Cantidad_Pizzas = ?,
+            numDelivery = ?,
+            numPickUp = ?,
             diaMasComprado = ?,
             diaDelMesMasComprado = ?,
             horaMasComprada = ?,
-            nivelSatisfaccion = ?
-          WHERE id_cliente = ?
-        `, [
-          numeroDeCompras, MontoTotalCompras, ticketPromedio, segmento,
-          id_pizzaMasComprada, precio_pizzaMasComprada, size_pizzaMasComprada,
-          diaMasCompradoId, diaDelMesMasCompradoId, horaMasCompradaId, 0, id_cliente
-        ], function(err) {
+            ofertaMasUsada = ?,
+            totalDescuentos = ?,
+            MetodoDePago = ?,
+            id_pizzaMasComprada = ?,
+            precio_pizzaMasComprada = ?,
+            size_pizzaMasComprada = ?,
+            segmento = ?
+        WHERE id_cliente = ?;
+        `,
+        [
+          numeroDeCompras,
+          MontoTotalCompras,
+          ticketPromedio,
+          ticketObjetivo,
+          diasDesdeUltimaCompra,
+          Math.max(...ventas.map((venta) => venta.total_con_descuentos)), // Max_Amount
+          ventas.reduce((sum, venta) => sum + JSON.parse(venta.productos || '[]').reduce((sum, prod) => sum + prod.cantidad, 0), 0), // Cantidad_Pizzas
+          numDelivery,
+          numPickUp,
+          diaMasCompradoId,
+          diaDelMesMasCompradoId,
+          horaMasComprada,
+          ofertaMasUsada,
+          totalDescuentos,
+          MetodoDePago,
+          id_pizzaMasComprada,
+          precio_pizzaMasComprada,
+          size_pizzaMasComprada,
+          segmento,
+          id_cliente,
+        ],
+        function (err) {
           if (err) {
             callback(err);
             return;
           }
 
+          console.log(`Indicadores del cliente ${id_cliente} actualizados con éxito.`);
           callback(null);
-        });
-      });
+        }
+      );
     });
   });
 }
+
 function actualizarEstadoRepartidor(id, estado, res) {
   const query = 'UPDATE repartidores SET estado = ? WHERE id_repartidor = ?';
   db.run(query, [estado, id], function (err) {
@@ -257,7 +327,6 @@ const traducirDia = (diaIngles) => {
   const diaTraducido = dias[diaIngles.toLowerCase()] || diaIngles;
   return normalizarTexto(diaTraducido); // Normalizar el día traducido
 };
-
 const normalizarTexto = (texto) => {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
@@ -1148,7 +1217,7 @@ app.get('/inventario', (req, res) => {
 });
 app.get('/inventario/:IDR', (req, res) => {
   const { IDR } = req.params;
-  const sql = "SELECT * FROM inventario WHERE IDR = ?"; // Asegúrate de que 'IDR' sea el nombre correcto de la columna en tu tabla de base de datos
+  const sql = "SELECT * FROM inventario WHERE IDR = ?"; 
   const params = [IDR];
 
   db.get(sql, params, (err, row) => {
@@ -1389,7 +1458,10 @@ app.get('/historial_clientes', (req, res) => {
   });
 });
 app.get('/clientes', (req, res) => {
-  const sql = 'SELECT id_cliente, email, password, bday, suspension_status, suspension_end_date FROM clientes';
+  const sql = `
+    SELECT id_cliente, email, password, bday, suspension_status, suspension_end_date, created_at 
+    FROM clientes
+  `;
   
   db.all(sql, [], (err, rows) => {
     if (err) {
@@ -1668,7 +1740,6 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
-
 app.post('/api/auth/remember-me', (req, res) => {
   const { email } = req.body;
 
@@ -2200,31 +2271,6 @@ app.post('/api/incentivos', async (req, res) => {
     res.status(500).send({ error: 'Error al crear el incentivo' });
   }
 });
-// app.post('/api/daily-challenge', upload.single('img'), (req, res) => {
-//   const { comments, link, min_discount, max_discount, assigned_coupons } = req.body;
-
-//   if (!comments || !min_discount || !max_discount || !assigned_coupons) {
-//     return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
-//   }
-
-//   // Manejo de la imagen subida, si existe
-//   const img_url = req.file ? `/uploads/${req.file.filename}` : null;
-
-//   const query = `
-//     INSERT INTO DailyChallenge (comments, link, img_url, min_discount, max_discount, assigned_coupons)
-//     VALUES (?, ?, ?, ?, ?, ?)
-//   `;
-
-//   db.run(query, [comments, link, img_url, min_discount, max_discount, assigned_coupons], function (err) {
-//     if (err) {
-//       console.error('Error al crear el reto diario:', err);
-//       return res.status(500).json({ message: 'Error al crear el reto diario.' });
-//     }
-
-//     console.log('Nuevo Daily Challenge creado con éxito:', this.lastID);
-//     res.status(201).json({ success: true, daily_challenge_id: this.lastID });
-//   });
-// });
 app.post('/api/daily-challenge/:id/participate', (req, res) => {
   const { ig_username, post_link, user_id, daily_challenge_id } = req.body;
 
@@ -2304,48 +2350,72 @@ app.post('/api/info-empresa', upload.single('logo_url'), (req, res) => {
   });
 });
 app.post('/api/reviews', (req, res) => {
-  const { email, review, rating } = req.body;  // Asegurarse de que el email se pase correctamente desde el frontend
+  const { email, review, rating } = req.body; // Asegurarse de que el email se pase correctamente desde el frontend
 
   // Validaciones básicas
   if (!email || !review || !rating) {
-    return res.status(400).json({ success: false, message: 'Faltan datos' });
+      return res.status(400).json({ success: false, message: 'Faltan datos' });
   }
 
   if (review.length > 255) {
-    return res.status(400).json({ success: false, message: 'El review es demasiado largo.' });
+      return res.status(400).json({ success: false, message: 'El review es demasiado largo.' });
   }
 
   // Verificar si ya existe una reseña del usuario en la fecha actual
   const queryCheck = `
-    SELECT * FROM reviews WHERE email = ? AND DATE(created_at) = DATE('now')
+      SELECT * FROM reviews WHERE email = ? AND DATE(created_at) = DATE('now')
   `;
 
   db.get(queryCheck, [email], (err, row) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Error al verificar el review.' });
-    }
-
-    if (row) {
-      return res.status(400).json({ success: false, message: 'Ya has enviado una reseña hoy.' });
-    }
-
-    // Si no existe reseña previa, insertar la nueva reseña
-    const queryInsert = `INSERT INTO reviews (email, review, rating) VALUES (?, ?, ?)`;
-    db.run(queryInsert, [email, review, rating], function (err) {
       if (err) {
-        return res.status(500).json({ success: false, message: 'Error al guardar el review.' });
+          return res.status(500).json({ success: false, message: 'Error al verificar el review.' });
       }
-      res.json({ success: true });
-    });
+
+      if (row) {
+          return res.status(400).json({ success: false, message: 'Ya has enviado una reseña hoy.' });
+      }
+
+      // Si no existe reseña previa, insertar la nueva reseña
+      const queryInsert = `INSERT INTO reviews (email, review, rating) VALUES (?, ?, ?)`;
+      db.run(queryInsert, [email, review, rating], function (err) {
+          if (err) {
+              return res.status(500).json({ success: false, message: 'Error al guardar el review.' });
+          }
+
+          // Calcular el promedio de las calificaciones para actualizar nivelSatisfaccion
+          const queryAvgRating = `
+              SELECT AVG(rating) as nivelSatisfaccion FROM reviews WHERE email = ?
+          `;
+          db.get(queryAvgRating, [email], (err, row) => {
+              if (err) {
+                  return res.status(500).json({ success: false, message: 'Error al calcular el nivel de satisfacción.' });
+              }
+
+              const nivelSatisfaccion = row.nivelSatisfaccion || 0;
+
+              // Actualizar el nivel de satisfacción en la tabla clientes
+              const queryUpdateClient = `
+                  UPDATE clientes SET nivelSatisfaccion = ? WHERE email = ?
+              `;
+              db.run(queryUpdateClient, [nivelSatisfaccion, email], function (err) {
+                  if (err) {
+                      return res.status(500).json({ success: false, message: 'Error al actualizar el nivel de satisfacción.' });
+                  }
+
+                  res.json({ success: true, message: 'Reseña registrada y nivel de satisfacción actualizado.' });
+              });
+          });
+      });
   });
 });
+
 app.post('/ofertas', upload.single('Imagen'), (req, res) => {
   const moment = require('moment-timezone');
   const {
     // Campos que ya tenías
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-    Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
+    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Max_Amount,
     Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
     Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon,
     
@@ -2417,11 +2487,12 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
       Categoria_Cupon,
       Condiciones_Extras,
       Ticket_Promedio,
+      quantity_condition,
       Dias_Ucompra,
       Numero_Compras,
       Max_Amount,
-      Instrucciones_Link,         -- <--- cambiamos a Instrucciones_Link
-      Additional_Instructions,    -- <--- cambiamos a Additional_Instructions
+      Instrucciones_Link,         
+      Additional_Instructions,    
       Estado,
       Cupones_Asignados,
       Origen,
@@ -2434,7 +2505,7 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
       Precio_Cupon,
       Modo_Precio_Cupon
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   // Orden de parámetros
@@ -2449,11 +2520,12 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
     Categoria_Cupon,
     Condiciones_Extras,
     Ticket_Promedio || null,
+    quantity_condition || null,
     Dias_Ucompra || null,
     Numero_Compras || null,
     Max_Amount || null,
-    Instrucciones_Link,           // <--- link del reto
-    Additional_Instructions,      // <--- instrucciones del reto
+    Instrucciones_Link,          
+    Additional_Instructions,      
     Estado,
     Cupones_Asignados,
     Origen || 'creada',
@@ -2708,13 +2780,22 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 app.post('/registro_ventas', (req, res) => {
-  const venta = req.body; // Recibe el objeto venta completo
+  const venta = req.body;
   console.log('Datos recibidos en el servidor:', venta);
+
+  let responseSent = false; // Bandera para evitar múltiples respuestas
+
+  const sendResponse = (status, message) => {
+      if (!responseSent) {
+          res.status(status).json(message);
+          responseSent = true;
+      }
+  };
 
   db.serialize(() => {
       db.run('BEGIN TRANSACTION;', (beginErr) => {
           if (beginErr) {
-              res.status(500).json({ error: beginErr.message });
+              sendResponse(500, { error: beginErr.message });
               return;
           }
 
@@ -2737,7 +2818,7 @@ app.post('/registro_ventas', (req, res) => {
 
           const parsedMetodoEntrega = JSON.parse(metodo_entrega || '{}');
           const estado_entrega = 'Pendiente';
-          const id_repartidor = parsedMetodoEntrega.PickUp ? 0 : null; // 0 para PickUp, NULL para Delivery
+          const id_repartidor = parsedMetodoEntrega.PickUp ? 0 : null;
 
           const insertVentaSql = `
               INSERT INTO registro_ventas (
@@ -2785,132 +2866,149 @@ app.post('/registro_ventas', (req, res) => {
               ],
               function (ventaErr) {
                   if (ventaErr) {
-                      db.run('ROLLBACK;', () => res.status(500).json({ error: ventaErr.message }));
+                      db.run('ROLLBACK;', () => sendResponse(500, { error: ventaErr.message }));
                       return;
                   }
 
                   const id_venta = this.lastID;
                   console.log(`Venta registrada con éxito. ID de la venta: ${id_venta}`);
 
-                  // Consultar la información de la empresa
-                  db.get('SELECT * FROM InfoEmpresa WHERE id = ?', [1], (infoErr, infoEmpresa) => {
-                      if (infoErr) {
-                          console.error('Error al obtener la información de la empresa:', infoErr);
-                          res.status(500).json({ error: infoErr.message });
+                  // Llamar a actualizarIndicadoresCliente
+                  actualizarIndicadoresCliente(id_cliente, fecha, (updateErr) => {
+                      if (updateErr) {
+                          console.error('Error al actualizar indicadores del cliente:', updateErr.message);
+                          db.run('ROLLBACK;', () => sendResponse(500, { error: updateErr.message }));
                           return;
                       }
 
-                      console.log('Información de la empresa obtenida:', infoEmpresa);
+                      console.log(`Indicadores del cliente ${id_cliente} actualizados con éxito.`);
 
-                      // Si es un pedido de Delivery, notificar a todos los repartidores
-                      if (!parsedMetodoEntrega.PickUp && parsedMetodoEntrega.Delivery) {
-                          db.all('SELECT email FROM repartidores', [], (repErr, repartidores) => {
-                              if (repErr) {
-                                  console.error('Error al obtener los correos de los repartidores:', repErr);
-                                  return;
-                              }
+                      // Consultar la información de la empresa
+                      db.get('SELECT * FROM InfoEmpresa WHERE id = ?', [1], (infoErr, infoEmpresa) => {
+                          if (infoErr) {
+                              console.error('Error al obtener la información de la empresa:', infoErr);
+                              db.run('ROLLBACK;', () => sendResponse(500, { error: infoErr.message }));
+                              return;
+                          }
 
-                              if (repartidores.length > 0) {
-                                  const transporter = nodemailer.createTransport({
-                                      service: 'gmail',
-                                      auth: {
-                                          user: 'mycrushpizzaspain@gmail.com',
-                                          pass: 'pfpjczrsksoytvhv', // Contraseña de la aplicación
-                                      },
-                                  });
+                          console.log('Información de la empresa obtenida:', infoEmpresa);
 
-                                  const mailPromises = repartidores.map((repartidor) => {
-                                      const mailOptions = {
-                                          from: 'mycrushpizzaspain@gmail.com',
-                                          to: repartidor.email,
-                                          subject: 'Nuevo Pedido de Delivery - MyPizzaCrush',
-                                          text: `
-                                              ¡Hola!
-
-                                              Se ha registrado un nuevo pedido de Delivery.
-
-                                              Detalles del pedido:
-                                              - Orden ID: ${id_orden}
-                                              - Dirección de entrega: ${parsedMetodoEntrega.Delivery?.address || 'No especificada'}
-                                              - Cliente ID: ${id_cliente}
-                                              - Hora del pedido: ${hora}
-                                              - Total: €${total_con_descuentos}
-
-                                              Por favor, revisa tu panel para más detalles.
-
-                                              ¡Gracias!
-                                              MyPizzaCrush Team
-                                          `,
-                                      };
-
-                                      return transporter.sendMail(mailOptions);
-                                  });
-
-                                  Promise.all(mailPromises)
-                                      .then((results) => {
-                                          console.log('Correos enviados con éxito a los repartidores:', results);
-                                      })
-                                      .catch((err) => {
-                                          console.error('Error al enviar correos a los repartidores:', err);
+                          // Notificar a repartidores si es Delivery
+                          if (!parsedMetodoEntrega.PickUp && parsedMetodoEntrega.Delivery) {
+                              db.all('SELECT email FROM repartidores', [], (repErr, repartidores) => {
+                                  if (repErr) {
+                                      console.error('Error al obtener los correos de los repartidores:', repErr);
+                                  } else if (repartidores.length > 0) {
+                                      const transporter = nodemailer.createTransport({
+                                          service: 'gmail',
+                                          auth: {
+                                              user: 'mycrushpizzaspain@gmail.com',
+                                              pass: 'pfpjczrsksoytvhv', // Contraseña de la aplicación
+                                          },
                                       });
-                              } else {
-                                  console.log('No se encontraron repartidores para notificar.');
-                              }
-                          });
-                      }
 
-                      // Generar la factura en PDF y enviar al cliente
-                      const doc = new PDFDocument({ margin: 30 });
-                      const pdfFilePath = path.join(__dirname, `factura_${id_orden}.pdf`);
-                      const writeStream = fs.createWriteStream(pdfFilePath);
-                      doc.pipe(writeStream);
+                                      const mailPromises = repartidores.map((repartidor) => {
+                                          const mailOptions = {
+                                              from: 'mycrushpizzaspain@gmail.com',
+                                              to: repartidor.email,
+                                              subject: 'Nuevo Pedido de Delivery - MyPizzaCrush',
+                                              text: `
+                                                  ¡Hola!
 
-                      doc.fontSize(14).font('Courier-Bold').text('MyPizzaCrush - Confirmación de Pedido', { align: 'center' });
-                      doc.moveDown(0.5);
-                      doc.fontSize(10).font('Courier').text(`Registro Fiscal: ${infoEmpresa?.registro_fiscal || 'No disponible'}`);
-                      doc.text(`Dirección: ${infoEmpresa?.direccion || 'No disponible'}`);
-                      doc.text(`Teléfono: ${infoEmpresa?.telefono_contacto || 'No disponible'}`);
-                      doc.text(`Correo: ${infoEmpresa?.correo_contacto || 'No disponible'}`);
-                      doc.moveDown(1);
-                      doc.fontSize(12).text(`Orden: ${id_orden}`);
-                      doc.text(`Fecha: ${fecha}`);
-                      doc.text(`Hora: ${hora}`);
-                      doc.text(`Cliente ID: ${id_cliente}`);
-                      doc.text(`Método de Pago: ${metodo_pago}`);
-                      doc.end();
+                                                  Se ha registrado un nuevo pedido de Delivery.
 
-                      writeStream.on('finish', () => {
-                          const transporter = nodemailer.createTransport({
-                              service: 'gmail',
-                              auth: {
-                                  user: 'mycrushpizzaspain@gmail.com',
-                                  pass: 'pfpjczrsksoytvhv',
-                              },
-                          });
+                                                  Detalles del pedido:
+                                                  - Orden ID: ${id_orden}
+                                                  - Dirección de entrega: ${parsedMetodoEntrega.Delivery?.address || 'No especificada'}
+                                                  - Cliente ID: ${id_cliente}
+                                                  - Hora del pedido: ${hora}
+                                                  - Total: €${total_con_descuentos}
 
-                          const mailOptions = {
-                              from: 'mycrushpizzaspain@gmail.com',
-                              to: email,
-                              subject: 'Confirmación de Pedido - MyPizzaCrush',
-                              text: 'Adjuntamos tu factura digital en formato PDF.',
-                              attachments: [
-                                  {
-                                      filename: `factura_${id_orden}.pdf`,
-                                      path: pdfFilePath,
+                                                  Por favor, revisa tu panel para más detalles.
+
+                                                  ¡Gracias!
+                                                  MyPizzaCrush Team
+                                              `,
+                                          };
+
+                                          return transporter.sendMail(mailOptions);
+                                      });
+
+                                      Promise.all(mailPromises)
+                                          .then((results) => {
+                                              console.log('Correos enviados con éxito a los repartidores:', results);
+                                          })
+                                          .catch((err) => {
+                                              console.error('Error al enviar correos a los repartidores:', err);
+                                          });
+                                  } else {
+                                      console.log('No se encontraron repartidores para notificar.');
+                                  }
+                              });
+                          }
+
+                          // Generar factura en PDF y enviar al cliente
+                          const doc = new PDFDocument({ margin: 30 });
+                          const pdfFilePath = path.join(__dirname, `factura_${id_orden}.pdf`);
+                          const writeStream = fs.createWriteStream(pdfFilePath);
+                          doc.pipe(writeStream);
+
+                          doc.fontSize(14).font('Courier-Bold').text('MyPizzaCrush - Confirmación de Pedido', { align: 'center' });
+                          doc.moveDown(0.5);
+                          doc.fontSize(10).font('Courier').text(`Registro Fiscal: ${infoEmpresa?.registro_fiscal || 'No disponible'}`);
+                          doc.text(`Dirección: ${infoEmpresa?.direccion || 'No disponible'}`);
+                          doc.text(`Teléfono: ${infoEmpresa?.telefono_contacto || 'No disponible'}`);
+                          doc.text(`Correo: ${infoEmpresa?.correo_contacto || 'No disponible'}`);
+                          doc.moveDown(1);
+                          doc.fontSize(12).text(`Orden: ${id_orden}`);
+                          doc.text(`Fecha: ${fecha}`);
+                          doc.text(`Hora: ${hora}`);
+                          doc.text(`Cliente ID: ${id_cliente}`);
+                          doc.text(`Método de Pago: ${metodo_pago}`);
+                          doc.end();
+
+                          writeStream.on('finish', () => {
+                              const transporter = nodemailer.createTransport({
+                                  service: 'gmail',
+                                  auth: {
+                                      user: 'mycrushpizzaspain@gmail.com',
+                                      pass: 'pfpjczrsksoytvhv',
                                   },
-                              ],
-                          };
+                              });
 
-                          transporter.sendMail(mailOptions, (err, info) => {
-                              if (err) {
-                                  console.error('Error al enviar el correo:', err);
-                              } else {
-                                  console.log('Correo enviado con éxito al cliente:', info.response);
-                              }
-                          });
+                              const mailOptions = {
+                                  from: 'mycrushpizzaspain@gmail.com',
+                                  to: email,
+                                  subject: 'Confirmación de Pedido - MyPizzaCrush',
+                                  text: 'Adjuntamos tu factura digital en formato PDF.',
+                                  attachments: [
+                                      {
+                                          filename: `factura_${id_orden}.pdf`,
+                                          path: pdfFilePath,
+                                      },
+                                  ],
+                              };
 
-                          db.run('COMMIT;', () => {
-                              res.json({ success: true, message: 'Venta registrada con éxito', id_venta });
+                              transporter.sendMail(mailOptions, (err, info) => {
+                                  if (err) {
+                                      console.error('Error al enviar el correo:', err);
+                                  } else {
+                                      console.log('Correo enviado con éxito al cliente:', info.response);
+                                  }
+                              });
+
+                              db.run('COMMIT;', (commitErr) => {
+                                  if (commitErr) {
+                                      sendResponse(500, { error: commitErr.message });
+                                      return;
+                                  }
+
+                                  sendResponse(200, {
+                                      success: true,
+                                      message: 'Venta registrada y cliente actualizado con éxito',
+                                      id_venta,
+                                  });
+                              });
                           });
                       });
                   });
@@ -3608,7 +3706,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   const {
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-    Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount,
+    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Max_Amount,
     Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
     Additional_Instructions, Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon
   } = req.body;
@@ -3660,7 +3758,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     SET
       Cupones_Asignados = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
       Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Categoria_Cupon = ?,
-      Condiciones_Extras = ?, Ticket_Promedio = ?, Dias_Ucompra = ?, Numero_Compras = ?,
+      Condiciones_Extras = ?, Ticket_Promedio = ?, quantity_condition = ?, Dias_Ucompra = ?, Numero_Compras = ?,
       Max_Amount = ?, Instrucciones_Link = ?, Estado = ?, Origen = ?, Tipo_Cupon = ?,
       Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?,
       Tipo_Oferta = ?, Precio_Cupon = ?, Modo_Precio_Cupon = ?
@@ -3677,17 +3775,18 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     Categoria_Cupon || 'gratis',
     Condiciones_Extras,
     Ticket_Promedio || null,
+    quantity_condition || null,
     Dias_Ucompra || null,
     Numero_Compras || null,
     Max_Amount,
-    Instrucciones_Link || null,           // Cambiado de Otras_Condiciones
+    Instrucciones_Link || null,          
     Estado,
     Origen,
     Tipo_Cupon,
     JSON.stringify(parsedDiasActivos),
     Hora_Inicio,
     Hora_Fin,
-    Additional_Instructions || null,      // Cambiado de Observaciones
+    Additional_Instructions || null,      
     Tipo_Oferta,
     precioFinalCupon,
     modoPrecioFinal,
@@ -3887,7 +3986,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
 
   const {
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
-    Min_Descuento_Percent, Max_Descuento_Percent, Condiciones_Extras, Ticket_Promedio, Dias_Ucompra,
+    Min_Descuento_Percent, Max_Descuento_Percent, Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra,
     Numero_Compras, Max_Amount, Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos,
     Hora_Inicio, Hora_Fin, Additional_Instructions
   } = req.body;
@@ -3937,7 +4036,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
       UPDATE ofertas
       SET
           Cupones_Asignados = ?, Cupones_Disponibles = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
-          Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?,
+          Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?, quantity_condition = ?,
           Dias_Ucompra = ?, Numero_Compras = ?, Max_Amount = ?, Instrucciones_Link = ?, Estado = ?,
           Origen = ?, Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?
       WHERE Oferta_Id = ?
@@ -3946,7 +4045,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     const params = [
       Cupones_Asignados, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
       Min_Descuento_Percent || null, Max_Descuento_Percent || null, Condiciones_Extras,
-      Ticket_Promedio || null, Dias_Ucompra || null, Numero_Compras || null, Max_Amount,
+      Ticket_Promedio || null, quantity_condition || null, Dias_Ucompra || null, Numero_Compras || null, Max_Amount,
       Instrucciones_Link || null, Estado, Origen, Tipo_Cupon, JSON.stringify(parsedDiasActivos),
       Hora_Inicio, Hora_Fin, Additional_Instructions || null, req.params.Oferta_Id
     ];
@@ -4339,44 +4438,6 @@ app.put('/IngredientExtraPrices/:id', async (req, res) => {
     res.status(500).send('Error al actualizar el precio.');
   }
 });
-
-
-// app.put('/ofertas/:id', upload.single('image'), (req, res) => {
-//   const {
-//     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
-//     Descuento_Percent, Duracion_Horas, Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, Otras_Condiciones, Estado
-//   } = req.body;
-
-//   const Imagen = req.file ? `/uploads/${req.file.filename}` : req.body.Imagen;
-
-//   const sql = `
-//     UPDATE ofertas
-//     SET 
-//       Cupones_Asignados = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
-//       Descuento_Percent = ?, Duracion_Horas = ?, Condiciones_Extras = ?, Ticket_Promedio = ?, Dias_Ucompra = ?, 
-//       Numero_Compras = ?, Max_Amount = ?, Otras_Condiciones = ?, Estado = ?
-//     WHERE Oferta_Id = ?
-//   `;
-
-//   const params = [
-//     Cupones_Asignados, Descripcion, Segmentos_Aplicables, Imagen,
-//     Descuento_Percent, Duracion_Horas, Condiciones_Extras, Ticket_Promedio, Dias_Ucompra, Numero_Compras, Max_Amount, Otras_Condiciones, Estado, req.params.id
-//   ];
-
-//   console.log('SQL:', sql);
-//   console.log('Params:', params);
-
-//   db.run(sql, params, function(err) {
-//     if (err) {
-//       console.error('Error updating offer:', err.message);
-//       res.status(500).json({"error": err.message});
-//       return;
-//     }
-//     res.json({
-//       "message": "success"
-//     });
-//   });
-// });
 app.put('/clientes/:id_cliente', (req, res) => {
   const { name, phone, address_1 } = req.body;
   const { id_cliente } = req.params;

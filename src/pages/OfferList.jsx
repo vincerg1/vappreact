@@ -15,17 +15,18 @@ const OfferList = () => {
         try {
             const response = await axios.get('http://localhost:3001/ofertas');
             const offersData = response.data.data.map(offer => {
+                console.log(offer)
                 let parsedSegments = [];
                 try {
                     parsedSegments = JSON.parse(offer.Segmentos_Aplicables || '[]');
                 } catch (error) {
                     console.error('Error parsing Segmentos_Aplicables:', error);
-                    parsedSegments = offer.Segmentos_Aplicables; // fallback in case of parsing error
+                    parsedSegments = offer.Segmentos_Aplicables; 
                 }
                 return {
                     ...offer,
-                    Segmentos_Aplicables: Array.isArray(parsedSegments) ? parsedSegments : [parsedSegments], // ensure it's an array
-                    Condiciones_Extras: offer.Condiciones_Extras === "1" ? true : false // Convert to boolean
+                    Segmentos_Aplicables: Array.isArray(parsedSegments) ? parsedSegments : [parsedSegments], 
+                    Condiciones_Extras: offer.Condiciones_Extras === "true" || offer.Condiciones_Extras === true
                 };
             });
             setOffers(offersData);
@@ -53,12 +54,13 @@ const OfferList = () => {
                     <thead>
                         <tr>
                             <th>Codigo_Oferta</th>
+                            <th>Descripcion</th>
                             <th>Tipo_Oferta</th>
-                            <th>Cupones Asignados</th>
-                            <th>Cupones Disponibles</th> {/* Nueva columna */}
-                            <th>Tipo de Cupón</th> {/* Nueva columna */}
+                            <th>Cup_Asig</th>
+                            <th>Cup_Disp</th> 
+                            <th>Tipo de Cupón</th> 
                             <th>Segmentos Aplicables</th>
-                            <th>Rango de Descuento</th> {/* Cambiado para mostrar el rango de descuento */}
+                            <th>Rango de Descuento</th> 
                             <th>Max Amount</th>
                             <th>Condiciones Extras</th>
                             <th>Imagen</th>
@@ -72,6 +74,7 @@ const OfferList = () => {
                             offers.map(offer => (
                                 <tr key={offer.Oferta_Id}>
                                     <td>{offer.Codigo_Oferta}</td>
+                                    <td>{offer.Descripcion}</td>
                                     <td>{offer.Tipo_Oferta }</td>
                                     <td>{offer.Cupones_Asignados}</td>
                                     <td>{offer.Cupones_Disponibles}</td> {/* Mostrando cupones disponibles */}

@@ -75,7 +75,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         } else {
             // Después de la hora fin
             if (offer.Tipo_Cupon === "permanente") {
-                resetCoupons(); // Llama al método para resetear los cupones
+                resetCoupons(); 
             }
             setIsTimeBlocked(true);
             calculateNextCycle();
@@ -229,6 +229,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         Descuento: descuentoAleatorio / 100,
         Max_Amount: offer.Max_Amount,
         PrecioCupon: offer.Precio_Cupon,
+        quantity_condition: offer.quantity_condition, 
       };
   
       setCuponesUsados([...cuponesUsados, newCoupon]);
@@ -415,7 +416,7 @@ const NotificationTicker = () => {
         if (activeIncentives.length > 0) {
           const messages = activeIncentives.map(
             (incentive) =>
-              `🎁 Disfruta de un <span class="incentive-animated">${incentive.incentivo}</span> en compras mayores a ${incentive.TO_minimo} EUR.`
+              `🎁 Enjoy a <span class="incentive-animated">${incentive.incentivo}</span> on purchases greater than ${incentive.TO_minimo} EUR.`
           );
           setIncentiveMessage(messages.join(' | '));
         } else {
@@ -441,7 +442,7 @@ const NotificationTicker = () => {
             prev.Max_Descuento_Percent > current.Max_Descuento_Percent ? prev : current
           );
           messages.push(
-            `🏆 Participa en el <span class="daily-challenge-animated">DailyChallenge</span> para obtener hasta un ${bestDailyChallenge.Max_Descuento_Percent}% de descuento!`
+            `🏆 Participate in the <span class="daily-challenge-animated">DailyChallenge</span> to win up to ${bestDailyChallenge.Max_Descuento_Percent}% discount!`
           );
         }
 
@@ -452,7 +453,7 @@ const NotificationTicker = () => {
             prev.Max_Descuento_Percent > current.Max_Descuento_Percent ? prev : current
           );
           messages.push(
-            `🍕 Anímate a crear una <span class="random-pizza-animated">Random Pizza</span> y obtén hasta un ${bestRandomPizza.Max_Descuento_Percent}% menos!`
+            `🍕 Make a <span class="random-pizza-animated">Random Pizza</span> and get up to a ${bestRandomPizza.Max_Descuento_Percent}% less!`
           );
         }
 
@@ -460,7 +461,7 @@ const NotificationTicker = () => {
         const deliveryOffers = activeOffers.filter((offer) => offer.Tipo_Oferta === 'Delivery Free Pass');
         if (deliveryOffers.length > 0) {
           messages.push(
-            `🚚 Consigue un <span class="delivery-free-pass-animated">Delivery Free Pass</span> hoy mismo!`
+            `🚚 Get a <span class="delivery-free-pass-animated">Delivery Free Pass</span> today!`
           );
         }
 
@@ -476,13 +477,35 @@ const NotificationTicker = () => {
         const dayMap = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         const today = new Date().getDay();
         const dayName = dayMap[today];
-
+    
         const response = await axios.get(`http://localhost:3001/api/horarios/${dayName}`);
         if (response.data.length > 0) {
-          const { Hora_fin } = response.data[0];
-          setClosingMessage(
-            `⏰ Hoy cerramos a las ${Hora_fin} hrs. <span class="closing-time-animated">¡Haz tu pedido a tiempo!</span>`
+          const currentHour = new Date().getHours() + ':' + String(new Date().getMinutes()).padStart(2, '0');
+    
+          // Buscar el Shift actual
+          const currentShift = response.data.find(
+            (shift) => currentHour >= shift.Hora_inicio && currentHour <= shift.Hora_fin
           );
+    
+          // Si hay un Shift actual, tomar su Hora_fin; de lo contrario, el más cercano
+          if (currentShift) {
+            setClosingMessage(
+              `⏰ The next closing is at ${currentShift.Hora_fin} hrs. <span class="closing-time-animated">¡buy on time!</span>`
+            );
+          } else {
+            // Si no hay turno actual, tomar el más próximo
+            const upcomingShift = response.data
+              .filter((shift) => currentHour < shift.Hora_inicio)
+              .sort((a, b) => (a.Hora_inicio > b.Hora_inicio ? 1 : -1))[0];
+    
+            if (upcomingShift) {
+              setClosingMessage(
+                `⏰ El próximo turno cierra a las ${upcomingShift.Hora_fin} hrs. <span class="closing-time-animated">¡Haz tu pedido a tiempo!</span>`
+              );
+            } else {
+              setClosingMessage('⚠️ No hay turnos activos por el resto del día.');
+            }
+          }
         } else {
           setClosingMessage('⚠️ No hay información de horarios para hoy.');
         }
@@ -491,6 +514,8 @@ const NotificationTicker = () => {
         setClosingMessage('⚠️ Hubo un problema al cargar el horario de cierre.');
       }
     };
+    
+    
 
     fetchActiveIncentives();
     fetchOffers();
@@ -640,10 +665,6 @@ const NotificationTicker = () => {
     </div>
   );
 };
-
-
-
-
 const CustomerPage = (offer) => {
   const { sessionData, activePizzas, isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -668,6 +689,9 @@ const CustomerPage = (offer) => {
   const [cuponesDailyChallenge, setCuponesDailyChallenge] = useState(0);
   const [dailyChallengeTooltip, setDailyChallengeTooltip] = useState("");
   const [isDailyChallengeEnabled, setIsDailyChallengeEnabled] = useState(false);
+  const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  
+
   const [compra, setCompra] = useState({
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -892,7 +916,6 @@ const CustomerPage = (offer) => {
   
     checkRandomPizzaAvailability();
   }, [offers]);
-  
   useEffect(() => {
     const fetchOffers = async () => {
       try {
@@ -987,9 +1010,16 @@ const CustomerPage = (offer) => {
   
     fetchOffers();
   }, []);
-  
-  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
+    }, 3000); // Cambia cada 3 segundos
+    return () => clearInterval(interval);
+  }, []);
 
+
+  
+  const rotatingTexts = ["Order Now", "Explore Menu", "Make Your Pizza"];
   
   const handlePizzaSelect = (pizza) => {
     setSelectedPizza(pizza); 
@@ -1239,14 +1269,205 @@ const CustomerPage = (offer) => {
       {sessionData ? (
         <>
          {renderSuspensionMessage()}
-         <header 
-          className="customer-header" 
-          style={{ marginBottom: '20px' }}
-        >
-          <h1 style={{ margin: 0 }}>
-            Hola de nuevo, {emailUsername}!
-          </h1>
-        </header>
+         
+         
+         <header
+         
+  className="customer-header"
+  style={{
+    marginBottom: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '10px 20px',
+    width: '100%',
+    maxWidth: '1200px',
+    boxSizing: 'border-box',
+  }}
+>
+  {/* Columna Izquierda */}
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '15px',
+      flex: '0 1 100%',
+    }}
+  >
+    <img
+      src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHppOWtkY3k2aTV1dXkzbmU0djg2aGllcnB6a2JvZXYxemxxNDNzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HfPLDqZ50hYFa/giphy.gif"
+      alt="Pizza"
+      style={{
+        width: '100px',
+        height: '100px',
+        borderRadius: '50px',
+      }}
+    />
+
+    {/* Contenedor de 5rem de alto para los mensajes */}
+    <div
+      style={{
+        position: 'relative',
+        width: '200px',
+        height: '5rem',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Mensaje 1: "Hi!" */}
+      <div
+        className="msg1"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          textAlign: 'left', // o 'center'
+          fontSize: '2rem',
+          fontWeight: 'normal',
+          color: '#141414',
+          animation: 'msg1Anim 6s infinite',
+        }}
+      >
+        Hi! 👋
+      </div>
+
+      {/* Mensaje 2: username */}
+      <div
+        className="msg2"
+        style={{
+          position: 'absolute',
+          top: '2.5rem', // justo debajo del primer mensaje
+          left: 0,
+          width: '100%',
+          textAlign: 'left',
+          fontSize: '2rem',
+          fontWeight: 'bold',
+          color: '#0f0f0e',
+          animation: 'msg2Anim 6s infinite',
+        }}
+      >
+        {emailUsername} ;)
+      </div>
+
+      {/* Mensaje 3: "Is.. Pizza Time! 🔥" (solo aparece al final) */}
+      <div
+        className="msg3"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          textAlign: 'left',
+          fontSize: '2.3rem',
+          fontWeight: 'normal',
+          color: '#de0303',
+          animation: 'msg3Anim 6s infinite',
+          fontFamily: "'Bangers',  serif",
+        }}
+      >
+        
+        It's  🔥🍕<br />
+        PizzaTime!
+      </div>
+    </div>
+  </div>
+
+  {/* Columna Derecha: Día, Fecha y Hora */}
+  <div
+    style={{
+      flex: '0 1 70%',
+      textAlign: 'right',
+      fontSize: '1.2rem',
+      color: '#666',
+      fontWeight: 'bold',
+    }}
+  >
+    <div>
+      {new Date().toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}
+    </div>
+    <div>{new Date().toLocaleTimeString('es-ES')}</div>
+  </div>
+
+  <style>
+    {`
+      /* 
+        msg1Anim:
+        - 0% a 33%: "Hi!" visible
+        - 34% a 66%: sigue visible junto a msg2
+        - 67% a 100%: se desplaza/funde fuera (como tenías)
+      */
+      @keyframes msg1Anim {
+        0%, 33% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        34%, 66% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        67%, 100% {
+          transform: translateY(-2rem);
+          opacity: 0;
+        }
+      }
+
+      /* 
+        msg2Anim:
+        - 0% a 33%: oculto
+        - 34% a 66%: aparece bajo "Hi!"
+        - 67% a 100%: sale junto a msg1
+      */
+      @keyframes msg2Anim {
+        0%, 33% {
+          transform: translateY(1rem);
+          opacity: 0;
+        }
+        34%, 66% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        67%, 100% {
+          transform: translateY(-2rem);
+          opacity: 0;
+        }
+      }
+
+      /*
+        msg3Anim (Is.. Pizza Time! 🔥):
+        - 0% a 66%: oculto
+        - 67% a 100%: visible en el mismo espacio que dejan los dos primeros
+      */
+      @keyframes msg3Anim {
+        0%, 66% {
+          transform: translateY(0);
+          opacity: 0;
+        }
+        67%, 100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    `}
+  </style>
+</header>
+
+
+
+
+
+
+
+
+
+
+
+
 
           <div className="content-container">
             {reviews.length > 0 && (
@@ -1435,7 +1656,22 @@ const CustomerPage = (offer) => {
             }
 
             <div className="order-now-button-container">
-              <button onClick={handleOrderNowClick} className="order-now-button"> <span>Order Now</span></button>
+              <button onClick={handleOrderNowClick} className="order-now-button"> 
+              <div className="rotating-text-container">
+          {rotatingTexts.map((text, index) => (
+            <span
+              key={index}
+              className={`rotating-text ${index === currentTextIndex ? 'visible' : ''}`}
+              style={{
+                transform: `translateY(${(index - currentTextIndex) * 100}%)`,
+                transition: 'transform 0.5s ease-in-out',
+              }}
+            >
+              {text}
+            </span>
+          ))}
+        </div>
+              </button>
             </div>
           </div>
         </>

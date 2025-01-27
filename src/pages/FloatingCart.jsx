@@ -580,9 +580,12 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
        
         {compra.cupones.length > 0 &&
           compra.cupones.map((cupon, index) => (
-            <p key={index}>
-              ✅ {cupon.Descuento ? `${(cupon.Descuento * 100).toFixed(2)}%` : '0%'} de descuento
-            </p>
+          <p key={index}>
+            ✅ {cupon.Descuento ? `${(cupon.Descuento * 100).toFixed(0)}%` : '0%'} de descuento 
+            {cupon.quantity_condition > 0 
+              ? ` (aplicable a la ${cupon.quantity_condition + 1}ª unidad)`
+              : ''}
+          </p>
           ))
         }
         {compra.total_descuentos > 0 && (
