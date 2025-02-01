@@ -28,6 +28,8 @@ const MakeYourPizza = () => {
   const [isHalfAndHalf, setIsHalfAndHalf] = useState(false);
   const [leftPizza, setLeftPizza] = useState('');
   const [rightPizza, setRightPizza] = useState('');
+  const [isRandomPizzaDisabled, setIsRandomPizzaDisabled] = useState(true);
+  const [ofertas, setOfertas] = useState([]);
 
  const [compra, setCompra] = useState({
     observaciones: '',
@@ -131,6 +133,69 @@ const MakeYourPizza = () => {
     };
     fetchExtraPrices();
   }, []);
+  useEffect(() => {
+    const fetchOfertas = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/ofertas");
+        console.log("Ofertas recibidas:", response.data);
+        
+        if (Array.isArray(response.data.data)) {
+          setOfertas(response.data.data);
+        } else {
+          console.error("Error: 'ofertas' no es un array:", response.data);
+          setOfertas([]); // Evita fallos por undefined
+        }
+      } catch (error) {
+        console.error("Error al obtener las ofertas:", error);
+      }
+    };
+  
+    fetchOfertas();
+  }, []);
+  
+  useEffect(() => {
+    if (!Array.isArray(ofertas)) {
+      console.error('La variable "ofertas" no es un array:', ofertas);
+      return;
+    }
+  
+    const ofertaRandomPizza = ofertas.find(
+      (oferta) => oferta.Tipo_Oferta === 'Random Pizza'
+    );
+  
+    if (ofertaRandomPizza) {
+      console.log("Oferta Random detectada:", ofertaRandomPizza);
+      
+      const cuponesDisponibles = ofertaRandomPizza.Cupones_Disponibles > 0;
+      const estadoActivo = ofertaRandomPizza.Estado === "Activa";
+      
+      console.log("Cupones disponibles:", cuponesDisponibles);
+      console.log("Estado activo:", estadoActivo);
+  
+      // 🔹 Ahora forzamos el estado con una función para asegurar su actualización correcta
+      setIsRandomPizzaDisabled(prevState => {
+        console.log("Estado anterior de isRandomPizzaDisabled:", prevState);
+        console.log("Nuevo estado:", !(cuponesDisponibles && estadoActivo));
+        return !(cuponesDisponibles && estadoActivo);
+      });
+    } else {
+      setIsRandomPizzaDisabled(true);
+    }
+  }, [ofertas]);
+  
+  
+  
+  const ofertaRandom = ofertas.find(oferta => oferta.Tipo_Oferta === "Random Pizza");
+  console.log("Oferta Random encontrada:", ofertaRandom);
+  
+  const cuponesDisponibles = ofertaRandom?.Cupones_Disponibles  > 0;
+  const estadoActivo = ofertaRandom?.Estado === "Activa";
+  
+  console.log("Cupones disponibles:", cuponesDisponibles);
+  console.log("Estado Activo:", estadoActivo);
+  
+  const botonDeshabilitado = !(cuponesDisponibles && estadoActivo);
+  console.log("Botón deshabilitado:", botonDeshabilitado);
 
   const calcularPrecioIngrediente = (size) => {
     return ingredientesExtraPrecios[size] || 0;
@@ -544,8 +609,16 @@ const MakeYourPizza = () => {
     alert("Pizza Mitad y Mitad añadida al carrito.");
   };
   const handleRarePizzaNavigation = () => {
-    navigate('/rare-pizza'); // Redirigir a la ruta del módulo Make A Rare Pizza
+    console.log("Estado de isRandomPizzaDisabled en el momento de click:", isRandomPizzaDisabled);
+    
+    if (isRandomPizzaDisabled) {
+      alert('No hay cupones disponibles para Pizza Random o la oferta está inactiva.');
+      return;
+    }
+  
+    navigate('/rare-pizza');
   };
+  
   
   return (
     <div className="make-your-pizza-container">
@@ -580,12 +653,13 @@ const MakeYourPizza = () => {
             >
               Pizza Mitad y Mitad
             </button>
-            <button
+            {/* <button
             className="option-button"
             onClick={handleRarePizzaNavigation}
+            disabled={isRandomPizzaDisabled}  // 🔍 Ahora sí depende del estado actualizado
           >
             Pizza Random
-          </button>
+          </button> */}
           </div>
         </div>
 

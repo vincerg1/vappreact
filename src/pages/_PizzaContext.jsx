@@ -28,6 +28,7 @@ export const _PizzaContext = createContext({
   sessionData: {
     nombre: null, 
     segmento: null,
+    email: null,
     token: null,
     esCumpleanos: false,
     numeroDeCompras: 0,
@@ -66,24 +67,7 @@ export const _PizzaContext = createContext({
   setSuspensionState: () => {},  
 });
 
-const getSessionData = () => {
-  // Lee los datos de la sesión desde sessionStorage
-  const sessionDataString = sessionStorage.getItem('sessionUserData');
-  if (sessionDataString) {
-    return JSON.parse(sessionDataString);
-  }
-  // Si no hay datos en sessionStorage, devuelve valores por defecto
-  return {
-    nombre: null,
-    segmento: null,
-    token: null,
-    esCumpleanos: false,
-    numeroDeCompras: 0,
-    pizzaMasComprada: null,
-    ticketPromedio: 0,
-    comentariosPositivosRecientes: 0
-  };
-}
+
 
 export const PizzaProvider = ({ children }) => {
   
@@ -103,7 +87,22 @@ export const PizzaProvider = ({ children }) => {
   const [pizzas, setPizzas] = useState([]);
   const [activePizzas, setActivePizzas] = useState([]);
   const [cart, setCart] = useState([]);
-  const [sessionData, setSessionData] = useState(getSessionData());
+  const [sessionData, setSessionData] = useState(() => {
+    const storedData = localStorage.getItem('sessionData');
+    return storedData
+      ? JSON.parse(storedData)
+      : {
+          nombre: null,
+          segmento: null,
+          email: null,
+          token: null,
+          esCumpleanos: false,
+          numeroDeCompras: 0,
+          ticketPromedio: 0,
+          pizzaMasComprada: null,
+          comentariosPositivosRecientes: 0,
+        };
+  });
   const [ofertasPorSegmento, setOfertasPorSegmento] = useState([]);
   const [zonasDeRiesgoPorIDI, setZonasDeRiesgoPorIDI] = useState({});
   const [limites, setLimites] = useState({});
@@ -142,12 +141,53 @@ export const PizzaProvider = ({ children }) => {
     venta: [],
     Delivery: { opcion: false, costo: 0 },
   });
+  
+
+  const updateSessionData = useCallback((data) => {
+    setSessionData((prevData) => {
+      const newData = { ...prevData, ...data };
+      localStorage.setItem('sessionData', JSON.stringify(newData)); // Guardamos en localStorage
+      return newData;
+    });
+  }, []);
+  const fetchClientData = useCallback(async (id) => {
+    try {
+      // console.log(`Fetching client data for id_cliente: ${id}`);
+      const { data } = await axios.get(`http://localhost:3001/clientes/${id}`);
+      // console.log('Data fetched from backend:', data);
+
+      // Convertir `ofertaMasUsada` a número si es necesario
+      if (data.ofertaMasUsada) {
+        data.ofertaMasUsada = parseInt(data.ofertaMasUsada, 10);
+      }
+
+      updateSessionData(data); // Actualizamos sessionData y localStorage
+    } catch (err) {
+      console.error('Error fetching client data:', err);
+    }
+  }, [updateSessionData]);
+
+  const clearSessionData = useCallback(() => {
+    localStorage.removeItem('sessionData');
+    setSessionData({
+      nombre: null,
+      segmento: null,
+      email: null,
+      token: null,
+      esCumpleanos: false,
+      numeroDeCompras: 0,
+      ticketPromedio: 0,
+      pizzaMasComprada: null,
+      comentariosPositivosRecientes: 0,
+    });
+  }, []);
 
 
-
-
-
-//sesion Data
+useEffect(() => {
+    if (sessionData.id_cliente) {
+      fetchClientData(sessionData.id_cliente);
+    }
+}, [sessionData.id_cliente, fetchClientData]);
 useEffect(() => {
   if (sessionData.segmento) {
     cargarOfertasPorSegmento(sessionData.segmento);
@@ -180,9 +220,6 @@ useEffect(() => {
     }
   };
 cargarInventario();
-}, []);
-useEffect(() => {
-  setSessionData(getSessionData());
 }, []);
 useEffect(() => {
   const cargarLimites = async () => {
@@ -368,10 +405,13 @@ useEffect(() => {
   setOfertaPizzaMasCompradaDisponible(ofertaDisponible);
 }, [activePizzas, sessionData.numeroDeCompras, sessionData.ticketPromedio, sessionData.pizzaMasComprada]);
 useEffect(() => {
-  // Cargar datos de la sesión al iniciar
-  const storedSessionData = getSessionData();
-  setSessionData(storedSessionData);
-}, []);
+  // console.log('sessionData.id_cliente:', sessionData.id_cliente); 
+  if (sessionData.id_cliente) {
+    fetchClientData(sessionData.id_cliente);
+  }
+}, [sessionData.id_cliente, fetchClientData]);
+
+
 
 
 const setSuspensionState = (isSuspended, endTime) => {
@@ -421,21 +461,7 @@ const addPizzaToOrder  = (pizza) => {
       return updatedCart;
     });
 };
-const updateSessionData = useCallback((data) => {
-  setSessionData(prevData => {
-    const newData = { ...prevData, ...data };
-  
-    if (newData.ticketPromedio) {
-      newData.ticketPromedio = parseFloat(newData.ticketPromedio).toFixed(2);
-      newData.ticketObjetivo = Math.round(newData.ticketPromedio * 1.1 * 100) / 100;  // Mantener 2 decimales
-    }
-    
-    // Guardar los datos en sessionStorage
-    sessionStorage.setItem('sessionUserData', JSON.stringify(newData));
-    // console.log('SessionData actualizada con Ticket Objetivo:', newData);
-    return newData;
-  });
-}, []);
+
 const agruparInventarioPorIDI = (inventario) => {
     const inventarioAgrupado = {};
   
@@ -453,7 +479,7 @@ const agruparInventarioPorIDI = (inventario) => {
     return inventarioAgrupado;
 };
 
- 
+
 
  
   return (
@@ -477,6 +503,7 @@ const agruparInventarioPorIDI = (inventario) => {
       addPizzaToOrder,
       sessionData,
       updateSessionData,
+      clearSessionData,
       ofertasPorSegmento,
       setOfertasPorSegmento,
       cargarOfertasPorSegmento,
@@ -506,4 +533,3 @@ const agruparInventarioPorIDI = (inventario) => {
 
 
 export default _PizzaContext;
-

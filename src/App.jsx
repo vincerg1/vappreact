@@ -49,7 +49,10 @@ import DRVCO from './pages/DRVCO.jsx';
 import RRep from './pages/RRep.jsx';
 import CrearAdmin from './pages/CrearAdmin.jsx';
 import GestionarIngredientesExtras from './pages/GestionarIngredientesExtras.jsx';
-
+import CrearCliente from './pages/CrearCliente.jsx';
+import VerClientes from './pages/VerClientes.jsx';
+import MapaClientes from './pages/MapaClientes.jsx';
+import SeguimientoCliente from './pages/SeguimientoCliente.jsx';
 
 function App() {
   const [menus, setMenus] = useState([]);
@@ -58,7 +61,7 @@ function App() {
     <PizzaProvider>
       <BrowserRouter>
         <Routes>
-       
+     
          <Route path="/GestionarIngredientesExtras" element={<GestionarIngredientesExtras />} />
          <Route path="/register" element={<CrearAdmin />} />
          <Route path="/repartidores-reportes" element={<RRep />} />
@@ -70,6 +73,7 @@ function App() {
          <Route path="/TestMap" element={<TestMap />} />
          <Route path="/view-order" element={<ViewOrder />} />
          <Route path="/pizzeria-dashboard" element={<PizzariaDashboard />} />
+          
           {/* Rutas de Incentivos */}
           <Route path="/offers/incentivo" element={<IncentivoListPage />} />
           <Route path="/offers/incentivo/create" element={<IncentivoForm />} />
@@ -80,7 +84,12 @@ function App() {
           <Route path="/offers/create" element={<OfferForm />} />
           <Route path="/offers/existing" element={<OfferList />} />
           <Route path="/offers/edit/:id" element={<OfferForm />} />
-          
+
+          {/* Rutas de Gestion de clientes */}
+          <Route path="clientes/crear" element={<CrearCliente />} />
+          <Route path="/clientes/ver" element={<VerClientes />} />
+          <Route path="/clientes/mapa" element={<MapaClientes />} />
+          <Route path="/clientes/seguimiento/:id" element={<SeguimientoCliente />} />
 
           {/* Otras Rutas */}
           <Route path="/ReviewForm" element={<ReviewForm />} />

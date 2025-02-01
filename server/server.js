@@ -73,6 +73,7 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
       }
 
       const numeroDeCompras = ventas.length;
+      let diasDesdeUltimaCompra = 9999;
       if (numeroDeCompras === 0) {
         // Cliente sin compras
         const segmento = 1; // POTENCIAL
@@ -116,7 +117,7 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
 
         // Validar PickUp correctamente
         if (metodoEntrega.PickUp && metodoEntrega.PickUp.nombre) {
-          numPickUp += 1; // Incrementar si existe un PickUp válido
+          numPickUp += 1;
         }
       });
 
@@ -143,12 +144,17 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
       }, {});
       const diaDelMesMasCompradoId = Object.keys(diaDelMesMasComprado).reduce((a, b) => diaDelMesMasComprado[a] > diaDelMesMasComprado[b] ? a : b);
 
-      const horaMasComprada = Math.round(
-        ventas.reduce((sum, venta) => {
-          const hora = new Date(`1970-01-01T${venta.hora}Z`).getHours();
-          return sum + hora;
-        }, 0) / numeroDeCompras
-      );
+      const horas = ventas.map((venta) => {
+        const hora = new Date(`1970-01-01T${venta.hora}`).getHours();
+        console.log('Hora procesada:', venta.hora, '->', hora); // Log para inspección
+        return hora;
+      });
+      
+      const horaPromedioExacta = horas.reduce((sum, hora) => sum + hora, 0) / horas.length;
+      console.log('Hora promedio exacta calculada:', horaPromedioExacta);
+      
+      // Almacenar con 2 decimales
+      const horaMasComprada = parseFloat(horaPromedioExacta.toFixed(2));
 
       // Identificar la pizza más comprada
       const pizzaData = ventas.reduce((acc, venta) => {
@@ -186,7 +192,17 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
 
       // Calcular el segmento
       let segmento;
-      const diasDesdeUltimaCompra = Math.floor((new Date(fecha_actualizacion) - new Date(ventas[ventas.length - 1].fecha)) / (1000 * 60 * 60 * 24));
+      if (ventas.length > 0) {
+        const ultimaCompraRaw = ventas[ventas.length - 1].fecha;
+        const ultimaCompra = new Date(ultimaCompraRaw);
+      
+        if (isNaN(ultimaCompra.getTime())) {
+          console.error(`❌ ERROR: La fecha de la última compra (${ultimaCompraRaw}) no es válida.`);
+        } else {
+          const diasDesdeUltimaCompra = Math.floor((new Date(fecha_actualizacion) - ultimaCompra) / (1000 * 60 * 60 * 24));
+          console.log(`✅ Última compra: ${ultimaCompra}, Fecha de actualización: ${fecha_actualizacion}, Días calculados: ${diasDesdeUltimaCompra}`);
+        }
+      }
 
           // Priorizar condiciones más específicas (MVC) primero
           if (numeroDeCompras > 5 && diasDesdeUltimaCompra < 15 && ticketPromedio > 20) {
@@ -199,6 +215,7 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
             segmento = 1; // POTENCIAL
           }
 
+          
 
       // Actualizar la tabla clientes con los datos calculados
       db.run(
@@ -261,7 +278,6 @@ function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback)
     });
   });
 }
-
 function actualizarEstadoRepartidor(id, estado, res) {
   const query = 'UPDATE repartidores SET estado = ? WHERE id_repartidor = ?';
   db.run(query, [estado, id], function (err) {
@@ -338,9 +354,12 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 
-cron.schedule('* * * * *', () => {
-  console.log('=== Cron Job Iniciado: Evaluando horarios activos y cupones ===');
+cron.schedule('0 0 * * *', () => {
+  console.log('=== Cron Job Iniciado: Evaluando horarios, cupones y Dias_Ucompra ===');
 
+  // Obtener la fecha actual
+  const fechaHoy = new Date();
+  
   // Traducción de días de la semana
   const diasEnEspanol = {
     monday: 'lunes',
@@ -362,7 +381,7 @@ cron.schedule('* * * * *', () => {
     return;
   }
 
-  // 1. Evaluar horarios activos
+  // 1️⃣ Evaluar horarios activos
   const queryHorario = `
       SELECT * 
       FROM horarios 
@@ -411,7 +430,7 @@ cron.schedule('* * * * *', () => {
     }
   });
 
-  // 2. Evaluar y resetear cupones si la hora fin ya pasó
+  // 2️⃣ Evaluar y resetear cupones si la hora fin ya pasó
   const queryCupones = `
       SELECT * 
       FROM ofertas 
@@ -433,7 +452,6 @@ cron.schedule('* * * * *', () => {
       const horaFin = moment(cupon.Hora_Fin, 'HH:mm');
       const diasActivos = JSON.parse(cupon.Dias_Activos) || [];
 
-      // Verificar si la hora actual ha pasado la hora fin y si el día es activo
       if (diasActivos.includes(diaActual) && moment().isSameOrAfter(horaFin)) {
         console.log(`⏳ Reseteando cupones para la oferta ${cupon.Oferta_Id}, hora fin alcanzada.`);
 
@@ -455,8 +473,65 @@ cron.schedule('* * * * *', () => {
     });
   });
 
-  console.log('=== Cron Job Finalizado ===\n');
+  // 3️⃣ ACTUALIZAR `Dias_Ucompra` para todos los clientes
+  const queryClientes = `
+      SELECT id_cliente, (SELECT MAX(fecha) FROM registro_ventas WHERE registro_ventas.id_cliente = clientes.id_cliente) AS ultimaCompra
+      FROM clientes;
+  `;
+
+  db.all(queryClientes, [], (err, clientes) => {
+    if (err) {
+      console.error('❌ Error al obtener clientes:', err);
+      return;
+    }
+
+    if (!clientes || clientes.length === 0) {
+      console.log('⚠️ No hay clientes en la base de datos.');
+      return;
+    }
+
+    console.log(`📊 Clientes encontrados: ${clientes.length}`);
+
+    clientes.forEach((cliente) => {
+      const { id_cliente, ultimaCompra } = cliente;
+
+      if (!ultimaCompra) {
+        console.log(`⚠️ Cliente ${id_cliente} no tiene compras registradas.`);
+        return;
+      }
+
+      const ultimaCompraDate = new Date(ultimaCompra);
+
+      if (isNaN(ultimaCompraDate.getTime())) {
+        console.error(`❌ ERROR: La fecha de la última compra (${ultimaCompra}) de cliente ${id_cliente} no es válida.`);
+        return;
+      }
+
+      // Calcular la diferencia de días
+      const diasDesdeUltimaCompra = Math.floor((fechaHoy - ultimaCompraDate) / (1000 * 60 * 60 * 24));
+
+      console.log(`📅 Cliente ${id_cliente} - Última compra: ${ultimaCompraDate.toISOString()} - Días desde última compra: ${diasDesdeUltimaCompra}`);
+
+      // Actualizar `Dias_Ucompra`
+      const updateQuery = `
+          UPDATE clientes
+          SET Dias_Ucompra = ?
+          WHERE id_cliente = ?;
+      `;
+
+      db.run(updateQuery, [diasDesdeUltimaCompra, id_cliente], function (err) {
+        if (err) {
+          console.error(`❌ Error al actualizar Dias_Ucompra para el cliente ${id_cliente}:`, err);
+        } else {
+          console.log(`✅ Cliente ${id_cliente} actualizado: Dias_Ucompra = ${diasDesdeUltimaCompra}`);
+        }
+      });
+    });
+  });
+
+  console.log('=== Cron Job Finalizado: Evaluación completa ===\n');
 });
+
 
 
 // the get zone
@@ -1740,6 +1815,133 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post('/registro_ventas/bulk', async (req, res) => {
+  const ventas = req.body; // Array de ventas recibidas
+  console.log('Ventas recibidas para simulación:', ventas);
+
+  if (!Array.isArray(ventas) || ventas.length === 0) {
+      return res.status(400).json({ error: 'El cuerpo de la solicitud debe ser un array de ventas' });
+  }
+
+  db.serialize(() => {
+      db.run('BEGIN TRANSACTION;');
+
+      try {
+          let ventasInsertadas = 0;
+          let clientesActualizados = new Set(); // Para evitar actualizaciones duplicadas
+
+          ventas.forEach((venta) => {
+              const {
+                  id_cliente,
+                  id_pizza,
+                  cantidad,
+                  size,
+                  price,
+                  fecha,
+                  hora,
+                  metodo_pago,
+                  totalPagado
+              } = venta;
+
+              // Verificar que los datos esenciales estén presentes
+              if (!id_cliente || !id_pizza || !cantidad || !size || !price || !fecha || !hora || !metodo_pago) {
+                  console.warn('Venta omitida por datos faltantes:', venta);
+                  return;
+              }
+
+              // Insertar cada venta individualmente
+              const insertSql = `
+                  INSERT INTO registro_ventas (
+                      id_cliente,
+                      fecha,
+                      hora,
+                      metodo_pago,
+                      total_productos,
+                      total_con_descuentos,
+                      total_descuentos,
+                      productos,
+                      metodo_entrega,
+                      cupones,
+                      incentivos,
+                      observaciones,
+                      estado_entrega,
+                      id_repartidor
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+              `;
+
+              const productosJson = JSON.stringify([{ id_pizza, cantidad, size, price }]); // Guardar productos en formato JSON
+              const metodo_entrega = '{}'; // Simulación sin método de entrega
+              const cupones = '[]'; // Sin cupones en simulación
+              const incentivos = '[]'; // Sin incentivos en simulación
+              const observaciones = 'Venta simulada';
+              const estado_entrega = 'Simulación';
+              const id_repartidor = null;
+
+              db.run(
+                  insertSql,
+                  [
+                      id_cliente,
+                      fecha,
+                      hora,
+                      metodo_pago,
+                      cantidad, // total_productos
+                      totalPagado, // total_con_descuentos
+                      0, // total_descuentos en simulación
+                      productosJson,
+                      metodo_entrega,
+                      cupones,
+                      incentivos,
+                      observaciones,
+                      estado_entrega,
+                      id_repartidor
+                  ],
+                  function (err) {
+                      if (err) {
+                          console.error('Error al insertar venta:', err.message);
+                          db.run('ROLLBACK;');
+                          return res.status(500).json({ error: err.message });
+                      }
+
+                      ventasInsertadas++;
+
+                      // Solo actualizamos cada cliente una vez
+                      if (!clientesActualizados.has(id_cliente)) {
+                          clientesActualizados.add(id_cliente);
+
+                          actualizarIndicadoresCliente(id_cliente, fecha, (updateErr) => {
+                              if (updateErr) {
+                                  console.error(`Error al actualizar indicadores del cliente ${id_cliente}:`, updateErr.message);
+                              } else {
+                                  console.log(`Indicadores del cliente ${id_cliente} actualizados correctamente.`);
+                              }
+                          });
+                      }
+                  }
+              );
+          });
+
+          db.run('COMMIT;', (commitErr) => {
+              if (commitErr) {
+                  console.error('Error en COMMIT:', commitErr.message);
+                  return res.status(500).json({ error: 'Error al confirmar transacción' });
+              }
+
+              console.log(`Ventas simuladas registradas con éxito: ${ventasInsertadas}`);
+              console.log(`Clientes actualizados: ${Array.from(clientesActualizados).join(', ')}`);
+
+              return res.status(200).json({
+                  success: true,
+                  message: `${ventasInsertadas} ventas simuladas registradas con éxito`,
+                  clientesActualizados: Array.from(clientesActualizados).length
+              });
+          });
+      } catch (error) {
+          db.run('ROLLBACK;');
+          console.error('Error en la transacción:', error.message);
+          return res.status(500).json({ error: 'Error en la transacción de ventas simuladas' });
+      }
+  });
+});
 app.post('/api/auth/remember-me', (req, res) => {
   const { email } = req.body;
 
@@ -2408,7 +2610,6 @@ app.post('/api/reviews', (req, res) => {
       });
   });
 });
-
 app.post('/ofertas', upload.single('Imagen'), (req, res) => {
   const moment = require('moment-timezone');
   const {
@@ -3020,31 +3221,48 @@ app.post('/registro_ventas', (req, res) => {
 app.post('/clientes', (req, res) => {
   const { email, password, phone, name, address_1, address_2, bday } = req.body;
 
+  // Validar campos obligatorios
+  if (!email || !password || !name || !phone) {
+    res.status(400).json({ error: 'Faltan datos obligatorios: email, password, name o phone.' });
+    return;
+  }
+
+  // Obtener la secuencia diaria de clientes
   const secuenciaSql = `SELECT COUNT(*) as count FROM clientes WHERE DATE(created_at) = DATE('now')`;
 
   db.get(secuenciaSql, [], (err, row) => {
     if (err) {
       console.error('Error al obtener la secuencia:', err);
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'Error interno al generar la secuencia.' });
       return;
     }
 
     const secuencia = row.count + 1;
     const id_cliente = `CT${new Date().toISOString().split('T')[0].replace(/-/g, '')}${String(secuencia).padStart(3, '0')}`;
 
+    // Insertar el cliente con segmento inicial 1 (POTENCIAL)
     const insertClienteSql = `
-      INSERT INTO clientes (id_cliente, email, password, phone, name, address_1, address_2, bday, segmento)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1);  // Segmento inicial 1 para POTENCIAL
+      INSERT INTO clientes (id_cliente, email, password, phone, name, address_1, address_2, bday, segmento, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'));
     `;
-    
-    db.run(insertClienteSql, [id_cliente, email, password, phone, name, address_1, address_2, bday], function(err) {
-      if (err) {
-        console.error('Error al agregar cliente:', err);
-        res.status(500).json({ error: err.message });
-        return;
+
+    db.run(
+      insertClienteSql,
+      [id_cliente, email, password, phone, name, address_1, address_2, bday, 1], // Segmento inicial 1
+      function (err) {
+        if (err) {
+          console.error('Error al agregar cliente:', err);
+          res.status(500).json({ error: 'Error interno al registrar el cliente.' });
+          return;
+        }
+
+        res.json({
+          message: 'Cliente agregado con éxito',
+          id_cliente: id_cliente,
+          segmento: 1, // Confirmación explícita del segmento
+        });
       }
-      res.json({ message: 'Cliente agregado con éxito', id_cliente: id_cliente });
-    });
+    );
   });
 });
 app.post('/agregar_cliente', (req, res) => {
@@ -4439,12 +4657,14 @@ app.put('/IngredientExtraPrices/:id', async (req, res) => {
   }
 });
 app.put('/clientes/:id_cliente', (req, res) => {
-  const { name, phone, address_1 } = req.body;
+  const { name, phone, address_1, address_2 } = req.body; // Agregamos address_2
   const { id_cliente } = req.params;
 
   db.run(
-    `UPDATE clientes SET name = ?, phone = ?, address_1 = ? WHERE id_cliente = ?`,
-    [name, phone, address_1, id_cliente],
+    `UPDATE clientes 
+     SET name = ?, phone = ?, address_1 = ?, address_2 = ? 
+     WHERE id_cliente = ?`,
+    [name, phone, address_1, address_2, id_cliente],  // Agregamos address_2 en los valores
     function (err) {
       if (err) {
         res.status(500).json({ error: "Error al actualizar el cliente" });

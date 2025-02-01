@@ -15,16 +15,18 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   const [cuponesDisponibles, setCuponesDisponibles] = useState(offer.Cupones_Disponibles);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimeBlocked, setIsTimeBlocked] = useState(false);
-  const [nextAvailableDay, setNextAvailableDay] = useState(null);
+  // const [nextAvailableDay, setNextAvailableDay] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [blockReason, setBlockReason] = useState(''); 
+  const [blockReason, setBlockReason] = useState([]);
   const [showNeonEffect, setShowNeonEffect] = useState(false); 
   const [isCouponApplied, setIsCouponApplied] = useState(false);
-
+  const [isTemporarilyDisabled, setIsTemporarilyDisabled] = useState(false);
+  const [timeReason, setTimeReason] = useState("");
 
   useEffect(() => {
     checkExtraConditions();
-    checkTimeAvailability(); 
+    checkTimeAvailability();
+    // console.log("Block Reason (useEffect):", blockReason);
   }, [offer, sessionData]);
 
   useEffect(() => {
@@ -46,44 +48,46 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     };
   };
   const checkTimeAvailability = () => {
-    let currentDay = moment().format('dddd').toLowerCase();
+    const currentDay = removeAccents(moment().format("dddd").toLowerCase());
     const currentTime = moment();
-
-    currentDay = removeAccents(currentDay);
-    const horaInicio = moment(offer.Hora_Inicio, 'HH:mm');
-    const horaFin = moment(offer.Hora_Fin, 'HH:mm');
-
+    const horaInicio = moment(offer.Hora_Inicio, "HH:mm");
+    const horaFin = moment(offer.Hora_Fin, "HH:mm");
+  
     const diasActivos = JSON.parse(offer.Dias_Activos).map(removeAccents);
-
-    if (diasActivos.includes(currentDay)) {
-        if (currentTime.isBefore(horaInicio)) {
-            // Antes de la hora inicio
-            setTimeLeft(horaInicio.diff(currentTime, 'seconds'));
-            setIsTimeBlocked(true);
-            setBlockReason(
-                <>
-                    Disponible desde:
-                    <br />
-                    las {offer.Hora_Inicio} Hrs
-                </>
-            );
-        } else if (currentTime.isBetween(horaInicio, horaFin)) {
-            // Entre hora inicio y hora fin
-            setTimeLeft(horaFin.diff(currentTime, 'seconds'));
-            setIsTimeBlocked(false);
-            setBlockReason(`Disponible hasta las ${offer.Hora_Fin}`);
-        } else {
-            // Después de la hora fin
-            if (offer.Tipo_Cupon === "permanente") {
-                resetCoupons(); 
-            }
-            setIsTimeBlocked(true);
-            calculateNextCycle();
-        }
+  
+    // Verificamos si hay cupones disponibles:
+    if (cuponesDisponibles === 0) {
+      setIsTemporarilyDisabled(true);
+      setTimeReason("Sold Out!");
+      return;
+    }
+  
+    // Verificamos si el día es activo
+    if (!diasActivos.includes(currentDay)) {
+      setIsTemporarilyDisabled(true);
+      calculateNextCycle(); 
+      return;
+    }
+  
+    // Verificamos horario
+    if (currentTime.isBefore(horaInicio)) {
+      setIsTemporarilyDisabled(true);
+      const diffSeconds = horaInicio.diff(currentTime, "seconds");
+      setTimeLeft(diffSeconds);
+      setTimeReason(`Disponible desde las ${offer.Hora_Inicio} Hrs`);
+    } else if (currentTime.isBetween(horaInicio, horaFin)) {
+      // En horario válido
+      setIsTemporarilyDisabled(false);
+      const diffSeconds = horaFin.diff(currentTime, "seconds");
+      setTimeLeft(diffSeconds);
+      setTimeReason(`Disponible hasta las ${offer.Hora_Fin}`);
     } else {
-        // Día no activo
-        setIsTimeBlocked(true);
-        calculateNextCycle();
+      // Después de la hora fin
+      if (offer.Tipo_Cupon === "permanente") {
+        resetCoupons();
+      }
+      setIsTemporarilyDisabled(true);
+      calculateNextCycle(); 
     }
   };
   const resetCoupons = () => {
@@ -93,7 +97,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       })
       .then(() => {
           setCuponesDisponibles(offer.Cupones_Asignados);
-          console.log("Cupones disponibles reseteados correctamente.");
+          // console.log("Cupones disponibles reseteados correctamente.");
       })
       .catch((error) => {
           console.error("Error al resetear los cupones disponibles:", error);
@@ -106,7 +110,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     const diasActivos = JSON.parse(offer.Dias_Activos).map(removeAccents);
   
     let nextDayIndex = null;
-   console.log(offer)
+  
     // Iterar para encontrar el próximo día activo
     for (let i = 0; i < 7; i++) {
       const checkDay = (currentDayIndex + i) % 7;
@@ -140,58 +144,54 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         nextDay.add(1, 'week'); // Avanzar una semana al próximo ciclo válido
       }
   
-      const formattedDay = nextDay.format('ddd');
-      const formattedDate = nextDay.format('DD/MM/YY');
+      const formattedDay = nextDay.format('dddd'); // Día en texto
+      const formattedDate = nextDay.format('DD/MM/YY'); // Fecha exacta
   
-      setNextAvailableDay(`${formattedDay} ${formattedDate}`);
       setTimeLeft(nextDay.diff(moment(), 'seconds'));
-      setBlockReason(
-        <>
-          Disponible el próximo:
-          <br />
-          {formattedDay} {formattedDate}
-        </>
-      );
+      setTimeReason(`Disponible el próximo ${formattedDay} (${formattedDate})`);
     }
   };
   const checkExtraConditions = () => {
     if (offer.Condiciones_Extras === "false" || !offer.Condiciones_Extras) {
       setIsBlocked(false);
+      setBlockReason([]);
       return;
     }
-
+  
     const userTicketPromedio = parseFloat(sessionData?.ticketPromedio || 0);
-    const requiredTicketPromedio = parseFloat(offer.Ticket_Promedio || 0);
+    const requiredTicketPromedio = Number(offer.Ticket_Promedio) || 0;
     const userNumeroCompras = parseInt(sessionData?.numeroDeCompras || 0);
     const requiredNumeroCompras = parseInt(offer.Numero_Compras || 0);
     const userDiasUcompra = parseInt(sessionData?.Dias_Ucompra || 0);
     const requiredDiasUcompra = parseInt(offer.Dias_Ucompra || 0);
-
-    let reason = ''; 
-
-    if (userTicketPromedio < requiredTicketPromedio) {
-      reason = `Bloqueado: El ticket promedio del usuario (${userTicketPromedio}) no cumple el requerido (${requiredTicketPromedio}).`;
-      setBlockReason(reason);
-      setIsBlocked(true);
-      return;
-    }
-
+  
+    let reasons = [];
+    let isBlockedStatus = false;
+  
     if (userNumeroCompras < requiredNumeroCompras) {
-      reason = `Bloqueado: El número de compras del usuario (${userNumeroCompras}) no cumple el requerido (${requiredNumeroCompras}).`;
-      setBlockReason(reason);
-      setIsBlocked(true);
-      return;
+      reasons.push({ text: `NC > ${requiredNumeroCompras}`, approved: false });
+      isBlockedStatus = true;
+    } else {
+      reasons.push({ text: `NC > ${requiredNumeroCompras}`, approved: true });
     }
-
+  
+    if (userTicketPromedio < requiredTicketPromedio) {
+      reasons.push({ text: `TP > ${requiredTicketPromedio}`, approved: false });
+      isBlockedStatus = true;
+    } else {
+      reasons.push({ text: `TP > ${requiredTicketPromedio}`, approved: true });
+    }
+  
     if (userDiasUcompra < requiredDiasUcompra) {
-      reason = `Bloqueado: Los días desde la última compra del usuario (${userDiasUcompra}) no cumplen el requerido (${requiredDiasUcompra}).`;
-      setBlockReason(reason);
-      setIsBlocked(true);
-      return;
+      reasons.push({ text: `UC > ${requiredDiasUcompra}`, approved: false });
+      isBlockedStatus = true;
+    } else {
+      reasons.push({ text: `UC > ${requiredDiasUcompra}`, approved: true });
     }
-
-    setBlockReason(''); 
-    setIsBlocked(false);
+  
+    setBlockReason(reasons);
+    setIsBlocked(isBlockedStatus);
+    // console.log("Updated Block Reasons:", reasons);
   };
   const getRandomDiscount = (min, max) => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -252,7 +252,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     if (cuponesDisponibles === 0) {
         return (
             <>
-                Sold Out
+                Sold Out!
                 <br />
                 🚫🚫🚫
             </>
@@ -284,71 +284,98 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
     return `${offer.Descuento_Percent}% Descuento`;
   };
 
-  return (
-    <div className="offer-card-container">
-      {showNeonEffect && (
-        <div className="neon-glow1">
-          ¡Cupón Aplicado con Éxito!
+
+return (
+  <div className="offer-card-container">
+    {showNeonEffect && (
+      <div className="neon-glow1">¡Cupón Aplicado con Éxito!</div>
+    )}
+
+    <div
+      className={
+        isTemporarilyDisabled
+          ? "offer-card disabled-temporary"
+          : isBlocked
+          ? "offer-card blocked"
+          : "offer-card active"
+      }
+      style={{
+        position: "relative", // Necesario para que el overlay se posicione correctamente
+        backgroundImage: `url(http://localhost:3001${offer.Imagen})`,
+        backgroundSize: "500px 500px",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* Overlay SOLO cuando el cupón está bloqueado */}
+      {isBlocked && (
+        <div className="block-overlay">
+          <p>😥</p>
+          <strong>🔓 to unlock:</strong>
+          <div className="block-reason-container">
+            {blockReason.map((reason, index) => (
+              <div key={index} className="block-reason">
+                {reason.approved ? "✅" : "❌"}{" "}
+                {reason.text.includes("NC") && (reason.approved ? "You have enough purchases" : "You need more purchases")}
+                {reason.text.includes("TP") && (reason.approved ? "Your average ticket is enough" : "You need a higher average ticket")}
+                {reason.text.includes("UC") && (reason.approved ? "Have you recently purchased" : "You haven't bought in a long time")}
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      {/* Resto del contenido */}
-      <div
-        className={`offer-card ${isBlocked ? "blocked" : "active"}`}
-        style={{
-          backgroundImage: `url(http://localhost:3001${offer.Imagen})`,
-          backgroundSize: "500px 500px",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="offer-overlay"></div>
-        <div className={`offer-content ${isBlocked ? "blurred" : ""}`}>
-          <h3>{offer.Codigo_Oferta}</h3>
-          <p>¡Quedan <strong>{cuponesDisponibles} </strong>Cupones!</p>
-          <p>{renderDiscountRange()}</p>
-          <p>
-            Precio:
-            {offer.Categoria_Cupon === "gratis"
-              ? "Today Free"
-              : `Today ${offer.Precio_Cupon || 0}€`}
-          </p>
-  
-          <button
-            className={`offer-button ${isCouponApplied ? "button-neon" : "button-default"}`}
-            onClick={handleUseCoupon}
-            disabled={isBlocked || isTimeBlocked || cuponesDisponibles === 0}
-          >
-            Usar Cupón
-          </button>
-  
-          {!isBlocked && (
+
+
+
+      {/* Contenido normal de la tarjeta */}
+      <div className="offer-overlay"></div>
+
+      <div className="offer-content">
+        <h3>{offer.Codigo_Oferta}</h3>
+        <p>¡Quedan <strong>{cuponesDisponibles}</strong> Cupones!</p>
+        <p>{renderDiscountRange()}</p>
+        <p>
+          Precio:
+          {offer.Categoria_Cupon === "gratis"
+            ? "Hoy Gratis"
+            : `Hoy ${offer.Precio_Cupon || 0}€`}
+        </p>
+
+        {/* Botón de Usar Cupón */}
+        <button
+          className={`offer-button ${isCouponApplied ? "button-neon" : "button-default"}`}
+          onClick={handleUseCoupon}
+          disabled={isTemporarilyDisabled || isBlocked}
+        >
+          Usar Cupón
+        </button>
+
+        {/* Footer */}
+        <div className="offer-footer">
+          {isTemporarilyDisabled ? (
+            <div className="time-disabled-info">
+              <p>{timeReason}</p>
+            </div>
+          ) : isBlocked ? (
+            <div className="block-reasons">
+              <h4>🔒 Bloqueado</h4>
+            </div>
+          ) : (
             <div className="expiration-info">
               <p className="time-left">{renderTimeLeft()}</p>
             </div>
           )}
-  
-          {isBlocked && (
-            <div
-              className="lock-icon"
-              data-tooltip-id="tooltip"
-              data-tooltip-content={blockReason || "Este cupón está bloqueado"}
-            >
-              <p>🔒</p>
-            </div>
-          )}
-  
-          <Tooltip
-            id="tooltip"
-            place="top"
-            type="dark"
-            effect="solid"
-            className="custom-tooltip"
-          />
         </div>
       </div>
     </div>
-  );  
+  </div>
+);
+
+
+
 };
 const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, compra }) => {
+  const { sessionData } = useContext(_PizzaContext);
+
   const offersRef = useRef(null);
 
   let isDragging = false;
@@ -375,7 +402,10 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
 
  
   const filteredOffers = offers.filter(
-    (offer) => offer.Tipo_Oferta === 'Normal' && offer.Estado === 'Activa'
+    (offer) =>
+      offer.Tipo_Oferta === "Normal" &&
+      offer.Estado === "Activa" &&
+      sessionData?.segmento 
   );
   
 
@@ -500,18 +530,18 @@ const NotificationTicker = () => {
     
             if (upcomingShift) {
               setClosingMessage(
-                `⏰ El próximo turno cierra a las ${upcomingShift.Hora_fin} hrs. <span class="closing-time-animated">¡Haz tu pedido a tiempo!</span>`
+                `⏰ The next closing is at ${upcomingShift.Hora_fin} hrs. <span class="closing-time-animated">¡buy on time!</span>`
               );
             } else {
-              setClosingMessage('⚠️ No hay turnos activos por el resto del día.');
+              setClosingMessage('⚠️ There are no active shifts for the rest of the day.');
             }
           }
         } else {
-          setClosingMessage('⚠️ No hay información de horarios para hoy.');
+          setClosingMessage('⚠️ There is no schedule information for today.');
         }
       } catch (error) {
         console.error('Error al obtener el horario de cierre:', error);
-        setClosingMessage('⚠️ Hubo un problema al cargar el horario de cierre.');
+        setClosingMessage('⚠️ There was a problem loading the closing time.');
       }
     };
     
@@ -690,8 +720,7 @@ const CustomerPage = (offer) => {
   const [dailyChallengeTooltip, setDailyChallengeTooltip] = useState("");
   const [isDailyChallengeEnabled, setIsDailyChallengeEnabled] = useState(false);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  
-
+  const [isLoadingOffers, setIsLoadingOffers] = useState(true);
   const [compra, setCompra] = useState({
     id_orden: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -764,7 +793,7 @@ const CustomerPage = (offer) => {
     }
   
     if (suspensionEndTime) {
-      console.log(`⏰ El servicio está suspendido hasta: ${suspensionEndTime}`);
+      // console.log(`⏰ El servicio está suspendido hasta: ${suspensionEndTime}`);
     }
   }, [isServiceSuspended, suspensionEndTime]);
   useEffect(() => {
@@ -803,40 +832,6 @@ const CustomerPage = (offer) => {
     }, 5000);
     return () => clearInterval(interval);
   }, [reviews]);
-  useEffect(() => {
-    const obtenerOfertas = async () => {
-      if (sessionData?.segmento) {
-        try {
-          const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
-          const { data } = response.data;
-
-          // console.log('Datos de las ofertas recibidas:', data);
-
-          moment.locale('es');
-          let currentDay = moment().format('dddd').toLowerCase();
-          currentDay = removeDiacritics(currentDay);
-
-          // console.log('Día actual formateado:', currentDay);
-
-          const ofertasFiltradas = data.filter(({ Estado, Dias_Activos }) => {
-            const diasActivos = JSON.parse(Dias_Activos);
-            // console.log('Días activos de la oferta:', diasActivos);
-            return Estado === 'Activa' && diasActivos.includes(currentDay);
-          });
-
-          if (ofertasFiltradas.length > 0) {
-            setOffers(ofertasFiltradas);
-            // console.log('Ofertas filtradas:', ofertasFiltradas);
-          } else {
-            setOffers([]);
-          }
-        } catch (error) {
-          console.error('Error al obtener las ofertas:', error);
-        }
-      }
-    };
-    obtenerOfertas();
-  }, [sessionData]);
   useEffect(() => {
     if (activePizzas.length > 0) {
       setLoadingPizzas(false);
@@ -916,6 +911,12 @@ const CustomerPage = (offer) => {
   
     checkRandomPizzaAvailability();
   }, [offers]);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
+    }, 3000); // Cambia cada 3 segundos
+    return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     const fetchOffers = async () => {
       try {
@@ -1011,13 +1012,44 @@ const CustomerPage = (offer) => {
     fetchOffers();
   }, []);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
-    }, 3000); // Cambia cada 3 segundos
-    return () => clearInterval(interval);
-  }, []);
+    const obtenerOfertas = async () => {
+      if (!sessionData || !sessionData.segmento) {
+        console.warn("⏳ Esperando que sessionData.segmento esté disponible...");
+        return; // No hacer la petición hasta que tengamos el segmento
+      }
+  
+      try {
+        // console.log("🚀 Buscando ofertas para segmento:", sessionData.segmento);
+        setIsLoadingOffers(true);
+  
+        const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
+        const { data } = response.data;
+  
+        moment.locale('es');
+        let currentDay = moment().format('dddd').toLowerCase();
+        currentDay = removeDiacritics(currentDay);
+  
+        const ofertasFiltradas = data.filter(({ Estado, Dias_Activos }) => {
+          const diasActivos = JSON.parse(Dias_Activos);
+          return Estado === 'Activa' && diasActivos.includes(currentDay);
+        });
+  
+        // console.log("✅ Ofertas filtradas:", ofertasFiltradas);
+  
+        setOffers(ofertasFiltradas);
+      } catch (error) {
+        console.error('❌ Error al obtener ofertas:', error);
+      } finally {
+        setIsLoadingOffers(false);
+      }
+    };
+  
 
-
+    if (sessionData?.segmento) {
+      obtenerOfertas();
+    }
+  }, [sessionData]);
+  
   
   const rotatingTexts = ["Order Now", "Explore Menu", "Make Your Pizza"];
   
@@ -1076,9 +1108,9 @@ const CustomerPage = (offer) => {
         return;
     }
 
-    console.log('ℹ️ Reclamando cupón del Daily Challenge:', dailyChallenge);
-    console.log('🔗 Link de Instagram:', igLink);
-    console.log('👤 Usuario de Instagram:', igUsername);
+    // console.log('ℹ️ Reclamando cupón del Daily Challenge:', dailyChallenge);
+    // console.log('🔗 Link de Instagram:', igLink);
+    // console.log('👤 Usuario de Instagram:', igUsername);
 
     const claimData = {
         ig_username: igUsername,
@@ -1198,8 +1230,6 @@ const CustomerPage = (offer) => {
         removeDiacritics(day.toLowerCase())
     );
 
-
-
     // Revisar primero si el día actual es válido y estamos dentro del horario
     const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
     if (diasActivos.includes(currentDay)) {
@@ -1259,7 +1289,8 @@ const CustomerPage = (offer) => {
   const handleCloseReviewForm = () => setShowReviewForm(false);
   const removeDiacritics = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const closeDailyChallenge = () => setShowDailyChallenge(false);
-  const emailUsername = sessionData?.email.split('@')[0];
+  const emailUsername = sessionData?.email ? sessionData.email.split('@')[0] : '';
+
 
   return (
     <div className="customer-page">
@@ -1273,200 +1304,190 @@ const CustomerPage = (offer) => {
          
          <header
          
-  className="customer-header"
-  style={{
-    marginBottom: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '10px 20px',
-    width: '100%',
-    maxWidth: '1200px',
-    boxSizing: 'border-box',
-  }}
->
-  {/* Columna Izquierda */}
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '15px',
-      flex: '0 1 100%',
-    }}
-  >
-    <img
-      src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHppOWtkY3k2aTV1dXkzbmU0djg2aGllcnB6a2JvZXYxemxxNDNzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HfPLDqZ50hYFa/giphy.gif"
-      alt="Pizza"
-      style={{
-        width: '100px',
-        height: '100px',
-        borderRadius: '50px',
-      }}
-    />
-
-    {/* Contenedor de 5rem de alto para los mensajes */}
-    <div
-      style={{
-        position: 'relative',
-        width: '200px',
-        height: '5rem',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Mensaje 1: "Hi!" */}
-      <div
-        className="msg1"
+        className="customer-header"
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '10px 20px',
           width: '100%',
-          textAlign: 'left', // o 'center'
-          fontSize: '2rem',
-          fontWeight: 'normal',
-          color: '#141414',
-          animation: 'msg1Anim 6s infinite',
+          maxWidth: '1200px',
+          boxSizing: 'border-box',
         }}
       >
-        Hi! 👋
-      </div>
+        {/* Columna Izquierda */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '15px',
+            flex: '0 1 100%',
+          }}
+        >
+          <img
+            src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHppOWtkY3k2aTV1dXkzbmU0djg2aGllcnB6a2JvZXYxemxxNDNzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HfPLDqZ50hYFa/giphy.gif"
+            alt="Pizza"
+            style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50px',
+            }}
+          />
 
-      {/* Mensaje 2: username */}
-      <div
-        className="msg2"
-        style={{
-          position: 'absolute',
-          top: '2.5rem', // justo debajo del primer mensaje
-          left: 0,
-          width: '100%',
-          textAlign: 'left',
-          fontSize: '2rem',
-          fontWeight: 'bold',
-          color: '#0f0f0e',
-          animation: 'msg2Anim 6s infinite',
-        }}
-      >
-        {emailUsername} ;)
-      </div>
+          {/* Contenedor de 5rem de alto para los mensajes */}
+          <div
+            style={{
+              position: 'relative',
+              width: '200px',
+              height: '5rem',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Mensaje 1: "Hi!" */}
+            <div
+              className="msg1"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                textAlign: 'left', // o 'center'
+                fontSize: '2rem',
+                fontWeight: 'normal',
+                color: '#141414',
+                animation: 'msg1Anim 6s infinite',
+              }}
+            >
+              Hi! 👋
+            </div>
 
-      {/* Mensaje 3: "Is.. Pizza Time! 🔥" (solo aparece al final) */}
-      <div
-        className="msg3"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          textAlign: 'left',
-          fontSize: '2.3rem',
-          fontWeight: 'normal',
-          color: '#de0303',
-          animation: 'msg3Anim 6s infinite',
-          fontFamily: "'Bangers',  serif",
-        }}
-      >
-        
-        It's  🔥🍕<br />
-        PizzaTime!
-      </div>
-    </div>
-  </div>
+            {/* Mensaje 2: username */}
+            <div
+              className="msg2"
+              style={{
+                position: 'absolute',
+                top: '2.5rem', // justo debajo del primer mensaje
+                left: 0,
+                width: '100%',
+                textAlign: 'left',
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                color: '#0f0f0e',
+                animation: 'msg2Anim 6s infinite',
+              }}
+            >
+              {sessionData?.name || emailUsername} ;)
+            </div>
 
-  {/* Columna Derecha: Día, Fecha y Hora */}
-  <div
-    style={{
-      flex: '0 1 70%',
-      textAlign: 'right',
-      fontSize: '1.2rem',
-      color: '#666',
-      fontWeight: 'bold',
-    }}
-  >
-    <div>
-      {new Date().toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })}
-    </div>
-    <div>{new Date().toLocaleTimeString('es-ES')}</div>
-  </div>
+            {/* Mensaje 3: "Is.. Pizza Time! 🔥" (solo aparece al final) */}
+            <div
+              className="msg3"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                textAlign: 'left',
+                fontSize: '2.2rem',
+                fontWeight: 'normal',
+                color: '#de0303',
+                textShadow: '1px 1px 0 #000, -1px 1px 0 #000',
+                animation: 'msg3Anim 6s infinite',
+                fontFamily: "'Bangers', serif",
+              }}
+            >
+              
+              It's  🔥🍕<br />
+              PizzaTime!
+            </div>
+          </div>
+        </div>
 
-  <style>
-    {`
-      /* 
-        msg1Anim:
-        - 0% a 33%: "Hi!" visible
-        - 34% a 66%: sigue visible junto a msg2
-        - 67% a 100%: se desplaza/funde fuera (como tenías)
-      */
-      @keyframes msg1Anim {
-        0%, 33% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        34%, 66% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        67%, 100% {
-          transform: translateY(-2rem);
-          opacity: 0;
-        }
-      }
+          {/* Columna Derecha: Día, Fecha y Hora */}
+          <div
+            style={{
+              flex: '0 1 70%',
+              textAlign: 'right',
+              fontSize: '1.2rem',
+              color: '#666',
+              fontWeight: 'bold',
+            }}
+          >
+            <div>
+              {new Date().toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </div>
+            <div>{new Date().toLocaleTimeString('es-ES')}</div>
+          </div>
 
-      /* 
-        msg2Anim:
-        - 0% a 33%: oculto
-        - 34% a 66%: aparece bajo "Hi!"
-        - 67% a 100%: sale junto a msg1
-      */
-      @keyframes msg2Anim {
-        0%, 33% {
-          transform: translateY(1rem);
-          opacity: 0;
-        }
-        34%, 66% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        67%, 100% {
-          transform: translateY(-2rem);
-          opacity: 0;
-        }
-      }
+          <style>
+            {`
+              /* 
+                msg1Anim:
+                - 0% a 33%: "Hi!" visible
+                - 34% a 66%: sigue visible junto a msg2
+                - 67% a 100%: se desplaza/funde fuera (como tenías)
+              */
+              @keyframes msg1Anim {
+                0%, 33% {
+                  transform: translateY(0);
+                  opacity: 1;
+                }
+                34%, 66% {
+                  transform: translateY(0);
+                  opacity: 1;
+                }
+                67%, 100% {
+                  transform: translateY(-2rem);
+                  opacity: 0;
+                }
+              }
 
-      /*
-        msg3Anim (Is.. Pizza Time! 🔥):
-        - 0% a 66%: oculto
-        - 67% a 100%: visible en el mismo espacio que dejan los dos primeros
-      */
-      @keyframes msg3Anim {
-        0%, 66% {
-          transform: translateY(0);
-          opacity: 0;
-        }
-        67%, 100% {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-    `}
-  </style>
-</header>
+              /* 
+                msg2Anim:
+                - 0% a 33%: oculto
+                - 34% a 66%: aparece bajo "Hi!"
+                - 67% a 100%: sale junto a msg1
+              */
+              @keyframes msg2Anim {
+                0%, 33% {
+                  transform: translateY(1rem);
+                  opacity: 0;
+                }
+                34%, 66% {
+                  transform: translateY(0);
+                  opacity: 1;
+                }
+                67%, 100% {
+                  transform: translateY(-2rem);
+                  opacity: 0;
+                }
+              }
 
-
-
-
-
-
-
-
-
-
-
+              /*
+                msg3Anim (Is.. Pizza Time! 🔥):
+                - 0% a 66%: oculto
+                - 67% a 100%: visible en el mismo espacio que dejan los dos primeros
+              */
+              @keyframes msg3Anim {
+                0%, 66% {
+                  transform: translateY(0);
+                  opacity: 0;
+                }
+                67%, 100% {
+                  transform: translateY(0);
+                  opacity: 1;
+                }
+              }
+            `}
+          </style>
+        </header>
 
 
           <div className="content-container">
@@ -1632,20 +1653,22 @@ const CustomerPage = (offer) => {
                 </div>
               </div>
             )}
-            <div className="offers-section">
-              {offers.length > 0 ? (
-                <OffersSection
-                  offers={offers}
-                  handleApplyCoupon={handleApplyCoupon}
-                  cuponesUsados={cuponesUsados}
-                  setCuponesUsados={setCuponesUsados}
-                  setCompra={setCompra}
-                  compra={compra}
-                />
-              ) : (
-                <p>No hay ofertas disponibles en este momento.</p>
-              )}
-            </div>
+          <div className="offers-section">
+            {isLoadingOffers ? (
+              <p>Cargando ofertas...</p>
+            ) : offers.length > 0 ? (
+              <OffersSection
+                offers={offers}
+                handleApplyCoupon={handleApplyCoupon}
+                cuponesUsados={cuponesUsados}
+                setCuponesUsados={setCuponesUsados}
+                setCompra={setCompra}
+                compra={compra}
+              />
+            ) : (
+              <p>No hay ofertas disponibles en este momento.</p>
+            )}
+          </div>
 
             <NotificationTicker />
 

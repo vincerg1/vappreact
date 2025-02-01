@@ -44,7 +44,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const [isAddressRequired, setIsAddressRequired] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  
+
   useEffect(() => {
     const fetchStoreLocation = async () => {
       try {
@@ -172,9 +172,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
     }
   }, [selectedPickupLocation, storeLocation, selectedOption]);
   
-  
-
-
   
   const handleOptionChange = (option) => {
     setSelectedOption(option);
@@ -423,109 +420,130 @@ const DeliveryForm = ({ setCompra, compra }) => {
       [name]: value
     }));
   };
-  const handleSaveDelivery = () => {
+  const handleSaveDelivery = async () => {
     console.log('handleSaveDelivery called');
-  const fields = [];
-
-  // Verificar campos obligatorios
-  if (!pickupInfo.nombre) {
-    fields.push('nombre');
-  }
-  if (!pickupInfo.telefono) {
-    fields.push('telefono');
-  }
-  if (!deliveryTimeOption) {
-    fields.push('deliveryTimeOption');
-  }
-  if (
-    selectedOption === 'delivery' &&
-    (!addressInfo.address || !addressInfo.lat || !addressInfo.lng || !isAddressConfirmed)
-  ) 
+    const fields = [];
   
-  {
-    fields.push('address');
-    setIsAddressRequired(true);  
-  }
-  if (selectedOption === 'pickup' && !selectedPickupLocation) {
-    fields.push('selectedPickupLocation');
-  }
-
-  if (fields.length > 0) {
-    setMissingFields(fields);
-    setError('Por favor completa todos los campos obligatorios.');
-    return;
-  }
-
+    // Verificar campos obligatorios
+    if (!pickupInfo.nombre) {
+      fields.push('nombre');
+    }
+    if (!pickupInfo.telefono) {
+      fields.push('telefono');
+    }
+    if (!deliveryTimeOption) {
+      fields.push('deliveryTimeOption');
+    }
+    if (
+      selectedOption === 'delivery' &&
+      (!addressInfo.address || !addressInfo.lat || !addressInfo.lng || !isAddressConfirmed)
+    ) {
+      fields.push('address');
+      setIsAddressRequired(true);  
+    }
+    if (selectedOption === 'pickup' && !selectedPickupLocation) {
+      fields.push('selectedPickupLocation');
+    }
   
-  let tiendaMasCercana = null;
-  if (selectedOption === 'delivery') {
-    tiendaMasCercana = calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng);
-    if (!tiendaMasCercana) {
-      setError('No se pudo encontrar una tienda cercana para el delivery.');
+    if (fields.length > 0) {
+      setMissingFields(fields);
+      setError('Por favor completa todos los campos obligatorios.');
       return;
     }
-  }
-
-  // Continuar con la lógica de guardar la información como en el original
-  const horaPrometida = calcularHoraPrometida(deliveryTimeOption === 'Express' ? 20 : 45);
-  const costoCupon = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
-
-  const totalConDescuentos = Math.max(
-    compra.total_productos -
-    compra.total_descuentos +
-    (selectedOption === 'delivery' ? calcularPrecioDelivery() : 0) +
-    (deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0) +
-    costoCupon,
-    compra.total_productos
-  );
-
-  // Actualizamos el estado de la compra
-  setCompra((prevCompra) => {
-    const updatedCompra = {
-      ...prevCompra,
-      Entrega: selectedOption === 'pickup'
-        ? {
-            PickUp: {
-              id_cliente: sessionData?.id_cliente,
-              nombre: pickupInfo.nombre,
-              telefono: pickupInfo.telefono,
-              fechaYHoraPrometida: horaPrometida,
-              TicketExpress: deliveryTimeOption === 'Express',
-              costoTicketExpress: deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0,
-              puntoRecogida: storeLocations.find((location) => location.id === parseInt(selectedPickupLocation)), // Agregar el punto de recogida seleccionado
-            },
-          }
-        : {
-            Delivery: {
-              id_cliente: sessionData?.id_cliente,
-              nombre: pickupInfo.nombre,
-              telefono: pickupInfo.telefono,
-              fechaYHoraPrometida: horaPrometida,
-              address: addressInfo.address,
-              postalCode: addressInfo.postalCode,
-              costo: calcularPrecioDelivery(),
-              TicketExpress: deliveryTimeOption === 'Express',
-              costoTicketExpress: deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0,
-              tiendaSalida: tiendaMasCercana, 
-            },
-          },
-      cliente: {
+  
+    let tiendaMasCercana = null;
+    if (selectedOption === 'delivery') {
+      tiendaMasCercana = calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng);
+      if (!tiendaMasCercana) {
+        setError('No se pudo encontrar una tienda cercana para el delivery.');
+        return;
+      }
+    }
+  
+    const horaPrometida = calcularHoraPrometida(deliveryTimeOption === 'Express' ? 20 : 45);
+    const costoCupon = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
+  
+    const totalConDescuentos = Math.max(
+      compra.total_productos -
+      compra.total_descuentos +
+      (selectedOption === 'delivery' ? calcularPrecioDelivery() : 0) +
+      (deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0) +
+      costoCupon,
+      compra.total_productos
+    );
+  
+    // **Actualizar los datos del cliente en la base de datos**
+    try {
+      const idCliente = sessionData?.id_cliente;
+      if (!idCliente) {
+        setError('No se encontró un cliente en la sesión.');
+        return;
+      }
+  
+      const clienteData = {
         name: pickupInfo.nombre,
         phone: pickupInfo.telefono,
-      },
-      total_a_pagar_con_descuentos: parseFloat(totalConDescuentos.toFixed(2)),
-      observaciones: selectedOption === 'pickup' ? pickupInfo.observations : addressInfo.observations, 
-    };
-
-    console.log('Estado de compra actualizado:', updatedCompra);
-    return updatedCompra;
-  });
-
-  // Limpiar errores si la validación es exitosa
-  setMissingFields([]);
-  setError('');
-  setIsAddressRequired(false);  // Limpiar la alerta de dirección cuando se guarda exitosamente
-  };
+        address_1: selectedOption === 'delivery' ? addressInfo.address : '',
+        address_2: selectedOption === 'pickup'
+          ? storeLocations.find((location) => location.id === parseInt(selectedPickupLocation))?.direccion || ''
+          : '',
+      };
+  
+      await axios.put(`http://localhost:3001/clientes/${idCliente}`, clienteData);
+      console.log('Cliente actualizado correctamente en la base de datos.', clienteData);
+    } catch (error) {
+      console.error('Error al actualizar los datos del cliente:', error);
+      setError('Error al actualizar la información del cliente.');
+      return;
+    }
+  
+    // **Actualizar el estado de la compra**
+    setCompra((prevCompra) => {
+      const updatedCompra = {
+        ...prevCompra,
+        Entrega: selectedOption === 'pickup'
+          ? {
+              PickUp: {
+                id_cliente: sessionData?.id_cliente,
+                nombre: pickupInfo.nombre,
+                telefono: pickupInfo.telefono,
+                fechaYHoraPrometida: horaPrometida,
+                TicketExpress: deliveryTimeOption === 'Express',
+                costoTicketExpress: deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0,
+                puntoRecogida: storeLocations.find((location) => location.id === parseInt(selectedPickupLocation)), // Agregar el punto de recogida seleccionado
+              },
+            }
+          : {
+              Delivery: {
+                id_cliente: sessionData?.id_cliente,
+                nombre: pickupInfo.nombre,
+                telefono: pickupInfo.telefono,
+                fechaYHoraPrometida: horaPrometida,
+                address: addressInfo.address,
+                postalCode: addressInfo.postalCode,
+                costo: calcularPrecioDelivery(),
+                TicketExpress: deliveryTimeOption === 'Express',
+                costoTicketExpress: deliveryTimeOption === 'Express' ? calcularCostoTicketExpress() : 0,
+                tiendaSalida: tiendaMasCercana, 
+              },
+            },
+        cliente: {
+          name: pickupInfo.nombre,
+          phone: pickupInfo.telefono,
+        },
+        total_a_pagar_con_descuentos: parseFloat(totalConDescuentos.toFixed(2)),
+        observaciones: selectedOption === 'pickup' ? pickupInfo.observations : addressInfo.observations, 
+      };
+  
+      console.log('Estado de compra actualizado:', updatedCompra);
+      return updatedCompra;
+    });
+  
+    // Limpiar errores si la validación es exitosa
+    setMissingFields([]);
+    setError('');
+    setIsAddressRequired(false);
+  };  
   const handlePickupLocationChange = (e) => {
     setSelectedPickupLocation(e.target.value);
     const selectedLocation = storeLocations.find(location => location.id === parseInt(e.target.value));

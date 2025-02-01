@@ -12,36 +12,48 @@ export default function SimuladorVentas() {
   const fetchClientes = async () => {
     try {
       const response = await axios.get('http://localhost:3001/clientes');
-      console.log('Clientes obtenidos:', response.data); // Verificar los datos recibidos
+      console.log('Clientes obtenidos:', response.data);
       if (!Array.isArray(response.data)) {
         throw new Error('La respuesta de clientes no es un array');
       }
-      // Verificar que todos los clientes tengan la propiedad id_cliente
       const clientesConId = response.data.filter(cliente => cliente.id_cliente !== undefined);
-      console.log('Clientes con id_cliente:', clientesConId);
       setClientes(clientesConId);
     } catch (error) {
       console.error('Error fetching clientes', error);
     }
   };
 
-  const generarFechaAleatoria = () => {
-    const hoy = new Date();
-    const treintaDias = 30 * 24 * 60 * 60 * 1000; // 30 días en milisegundos
-    const fechaAleatoria = new Date(hoy.getTime() - Math.random() * treintaDias);
-    return fechaAleatoria;
+  // Definir perfiles de clientes con diferentes frecuencias de compra
+  const perfilesClientes = {
+    frecuente: { minDias: 3, maxDias: 7 },
+    moderado: { minDias: 8, maxDias: 15 },
+    ocasional: { minDias: 16, maxDias: 45 },
+    esporádico: { minDias: 46, maxDias: 180 },
   };
 
-  function generarHoraAleatoriaMilitar() {
+  const asignarPerfilCliente = () => {
+    const rand = Math.random();
+    if (rand < 0.3) return 'frecuente';
+    if (rand < 0.6) return 'moderado';
+    if (rand < 0.85) return 'ocasional';
+    return 'esporádico';
+  };
+
+  // Generar fechas más realistas según el perfil del cliente
+  const generarFechaCompra = (perfil) => {
+    const hoy = new Date();
+    const { minDias, maxDias } = perfilesClientes[perfil];
+    const rangoDias = maxDias - minDias;
+    const dias = Math.floor(minDias + Math.random() * rangoDias);
+    const fechaCompra = new Date(hoy.getTime() - dias * 24 * 60 * 60 * 1000);
+    return fechaCompra.toISOString().split('T')[0];
+  };
+
+  const generarHoraAleatoriaMilitar = () => {
     const horaAleatoria = Math.floor(Math.random() * 6) + 18;
     const minutosAleatorios = Math.floor(Math.random() * 60);
-    const segundosAleatorios = Math.floor(Math.random() * 60);
-    const horaStr = horaAleatoria.toString().padStart(2, '0');
-    const minutosStr = minutosAleatorios.toString().padStart(2, '0');
-    const segundosStr = segundosAleatorios.toString().padStart(2, '0');
-    const tiempo = `${horaStr}:${minutosStr}:${segundosStr}`;
-    return tiempo;
-  }
+    return `${horaAleatoria.toString().padStart(2, '0')}:${minutosAleatorios.toString().padStart(2, '0')}:00`;
+  };
 
   const simularVentas = () => {
     if (clientes.length === 0) {
@@ -50,7 +62,7 @@ export default function SimuladorVentas() {
     }
 
     let nuevasVentasSimuladas = [];
-    const numeroDeVentas = 1; // Ajustado para 5 ventas
+    const numeroDeVentas = 200;
 
     const pizzasEjemplo = [
       { id: 1, name: 'Margherita', PriceBySize: '{"S": 6, "M": 8, "L": 10}' },
@@ -61,35 +73,29 @@ export default function SimuladorVentas() {
 
     for (let i = 0; i < numeroDeVentas; i++) {
       const clienteAleatorio = clientes[Math.floor(Math.random() * clientes.length)];
+      if (!clienteAleatorio?.id_cliente) continue;
 
-      // Verificar que el cliente tiene la propiedad id_cliente
-      if (!clienteAleatorio.id_cliente) {
-        console.error('Cliente sin id_cliente:', clienteAleatorio);
-        continue;
-      }
+      const perfilCliente = asignarPerfilCliente();
+      const fechaVenta = generarFechaCompra(perfilCliente);
 
       const pizzaAleatoria = pizzasEjemplo[Math.floor(Math.random() * pizzasEjemplo.length)];
-
-      if (!pizzaAleatoria || !pizzaAleatoria.PriceBySize) {
-        console.error('Pizza aleatoria no válida o no tiene PriceBySize:', pizzaAleatoria);
-        continue;
-      }
+      if (!pizzaAleatoria?.PriceBySize) continue;
 
       const sizeKeys = Object.keys(JSON.parse(pizzaAleatoria.PriceBySize));
       const sizeAleatorio = sizeKeys[Math.floor(Math.random() * sizeKeys.length)];
       const precioBase = parseFloat(JSON.parse(pizzaAleatoria.PriceBySize)[sizeAleatorio]);
-      const cantidad = Math.floor(Math.random() * 5) + 1; // Cantidad aleatoria entre 1 y 5
-      const fechaVenta = generarFechaAleatoria();
-      const esFinDeSemana = [5, 6].includes(fechaVenta.getDay());
+
+      const cantidad = Math.floor(Math.random() * 5) + 1;
+      const esFinDeSemana = [5, 6].includes(new Date(fechaVenta).getDay());
       const precioFinal = precioBase * cantidad * (esFinDeSemana ? 1.4 : 1);
 
       const venta = {
         id_cliente: clienteAleatorio.id_cliente,
         id_pizza: pizzaAleatoria.id,
-        cantidad: cantidad,
+        cantidad,
         size: sizeAleatorio,
         price: precioBase,
-        fecha: fechaVenta.toISOString().split('T')[0],
+        fecha: fechaVenta,
         hora: generarHoraAleatoriaMilitar(),
         metodo_pago: 'Efectivo',
         totalPagado: precioFinal,
@@ -98,7 +104,7 @@ export default function SimuladorVentas() {
       nuevasVentasSimuladas.push(venta);
     }
 
-    console.log(nuevasVentasSimuladas);
+    console.log('Ventas generadas:', nuevasVentasSimuladas);
     setVentasSimuladas(nuevasVentasSimuladas);
   };
 
@@ -107,11 +113,19 @@ export default function SimuladorVentas() {
       console.error('No hay ventas para subir.');
       return;
     }
+
     try {
-      const response = await axios.post('http://localhost:3001/registro_ventas', ventasSimuladas);
+      console.log('Ventas a enviar:', JSON.stringify(ventasSimuladas, null, 2));
+
+      const response = await axios.post('http://localhost:3001/registro_ventas/bulk', ventasSimuladas, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
       console.log('Respuesta del servidor:', response.data);
     } catch (error) {
-      console.error('Error al subir las ventas simuladas', error);
+      console.error('Error al subir las ventas simuladas:', error.response?.data || error.message);
     }
   };
 
@@ -119,9 +133,7 @@ export default function SimuladorVentas() {
     <div>
       <h2>Simulador de Ventas</h2>
       <button onClick={simularVentas}>Generar Ventas</button>
-      <button onClick={subirVentas}>
-        Subir Ventas a la Base de Datos
-      </button>
+      <button onClick={subirVentas}>Subir Ventas a la Base de Datos</button>
     </div>
   );
 }
