@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams  } from 'react-router-dom';
 import axios from 'axios';
 import '../styles/formularios.css';
 
@@ -11,6 +11,9 @@ const OfferForm = () => {
     const navigate = useNavigate();
     const { id } = useParams(); 
     const allDays = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+    const [clienteBusqueda, setClienteBusqueda] = useState('');
+    const [clientesFiltrados, setClientesFiltrados] = useState([]);
+    const [searchParams] = useSearchParams();
     const [formData, setFormData] = useState({
             Cupones_Asignados: '',
             Descripcion: '',
@@ -35,9 +38,10 @@ const OfferForm = () => {
             Hora_Inicio: '',
             Hora_Fin: '',
             Observaciones: '',
-            Tipo_Oferta: 'Normal',
+            Tipo_Oferta: 'Custom',
             Link_DailyChallenge: '',
             Instrucciones_DailyChallenge: '',
+            Id_cliente_Asig: '',
         });
 
 
@@ -46,7 +50,22 @@ const OfferForm = () => {
             fetchOffer(id); 
         }
     }, [id]);
-
+    useEffect(() => {
+        const tipoOferta = searchParams.get("tipo");
+        const idCliente = searchParams.get("idCliente");
+    
+        if (tipoOferta) {
+            setFormData(prev => ({ ...prev, Tipo_Oferta: tipoOferta }));
+        }
+        if (idCliente) {
+            setFormData(prev => ({ ...prev, Id_cliente_Asig: idCliente }));
+        }
+    }, [searchParams]);
+    useEffect(() => {
+        if (formData.Id_cliente_Asig) {
+            setClienteBusqueda(formData.Id_cliente_Asig);
+        }
+    }, [formData.Id_cliente_Asig]);
  
     const fetchOffer = async (offerId) => {
         try {
@@ -76,8 +95,9 @@ const OfferForm = () => {
                 Hora_Inicio: offerData.Hora_Inicio || '',
                 Hora_Fin: offerData.Hora_Fin || '',
                 Additional_Instructions: offerData.Additional_Instructions || '', // Nuevo campo
-                Tipo_Oferta: offerData.Tipo_Oferta || 'Normal',
-                Precio_Cupon: offerData.Precio_Cupon || null
+                Tipo_Oferta: offerData.Tipo_Oferta || 'Custom',
+                Precio_Cupon: offerData.Precio_Cupon || null,
+                Id_cliente_Asig: offerData.Id_cliente_Asig || ''
             });
 
 
@@ -211,9 +231,7 @@ const OfferForm = () => {
         calculatedPrice = Math.min(calculatedPrice, 1.99);
     
         return calculatedPrice;
-    };
-    
-    
+    };   
 
   return (
     <div>
@@ -223,12 +241,13 @@ const OfferForm = () => {
                 <label>
                     Tipo de Oferta:
                     <select name="Tipo_Oferta" value={formData.Tipo_Oferta} onChange={handleChange}>
-                        <option value="Normal">Normal</option>
+                        <option value="Custom">Custom</option>
                         <option value="Random Pizza">Random Pizza</option>
                         <option value="DailyChallenge">DailyChallenge</option>
+                        <option value="Customized">Customized</option>
                     </select>
                 </label>
-                {formData.Tipo_Oferta === 'DailyChallenge' && (
+                    {formData.Tipo_Oferta === 'DailyChallenge' && (
                     <>
                         <label>
                         Link del Reto:
@@ -250,6 +269,33 @@ const OfferForm = () => {
                         </label>
                     </>
                     )}
+                   {formData.Tipo_Oferta === 'Customized' && (
+                    <>
+                        <label>
+                           Cliente por ID:
+                            <input
+                                type="text"
+                                name="ClienteBusqueda"
+                                value={clienteBusqueda}
+                                onChange={(e) => setClienteBusqueda(e.target.value)}
+                                placeholder="Ingrese ID del Cliente"
+                            />
+                        </label>
+
+                        {/* Si hay coincidencias, mostrar los resultados */}
+                        {clientesFiltrados.length > 0 && (
+                            <ul>
+                                {clientesFiltrados.map(cliente => (
+                                    <li key={cliente.id} onClick={() => setFormData(prev => ({ ...prev, Id_cliente_Asig: cliente.id }))}>
+                                        {cliente.id} - {cliente.nombre}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                    </>
+                )}
+
                 <label>
                     Cupones Asignados:
                     <input
@@ -269,6 +315,20 @@ const OfferForm = () => {
                     />
                 </label>
                 Segmentos Aplicables:
+                <label style={{ display: 'inline-block', marginRight: '10px', fontWeight: 'bold' }}>
+    <input
+        type="checkbox"
+        checked={formData.Segmentos_Aplicables.length === segments.length}
+        onChange={(e) => {
+            if (e.target.checked) {
+                setFormData(prev => ({ ...prev, Segmentos_Aplicables: [...segments] }));
+            } else {
+                setFormData(prev => ({ ...prev, Segmentos_Aplicables: [] }));
+            }
+        }}
+    />
+    Seleccionar Todo
+                </label>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     {segments.map((segment) => (
                         <label key={segment} style={{ display: 'inline-block', marginRight: '10px' }}>
@@ -479,8 +539,6 @@ const OfferForm = () => {
         </div>
     </div>
 );
-
-    
 };
 
 export default OfferForm;

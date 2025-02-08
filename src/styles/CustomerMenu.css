@@ -178,3 +178,187 @@ input[type="number"] {
   animation: parpadeo 1s infinite;
 }
 
+
+
+/* Estilos generales */
+body {
+  font-family: Arial, sans-serif;
+  background: #f8f8f8;
+  margin: 0;
+  padding: 0;
+}
+
+h1 {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+/* Contenedor del formulario */
+.form_crearpizza {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Inputs y select */
+input[type="text"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 8px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Tamaños y precios */
+.SizeAndPriceSection {
+  margin-bottom: 15px;
+}
+.sizes-prices-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.size-price {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 80px;
+  min-height: 80px; /* Tamaño base */
+  background: #666;
+  border-radius: 5px;
+  text-align: center;
+  position: relative;
+  padding-top: 5px;
+  transition: min-height 0.2s ease-in-out; /* Transición suave */
+}
+.size-price.checked {
+  min-height: 120px; /* Expande el contenedor al activar el checkbox */
+}
+.size-checkbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  color: #ffffff;
+  width: 100%;
+}
+.price-input {
+  width: 80%;
+  max-width: 50px;
+  padding: 5px;
+  font-size: 14px;
+  text-align: center;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+  margin-top: 5px;
+  display: none; /* Oculto por defecto */
+}
+
+/* Mostrar input de precio cuando el checkbox está activo */
+.size-price.checked .price-input {
+  display: block;
+}
+
+
+
+/* Ingredientes */
+.ingredientes-container {
+  list-style: none;
+  padding: 0;
+}
+
+.ingrediente-container {
+  display: flex;
+  flex-direction: column;
+  background: #f1f1f1;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+
+.cantidad-container {
+  display: flex;
+  flex-wrap: wrap; 
+  gap: 10px; /* Espacio entre los elementos */
+  justify-content: flex-start; /* Alinea los elementos de izquierda a derecha */
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+}
+.cantidad-container div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 80px; /* Evita que los inputs sean demasiado pequeños */
+  width: auto; /* Se ajusta al contenido en lugar de expandirse */
+}
+.cantidad-input {
+  width: 100%; 
+  max-width: 70px; 
+  padding: 5px;
+  font-size: 14px;
+  text-align: center;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background: white;
+}
+
+
+/* Botones */
+button {
+  background-color: #28a745;
+  color: white;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #218838;
+}
+
+.add-ingredient-button {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Imagen de previsualización */
+.image-preview {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  margin-top: 10px;
+  border-radius: 5px;
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .sizes-prices-container {
+    flex-direction: column;
+  }
+}
+.form_crearpizza {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 600px; /* Altura máxima antes de mostrar scroll */
+  overflow-y: auto; /* Permite scroll vertical cuando se llena */
+  overflow-x: hidden; /* Evita desplazamiento horizontal */
+}

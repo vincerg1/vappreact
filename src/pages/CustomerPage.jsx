@@ -403,10 +403,19 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
  
   const filteredOffers = offers.filter(
     (offer) =>
-      offer.Tipo_Oferta === "Normal" &&
       offer.Estado === "Activa" &&
-      sessionData?.segmento 
+      (
+        (offer.Tipo_Oferta === "Custom" && sessionData?.segmento) || // ✅ Cupones generales del segmento
+        (offer.Tipo_Oferta === "Customized" && offer.Id_cliente_Asig === sessionData?.id_cliente) // ✅ Solo cupones personalizados asignados
+      ) &&
+      (
+        offer.Tipo_Cupon === "permanente" || // ✅ Mantiene los cupones permanentes
+        (offer.Tipo_Cupon === "temporal" && offer.Cupones_Disponibles > 0) // ✅ Excluye cupones temporales agotados
+      )
   );
+  
+
+  
   
 
   return (
@@ -432,10 +441,11 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
   );
 };
 const NotificationTicker = () => {
+  const { sessionData } = useContext(_PizzaContext);
   const [incentiveMessage, setIncentiveMessage] = useState('');
   const [offerMessages, setOfferMessages] = useState('');
   const [closingMessage, setClosingMessage] = useState('');
-
+  // console.log("sessionData:", sessionData);
   useEffect(() => {
     const fetchActiveIncentives = async () => {
       try {
@@ -494,6 +504,18 @@ const NotificationTicker = () => {
             `🚚 Get a <span class="delivery-free-pass-animated">Delivery Free Pass</span> today!`
           );
         }
+        const exclusiveCoupon = activeOffers.find(
+          (offer) =>
+            offer.Tipo_Oferta === "Customized" &&
+            offer.Id_cliente_Asig === sessionData?.id_cliente
+        );
+        
+        if (exclusiveCoupon) {
+          messages.push(
+            `🥹 <span class="exclusive-coupon">You have an exclusive coupon: <strong class="blinking">${exclusiveCoupon.Codigo_Oferta}</strong>! Use it before it expires.</span>`
+          );
+        }
+        
 
         setOfferMessages(messages.join(' | '));
       } catch (error) {
@@ -558,7 +580,8 @@ const NotificationTicker = () => {
         <span dangerouslySetInnerHTML={{ __html: `${closingMessage} | ${incentiveMessage} | ${offerMessages}` }} />
       </marquee>
       <style>
-        {`
+   
+       {`
           .closing-time-animated {
             animation: drop 1s ease-out;
             color: #d60404;
@@ -722,7 +745,7 @@ const CustomerPage = (offer) => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isLoadingOffers, setIsLoadingOffers] = useState(true);
   const [compra, setCompra] = useState({
-    id_orden: '',
+    id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
@@ -765,6 +788,7 @@ const CustomerPage = (offer) => {
     }
     return null;
   };
+
 
   useEffect(() => {
   const checkSuspensionStatus = async () => {
@@ -918,16 +942,62 @@ const CustomerPage = (offer) => {
     return () => clearInterval(interval);
   }, []);
   useEffect(() => {
+    const obtenerOfertas = async () => {
+      if (!sessionData || !sessionData.segmento) {
+        console.warn("⏳ Esperando que sessionData.segmento esté disponible...");
+        return; // No hacer la petición hasta que tengamos el segmento
+      }
+  
+      try {
+        // console.log("🚀 Buscando ofertas para segmento:", sessionData.segmento);
+        setIsLoadingOffers(true);
+  
+        const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
+        const { data } = response.data;
+  
+        moment.locale('es');
+        let currentDay = moment().format('dddd').toLowerCase();
+        currentDay = removeDiacritics(currentDay);
+  
+        const ofertasFiltradas = data.filter(({ Estado, Dias_Activos }) => {
+          const diasActivos = JSON.parse(Dias_Activos);
+          return Estado === 'Activa' && diasActivos.includes(currentDay);
+        });
+  
+        // console.log("✅ Ofertas filtradas:", ofertasFiltradas);
+  
+        setOffers(ofertasFiltradas);
+      } catch (error) {
+        console.error('❌ Error al obtener ofertas:', error);
+      } finally {
+        setIsLoadingOffers(false);
+      }
+    };
+  
+
+    if (sessionData?.segmento) {
+      obtenerOfertas();
+    }
+  }, [sessionData]);
+  useEffect(() => {
     const fetchOffers = async () => {
       try {
         const response = await axios.get("http://localhost:3001/ofertas");
-        const allOffers = response.data.data;
+        let allOffers = response.data.data;
   
         // Obtener el día actual en texto
         const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
         const currentTime = moment();
   
-        // Ajustar la validación del día activo en Daily Challenge
+        // ✅ FILTRAR CUPONES TEMPORALES QUE SE HAYAN AGOTADO
+        allOffers = allOffers.filter((offer) => {
+          if (offer.Tipo_Cupon === "temporal" && offer.Cupones_Disponibles === 0) {
+            return false; // Filtramos los cupones temporales sin stock
+          }
+          return true; // Mantenemos los cupones permanentes y los temporales con stock
+        });
+  
+        // ✅ Ajustar la validación del día activo en Daily Challenge
         const dailyChallengeOffer = allOffers.find(
           (offer) =>
             offer.Tipo_Oferta === "DailyChallenge" &&
@@ -968,7 +1038,7 @@ const CustomerPage = (offer) => {
           setDailyChallengeTooltip("No hay retos disponibles actualmente.");
         }
   
-        // Random Pizza Logic
+        // ✅ Random Pizza Logic (misma validación de permanentes vs temporales)
         const randomPizzaOffer = allOffers.find(
           (offer) => offer.Tipo_Oferta === "Random Pizza"
         );
@@ -1003,6 +1073,7 @@ const CustomerPage = (offer) => {
           setRandomPizzaTooltip("No hay ofertas disponibles actualmente.");
         }
   
+        // ✅ ACTUALIZAR LAS OFERTAS (sin cupones temporales agotados)
         setOffers(allOffers);
       } catch (error) {
         console.error("Error al obtener las ofertas:", error);
@@ -1010,46 +1081,7 @@ const CustomerPage = (offer) => {
     };
   
     fetchOffers();
-  }, []);
-  useEffect(() => {
-    const obtenerOfertas = async () => {
-      if (!sessionData || !sessionData.segmento) {
-        console.warn("⏳ Esperando que sessionData.segmento esté disponible...");
-        return; // No hacer la petición hasta que tengamos el segmento
-      }
-  
-      try {
-        // console.log("🚀 Buscando ofertas para segmento:", sessionData.segmento);
-        setIsLoadingOffers(true);
-  
-        const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
-        const { data } = response.data;
-  
-        moment.locale('es');
-        let currentDay = moment().format('dddd').toLowerCase();
-        currentDay = removeDiacritics(currentDay);
-  
-        const ofertasFiltradas = data.filter(({ Estado, Dias_Activos }) => {
-          const diasActivos = JSON.parse(Dias_Activos);
-          return Estado === 'Activa' && diasActivos.includes(currentDay);
-        });
-  
-        // console.log("✅ Ofertas filtradas:", ofertasFiltradas);
-  
-        setOffers(ofertasFiltradas);
-      } catch (error) {
-        console.error('❌ Error al obtener ofertas:', error);
-      } finally {
-        setIsLoadingOffers(false);
-      }
-    };
-  
-
-    if (sessionData?.segmento) {
-      obtenerOfertas();
-    }
-  }, [sessionData]);
-  
+  }, []);  
   
   const rotatingTexts = ["Order Now", "Explore Menu", "Make Your Pizza"];
   
@@ -1300,7 +1332,7 @@ const CustomerPage = (offer) => {
       {sessionData ? (
         <>
          {renderSuspensionMessage()}
-         
+    
          
          <header
          

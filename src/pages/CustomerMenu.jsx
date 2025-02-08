@@ -8,7 +8,7 @@ import DeliveryForm from './DeliveryForm';
 import '../styles/CustomerMenu.css';
 
 const CustomerMenu = () => {
-  const { activePizzas, sessionData, updateSessionData } = useContext(_PizzaContext);
+  const { activePizzas, sessionData, updateSessionData, inventario } = useContext(_PizzaContext);
   const location = useLocation();
   const [incentivos, setIncentivos] = useState([]);
   const initialCompra = location.state?.compra || {};
@@ -17,9 +17,10 @@ const CustomerMenu = () => {
   const [ingredientesActivos, setIngredientesActivos] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
+  const [menuPizzas, setMenuPizzas] = useState([]);
   const [compra, setCompra] = useState({
     observaciones: '',
-    id_orden: '',
+    id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
@@ -35,26 +36,53 @@ const CustomerMenu = () => {
     observaciones: ''
   });
 
+
   useEffect(() => {
-    if (activePizzas && activePizzas.length > 0) {
+    const fetchMenuPizzas = async () => {
+      try {
+        const response = await axios.get("http://localhost:3001/menu_pizzas"); 
+        setMenuPizzas(response.data.data); // Guardamos la respuesta en el estado
+        console.log("✅ Pizzas obtenidas desde la base de datos EN cm:", response.data.data);
+      } catch (error) {
+        console.error("❌ Error obteniendo menu_pizzas:", error);
+      }
+    };
+  
+    fetchMenuPizzas();
+  }, []);
+  useEffect(() => {
+    if (menuPizzas && menuPizzas.length > 0 && inventario && inventario.length > 0) {
       let allIngredients = [];
-      activePizzas.forEach((pizza) => {
-        const ingredientes = JSON.parse(pizza.ingredientes || "[]");
-        allIngredients = allIngredients.concat(
-          ingredientes.map((ing) => ({
-            ...ing,
-            ingrediente: ing.ingrediente || "Sin nombre", // Aseguramos el nombre
-          }))
-        );
-      });
-      const uniqueIngredients = allIngredients.filter(
-        (ing, index, self) =>
-          index === self.findIndex((t) => t.IDI === ing.IDI)
+  
+      menuPizzas
+        .filter(pizza => pizza.categoria !== "Base Pizza") // 🔥 Excluir Base Pizza
+        .forEach((pizza) => {
+          const ingredientesPizza = JSON.parse(pizza.ingredientes || "[]");
+  
+          allIngredients = allIngredients.concat(
+            ingredientesPizza.map((ing) => ({
+              ...ing,
+              ingrediente: ing.ingrediente || "Sin nombre",
+              estadoGEN: inventario.find(inv => inv.IDI === ing.IDI)?.estadoGEN || 0,
+              cantBySize: ing.cantBySize || {} // Aseguramos que siempre tenga `cantBySize`
+            }))
+          );
+        });
+  
+      // Filtrar solo los ingredientes activos y con cantidades definidas para algún tamaño
+      const ingredientesFiltrados = allIngredients.filter(
+        (ing) => ing.estadoGEN === 0 && Object.keys(ing.cantBySize).length > 0
       );
+  
+      // Eliminar duplicados basados en `IDI`
+      const uniqueIngredients = ingredientesFiltrados.filter(
+        (ing, index, self) => index === self.findIndex((t) => t.IDI === ing.IDI)
+      );
+  
       setIngredientesActivos(uniqueIngredients);
-      console.log("Ingredientes Activos calculados desde activePizzas:", uniqueIngredients);
+      console.log("✅ Ingredientes disponibles SIN Base Pizza y con filtro de estadoGEN:", uniqueIngredients);
     }
-  }, [activePizzas]);
+  }, [menuPizzas, inventario]);  
   useEffect(() => {
     const loadClienteInfo = async () => {
       try {
@@ -181,8 +209,7 @@ const CustomerMenu = () => {
     compra.Entrega?.PickUp?.costoTicketExpress,
   ]);
   
-  
-  
+
   const [isFormVisible, setFormVisible] = useState(false);
   const [selectedPizza, setSelectedPizza] = useState(location.state?.selectedPizza || null);
   const [pizzaDetails, setPizzaDetails] = useState(null);
@@ -218,21 +245,22 @@ const CustomerMenu = () => {
   
   const fetchPizzaDetails = async (pizzaId) => {
     try {
-      const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
-      const pizzaData = response.data.data;
+        const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
+        const pizzaData = response.data.data;
 
-      if (pizzaData && pizzaData.PriceBySize) {
-        const priceBySize = JSON.parse(pizzaData.PriceBySize);
-        const ingredientes = pizzaData.ingredientes ? JSON.parse(pizzaData.ingredientes) : [];
+        if (pizzaData && pizzaData.PriceBySize) {
+            // Verificar si ya es un objeto antes de hacer JSON.parse()
+            const priceBySize = typeof pizzaData.PriceBySize === "string" ? JSON.parse(pizzaData.PriceBySize) : pizzaData.PriceBySize;
+            const ingredientes = typeof pizzaData.ingredientes === "string" ? JSON.parse(pizzaData.ingredientes) : pizzaData.ingredientes;
 
-        setPizzaDetails({
-          descripcion: pizzaData.descripcion,
-          PriceBySize: priceBySize,
-          ingredientes: ingredientes
-        });
-      }
+            setPizzaDetails({
+                descripcion: pizzaData.descripcion,
+                PriceBySize: priceBySize,
+                ingredientes: ingredientes
+            });
+        }
     } catch (error) {
-      console.error('Error al obtener los detalles de la pizza:', error);
+        console.error('Error al obtener los detalles de la pizza:', error);
     }
   };
   const handleSelectPizza = (pizza) => {
@@ -275,25 +303,37 @@ const CustomerMenu = () => {
   const handleAddExtraIngredient = (selectedIngredientIDI) => {
     if (!selectedIngredientIDI || !selectedSize) return;
   
-    const ingredienteSeleccionado = ingredientesActivos.find(
-      (ing) => ing.IDI === selectedIngredientIDI
-    );
+    // Buscar el ingrediente en menuPizzas en lugar de solo en ingredientesActivos
+    const ingredienteSeleccionado = menuPizzas
+      .flatMap((pizza) => JSON.parse(pizza.ingredientes || "[]")) // Extrae los ingredientes de todas las pizzas
+      .find((ing) => ing.IDI === selectedIngredientIDI); // Busca el ingrediente seleccionado
   
-    if (ingredienteSeleccionado) {
-      setExtraIngredients((prevExtras) => {
-        if (prevExtras.some((ing) => ing.IDI === selectedIngredientIDI)) return prevExtras;
-  
-        const ingredienteConPrecio = {
-          ...ingredienteSeleccionado,
-          nombre: ingredienteSeleccionado.ingrediente || "Sin nombre", // Aseguramos el nombre
-          precio: ingredientesExtraPrecios[selectedSize] || 0, // Precio dinámico según tamaño
-          IDI: ingredienteSeleccionado.IDI,
-        };
-  
-        return [...prevExtras, ingredienteConPrecio];
-      });
+    if (!ingredienteSeleccionado) {
+      console.warn("⚠️ Ingrediente no encontrado en menuPizzas:", selectedIngredientIDI);
+      return;
     }
-  };
+  
+    // Verificar que el ingrediente tenga cantidad definida en cantBySize
+    const cantidadPorSize = ingredienteSeleccionado.cantBySize?.[selectedSize] || 0;
+    if (cantidadPorSize === 0) {
+      console.warn(`⚠️ Ingrediente ${ingredienteSeleccionado.ingrediente} no tiene cantBySize para ${selectedSize}`);
+      return;
+    }
+  
+    setExtraIngredients((prevExtras) => {
+      if (prevExtras.some((ing) => ing.IDI === selectedIngredientIDI)) return prevExtras;
+  
+      const ingredienteConPrecio = {
+        ...ingredienteSeleccionado,
+        nombre: ingredienteSeleccionado.ingrediente || "Sin nombre", // Asegura que tenga nombre
+        precio: ingredientesExtraPrecios[selectedSize] || 0, // Precio dinámico por tamaño
+        cantBySize: cantidadPorSize, // Asigna la cantidad correcta por tamaño
+        IDI: ingredienteSeleccionado.IDI,
+      };
+  
+      return [...prevExtras, ingredienteConPrecio];
+    });
+  };  
   const handleRemoveExtraIngredient = (ingredientIDI) => {
     setExtraIngredients((prevExtras) => {
       // Filtramos los ingredientes actualizando el array de extras
@@ -328,6 +368,19 @@ setTotalPrice(newTotalPrice);
       return;
     }
   
+    // Buscar `cantBySize` de ingredientes extras en `menu_pizzas`
+    const updatedExtraIngredients = extraIngredients.map((ing) => {
+      const matchingIngredient = ingredientesActivos.find(item => item.IDI === ing.IDI);
+      return {
+        IDI: ing.IDI,
+        cantBySize: matchingIngredient?.cantBySize?.[selectedSize] || 0,
+        nombre: ing.nombre || "Sin nombre",
+        precio: typeof ing.precio === "number" && !isNaN(ing.precio)
+          ? parseFloat(ing.precio.toFixed(2))
+          : 0,
+      };
+    });
+  
     // Crear una entrada para cada unidad seleccionada
     const pizzasToAdd = Array.from({ length: quantity }, () => ({
       id: selectedPizza.id,
@@ -336,13 +389,7 @@ setTotalPrice(newTotalPrice);
       cantidad: 1, // Cada entrada es una sola unidad
       total: totalPrice / quantity, // Dividir el precio total por la cantidad seleccionada
       basePrice: pizzaDetails.PriceBySize[selectedSize],
-      extraIngredients: extraIngredients.map((ing) => ({
-        IDI: ing.IDI,
-        nombre: ing.nombre || "Sin nombre",
-        precio: typeof ing.precio === "number" && !isNaN(ing.precio)
-          ? parseFloat(ing.precio.toFixed(2))
-          : 0,
-      })),
+      extraIngredients: updatedExtraIngredients, // Usar los ingredientes con `cantBySize` corregido
     }));
   
     // Actualizar el array de ventas
@@ -356,7 +403,6 @@ setTotalPrice(newTotalPrice);
     setSelectedPizza(null);
     setSizeError("");
   };
-  
   const renderIngredientDescription = () => {
     if (pizzaDetails && pizzaDetails.ingredientes.length > 0) {
       const ingredientes = pizzaDetails.ingredientes.map((ing) => ing.ingrediente);
@@ -371,87 +417,99 @@ setTotalPrice(newTotalPrice);
   };
   const handleUpdateProduct = () => {
     setCompra((prevCompra) => {
-      const nuevaVenta = prevCompra.venta.map((producto) => {
-        if (producto.id === editingProductId) {
-          const updatedProduct = {
-            ...producto,
-            size: selectedSize,
-            cantidad: quantity,
-            total: typeof totalPrice === "number" && !isNaN(totalPrice)
-              ? parseFloat(totalPrice.toFixed(2))
-              : 0,
-            price: typeof pizzaDetails.PriceBySize[selectedSize] === "number" &&
-              !isNaN(pizzaDetails.PriceBySize[selectedSize])
-              ? parseFloat(pizzaDetails.PriceBySize[selectedSize])
-              : 0,
-            extraIngredients: extraIngredients.map((ing) => ({
-              IDI: ing.IDI,
-              nombre: ing.nombre || "Sin nombre",
-              precio: typeof ing.precio === "number" && !isNaN(ing.precio)
-                ? parseFloat(ing.precio.toFixed(2))
-                : 0,
-            })),
-          };
-          return updatedProduct;
-        }
-        return producto;
-      });
-  
-      // Recalcular el total de productos
-      const nuevoTotalProductos = nuevaVenta.reduce(
-        (acc, item) => acc + item.total,
-        0
-      );
-  
-      return {
-        ...prevCompra,
-        venta: nuevaVenta,
-        total_productos: typeof nuevoTotalProductos === "number" 
-          ? parseFloat(nuevoTotalProductos.toFixed(2)) 
-          : 0, // Asigna 0 si no es un número válido
-        total_a_pagar_con_descuentos: typeof nuevoTotalProductos === "number" && typeof prevCompra.total_descuentos === "number"
-          ? parseFloat((nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)) 
-          : 0, // Asigna 0 si alguno de los valores no es un número
-      };
-      
+        const nuevaVenta = prevCompra.venta.map((producto) => {
+            if (producto.id === editingProductId) {
+                const updatedProduct = {
+                    ...producto,
+                    size: selectedSize,
+                    cantidad: quantity,
+                    total: typeof totalPrice === "number" && !isNaN(totalPrice)
+                        ? parseFloat(totalPrice.toFixed(2))
+                        : 0,
+                    price: typeof pizzaDetails.PriceBySize[selectedSize] === "number" &&
+                        !isNaN(pizzaDetails.PriceBySize[selectedSize])
+                        ? parseFloat(pizzaDetails.PriceBySize[selectedSize])
+                        : 0,
+                    extraIngredients: extraIngredients.map((ing) => {
+                        const matchingIngredient = activePizzas
+                            .flatMap(pizza => JSON.parse(pizza.ingredientes)) // Convertir string a array de ingredientes
+                            .find(item => item.IDI === ing.IDI); // Buscar el ingrediente en las pizzas activas
+
+                        return {
+                            IDI: ing.IDI,
+                            nombre: ing.nombre || "Sin nombre",
+                            cantBySize: matchingIngredient?.cantBySize?.[selectedSize] || 0, // Tomar la cantidad por tamaño o asignar 0
+                            precio: typeof ing.precio === "number" && !isNaN(ing.precio)
+                                ? parseFloat(ing.precio.toFixed(2))
+                                : 0,
+                        };
+                    }),
+                };
+                return updatedProduct;
+            }
+            return producto;
+        });
+
+        // Recalcular el total de productos
+        const nuevoTotalProductos = nuevaVenta.reduce(
+            (acc, item) => acc + item.total,
+            0
+        );
+
+        return {
+            ...prevCompra,
+            venta: nuevaVenta,
+            total_productos: typeof nuevoTotalProductos === "number" 
+                ? parseFloat(nuevoTotalProductos.toFixed(2)) 
+                : 0, // Asigna 0 si no es un número válido
+            total_a_pagar_con_descuentos: typeof nuevoTotalProductos === "number" && typeof prevCompra.total_descuentos === "number"
+                ? parseFloat((nuevoTotalProductos - prevCompra.total_descuentos).toFixed(2)) 
+                : 0, // Asigna 0 si alguno de los valores no es un número
+        };
     });
-  
+
     setFormVisible(false);
     setIsEditing(false);
     setEditingProductId(null);
   };
-  
   const handleEditProduct = (productoEditado) => {
     console.log("Editando el producto:", productoEditado);
     setEditingProductId(productoEditado.id); // Establece el ID del producto que se está editando
-  
+
     // Actualizar valores de la pizza seleccionada
     setSelectedPizza({
-      ...productoEditado,
-      size: productoEditado.size,
-      cantidad: productoEditado.cantidad,
+        ...productoEditado,
+        size: productoEditado.size,
+        cantidad: productoEditado.cantidad,
     });
-  
+
     // Actualizar valores del tamaño y cantidad
     setSelectedSize(productoEditado.size);
     setQuantity(productoEditado.cantidad);
-  
-    // Asegurarse de que los ingredientes extras están correctamente formateados
-    const validExtraIngredients = productoEditado.extraIngredients.map((ing) => ({
-      IDI: ing.IDI,
-      nombre: ing.nombre || ing.ingrediente || "Ingrediente Desconocido",
-      precio: parseFloat(ing.precio) || 0,
-    }));
-  
+
+    // Asegurarse de que los ingredientes extras están correctamente formateados e incluir cantBySize
+    const validExtraIngredients = productoEditado.extraIngredients.map((ing) => {
+        const matchingIngredient = activePizzas
+            .flatMap(pizza => JSON.parse(pizza.ingredientes)) // Convertir el JSON en un array de ingredientes
+            .find(item => item.IDI === ing.IDI); // Buscar el ingrediente en las pizzas activas
+
+        return {
+            IDI: ing.IDI,
+            nombre: ing.nombre || ing.ingrediente || "Ingrediente Desconocido",
+            cantBySize: matchingIngredient?.cantBySize?.[productoEditado.size] || 0, // Cantidad por tamaño
+            precio: parseFloat(ing.precio) || 0,
+        };
+    });
+
     setExtraIngredients(validExtraIngredients);
-  
+
     // Calcular el precio total en función de los datos actuales
     setTotalPrice(parseFloat(productoEditado.total));
-  
+
     // Establecer el formulario en modo edición
     setFormVisible(true);
     setIsEditing(true); // Activar el modo edición
-  };
+};
 
   return (
     <>
@@ -542,9 +600,13 @@ setTotalPrice(newTotalPrice);
                 <>
                   <select id="ingredient-select" disabled={!selectedSize}>
                     <option value="">Seleccione un ingrediente extra</option>
-                    {ingredientesActivos.map((ing) => (
-                      <option key={ing.IDI} value={ing.IDI}>{ing.ingrediente}</option>
-                    ))}
+                    {selectedSize && ingredientesActivos
+                      .filter(ing => ing.cantBySize?.[selectedSize] > 0) // 🔥 Filtrar solo ingredientes con stock para el tamaño
+                      .map((ing) => (
+                        <option key={ing.IDI} value={ing.IDI}>
+                          {ing.ingrediente} (x{ing.cantBySize[selectedSize]})
+                        </option>
+                      ))}
                   </select>
                   <button onClick={() => {
                     if (!selectedSize) {

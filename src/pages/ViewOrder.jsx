@@ -65,19 +65,30 @@ const ViewOrder = () => {
 
   const markOrderAsProcessed = async (id_venta) => {
     try {
-      // Primero, marcar la orden como procesada
-      await axios.patch(`http://localhost:3001/registro_ventas/${id_venta}/procesar`);
-      alert('Orden marcada como completada.');
+        // 1️⃣ Descontar ingredientes primero
+        await axios.patch('http://localhost:3001/inventario/descontar', 
+          { id_venta }, 
+          { headers: { "Content-Type": "application/json" } }
+        );
+        alert('Ingredientes descontados correctamente.');
 
-      // Luego, actualizar los pedidos en cola por ubicación
-      await axios.patch('http://localhost:3001/api/update-pedidos-en-cola');
-      alert('Pedidos en cola actualizados correctamente.');
+        // 2️⃣ Luego marcar la orden como procesada
+        await axios.patch(`http://localhost:3001/registro_ventas/${id_venta}/procesar`);
+        alert('Orden marcada como completada.');
 
-      // Actualizar el estado local para reflejar los cambios
-      setOrders(orders.filter(order => order.id_venta !== id_venta));
+        // 3️⃣ Actualizar el ranking de ingredientes basado en ventas
+        await axios.post('http://localhost:3001/ranking/actualizar');
+        alert('Ranking de ingredientes actualizado correctamente.');
+
+        // 4️⃣ Actualizar los pedidos en cola
+        await axios.patch('http://localhost:3001/api/update-pedidos-en-cola');
+        alert('Pedidos en cola actualizados correctamente.');
+
+        // 5️⃣ Actualizar el estado local para reflejar los cambios
+        setOrders(orders.filter(order => order.id_venta !== id_venta));
     } catch (error) {
-      console.error('Error en la actualización:', error);
-      alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
+        console.error('Error en la actualización:', error);
+        alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
     }
   };
   const showTicketModal = (order) => {

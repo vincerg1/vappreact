@@ -1,47 +1,52 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DeliveryPriceManagement from './DeliveryPriceManagement'; // Asegúrate de que la ruta sea correcta
-import '../styles/routeSetterAdmin_style.css'; // Asegúrate de crear este archivo para los estilos
+import DeliveryPriceManagement from './DeliveryPriceManagement'; 
+import '../styles/RouteSetterAdmin.css';
 
 const RouteSetterAdmin = () => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
+  const [showDeliveryPriceModal, setShowDeliveryPriceModal] = useState(false);
 
   const handleCrearRepartidorClick = () => {
-    navigate('/repartidores'); 
+    navigate('/repartidores');
   };
-
   const handlePrecioDeliveryClick = () => {
     setShowDeliveryPriceModal(true);
   };
-
   const handleReportsClick = () => {
-    navigate('/repartidores-reportes'); 
+    navigate('/repartidores-reportes');
   };
-
-  const [showDeliveryPriceModal, setShowDeliveryPriceModal] = React.useState(false);
-
   const handleCloseModal = () => {
     setShowDeliveryPriceModal(false);
   };
 
   return (
     <div className="route-setter-container">
-      <h1 className="PDCRL">Route Setter - Administración</h1>
-      <section className="contenedorRS">
-        <button className="background_icon_button crear-repartidor" onClick={handleCrearRepartidorClick}>
-          <span>Crear Repartidor</span>
+      <h1 className="route-setter-title">Route Setter - Administración</h1>
+      <div className="route-setter-buttons">
+        <button className="route-button" onClick={handleCrearRepartidorClick}>
+          Crear Repartidor
         </button>
-        <button className="background_icon_button precio-delivery" onClick={handlePrecioDeliveryClick}>
-          <span>Precio Delivery</span>
+        <button className="route-button" onClick={handlePrecioDeliveryClick}>
+          Precio Delivery
         </button>
-        <button className="background_icon_button reports" onClick={handleReportsClick}>
-          <span>Reports</span>
+        <button className="route-button" onClick={handleReportsClick}>
+          Reports
         </button>
-      </section>
+      </div>
 
       {showDeliveryPriceModal && (
         <DeliveryPriceManagement showModal={showDeliveryPriceModal} onClose={handleCloseModal} />
       )}
+
+      <footer className="route-setter-footer">
+        <p><strong>VoltaPizzaApp 2025.</strong></p>
+        <div className="social-icons">
+          <i className="fab fa-instagram"></i>
+          <i className="fab fa-tiktok"></i>
+          <i className="fab fa-whatsapp"></i>
+        </div>
+      </footer>
     </div>
   );
 };

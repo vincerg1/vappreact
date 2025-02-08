@@ -26,7 +26,6 @@ function VerClientes() {
       setClientes([]);
     }
   };
-
   const handleEliminarCliente = async (id_cliente) => {
     if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
 
@@ -37,7 +36,6 @@ function VerClientes() {
       console.error('❌ Error al eliminar cliente:', error);
     }
   };
-
   const handleSuspenderCliente = async (id_cliente, suspensionPeriod) => {
     try {
       await axios.put(`http://localhost:3001/clientes/suspender/${id_cliente}`, {
@@ -49,7 +47,6 @@ function VerClientes() {
       console.error('❌ Error al suspender cliente:', error);
     }
   };
-
   const handleReactivarCliente = async (id_cliente) => {
     try {
       await axios.put(`http://localhost:3001/clientes/reactivar/${id_cliente}`);
@@ -59,11 +56,9 @@ function VerClientes() {
       console.error('❌ Error al reactivar cliente:', error);
     }
   };
-
   const handleFiltroChange = (e) => {
     setFiltro(e.target.value);
   };
-
   const handleSeguimiento = (id_cliente) => {
     navigate(`/clientes/seguimiento/${id_cliente}`);
   };
@@ -71,7 +66,6 @@ function VerClientes() {
   const clientesFiltrados = clientes.filter((cliente) =>
     cliente.email.toLowerCase().includes(filtro.toLowerCase())
   );
-
   return (
     <div className="clientes-container">
       <h2>Lista de Clientes</h2>
@@ -82,32 +76,36 @@ function VerClientes() {
         onChange={handleFiltroChange}
         className="buscador"
       />
-      <table className="clientes-table">
-        <thead>
-          <tr>
-            <th>ID Cliente</th>
-            <th>Email</th>
-            <th>Fecha Creación</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clientesFiltrados.map((cliente) => (
-            <ClienteItem
-              key={cliente.id_cliente}
-              cliente={cliente}
-              onEliminar={() => handleEliminarCliente(cliente.id_cliente)}
-              onSuspender={(period) => handleSuspenderCliente(cliente.id_cliente, period)}
-              onReactivar={() => handleReactivarCliente(cliente.id_cliente)}
-              onSeguimiento={() => handleSeguimiento(cliente.id_cliente)}
-            />
-          ))}
-        </tbody>
-      </table>
+  
+      {/* 🔹 Contenedor con scroll para la tabla */}
+      <div className="clientes-table-container">
+        <table className="clientes-table">
+          <thead>
+            <tr>
+              <th>ID Cliente</th>
+              <th>Email</th>
+              <th>Fecha Creación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientesFiltrados.map((cliente) => (
+              <ClienteItem
+                key={cliente.id_cliente}
+                cliente={cliente}
+                onEliminar={() => handleEliminarCliente(cliente.id_cliente)}
+                onSuspender={(period) => handleSuspenderCliente(cliente.id_cliente, period)}
+                onReactivar={() => handleReactivarCliente(cliente.id_cliente)}
+                onSeguimiento={() => handleSeguimiento(cliente.id_cliente)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
+  
 }
-
 function ClienteItem({ cliente, onEliminar, onSuspender, onReactivar, onSeguimiento }) {
   const [isSuspended, setIsSuspended] = useState(false);
 
@@ -141,7 +139,6 @@ function ClienteItem({ cliente, onEliminar, onSuspender, onReactivar, onSeguimie
     </tr>
   );
 }
-
 function SuspenderMenu({ onSuspender }) {
   const [selectedPeriod, setSelectedPeriod] = useState('7 días');
   const [mostrarMenu, setMostrarMenu] = useState(false);

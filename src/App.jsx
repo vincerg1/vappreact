@@ -25,7 +25,6 @@ import CartComponent from './pages/CartComponent.jsx';
 import PartnerCreator from './pages/PartnerCreator.jsx';
 import EditarPartner from './pages/EditarPartner.jsx';
 import SimuladorVentas from './pages/SimuladorVentas.jsx';
-import useRanking from './pages/RankING.jsx';
 import CustomerPage from './pages/CustomerPage.jsx';
 import OffersModule from './pages/OffersModule.jsx';
 import OfferForm from './pages/OfferForm.jsx';
@@ -107,7 +106,6 @@ function App() {
           <Route path="/CustomerMenu" element={<CustomerMenu />} />
           <Route path="/make-your-pizza" element={<MakeYourPizza />} />
           <Route path="/rare-pizza" element={<MakeARarePizza />} />
-          <Route path="/pages/RankING.jsx" element={<useRanking />} />
           <Route path="/_Inicio/_Informacion" element={<Informacion />} />
           <Route path="/_Inicio/_Informacion/_Info_Empresa" element={<InfoEmpresa />} />
           <Route path="/_Inicio/_Informacion/_Info_MP" element={<PaymentMethods />} />

@@ -9,9 +9,8 @@ import '../styles/MakeYourPizza.css';
 import moment from 'moment';
 import axios from 'axios';
 
-
-
 const MakeYourPizza = () => {
+  const navigate = useNavigate();
   const { activePizzas, sessionData } = useContext(_PizzaContext);
   const [sizeSeleccionado, setSizeSeleccionado] = useState('');
   const [ingredientesDisponibles, setIngredientesDisponibles] = useState([]);
@@ -30,10 +29,11 @@ const MakeYourPizza = () => {
   const [rightPizza, setRightPizza] = useState('');
   const [isRandomPizzaDisabled, setIsRandomPizzaDisabled] = useState(true);
   const [ofertas, setOfertas] = useState([]);
-
+  const [menuPizzas, setMenuPizzas] = useState([]); 
+  const [inventario, setInventario] = useState([]);
  const [compra, setCompra] = useState({
     observaciones: '',
-    id_orden: '',
+    id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
@@ -48,7 +48,7 @@ const MakeYourPizza = () => {
     origen: '',
     observaciones: ''
   });
-  const navigate = useNavigate();
+
   
   useEffect(() => {
     console.log('Estado de compra actualizado:', compra);
@@ -152,7 +152,6 @@ const MakeYourPizza = () => {
   
     fetchOfertas();
   }, []);
-  
   useEffect(() => {
     if (!Array.isArray(ofertas)) {
       console.error('La variable "ofertas" no es un array:', ofertas);
@@ -182,18 +181,92 @@ const MakeYourPizza = () => {
       setIsRandomPizzaDisabled(true);
     }
   }, [ofertas]);
-  
+  useEffect(() => {
+    const fetchMenuPizzas = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/menu_pizzas');
+        setMenuPizzas(response.data.data);
+        console.log("✅ Pizzas obtenidas:", response.data.data);
+      } catch (error) {
+        console.error("❌ Error al obtener `menu_pizzas`:", error);
+      }
+    };
+
+    fetchMenuPizzas();
+  }, []);
+  useEffect(() => {
+    const fetchInventario = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/inventario');
+        setInventario(response.data.data);
+        console.log("✅ Inventario obtenido:", response.data.data);
+      } catch (error) {
+        console.error("❌ Error al obtener `inventario`:", error);
+      }
+    };
+
+    fetchInventario();
+  }, []);
+  useEffect(() => {
+    const fetchMenuPizzas = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/menu_pizzas');
+        setMenuPizzas(response.data.data);
+        console.log("✅ Pizzas obtenidas:", response.data.data);
+      } catch (error) {
+        console.error("❌ Error al obtener `menu_pizzas`:", error);
+      }
+    };
+
+    fetchMenuPizzas();
+  }, []);
+ useEffect(() => {
+    if (!sizeSeleccionado || menuPizzas.length === 0 || inventario.length === 0) {
+      setIngredientesDisponibles([]);
+      return;
+    }
+
+    let allIngredientes = [];
+
+    menuPizzas
+      .filter((pizza) => 
+        pizza.categoria !== "Base Pizza" && 
+        ![101, 102, 103].includes(pizza.id)
+      )
+      .forEach((pizza) => {
+        const ingredientes = JSON.parse(pizza.ingredientes || "[]");
+
+        ingredientes.forEach((ing) => {
+          const stock = ing.cantBySize?.[sizeSeleccionado] || 0;
+          const estadoGEN = inventario.find(inv => inv.IDI === ing.IDI)?.estadoGEN || 0;
+
+          if (stock > 0 && estadoGEN === 0) {
+            allIngredientes.push({
+              nombre: ing.ingrediente,
+              IDI: ing.IDI,
+              cantidad: stock,
+            });
+          }
+        });
+      });
+
+    // 🔍 Eliminar duplicados
+    const uniqueIngredientes = allIngredientes.filter(
+      (ing, index, self) => index === self.findIndex((t) => t.IDI === ing.IDI)
+    );
+
+    setIngredientesDisponibles(uniqueIngredientes);
+    console.log("✅ Ingredientes disponibles después del filtro:", uniqueIngredientes);
+  }, [sizeSeleccionado, menuPizzas, inventario]);
+
   
   
   const ofertaRandom = ofertas.find(oferta => oferta.Tipo_Oferta === "Random Pizza");
   console.log("Oferta Random encontrada:", ofertaRandom);
-  
   const cuponesDisponibles = ofertaRandom?.Cupones_Disponibles  > 0;
   const estadoActivo = ofertaRandom?.Estado === "Activa";
-  
   console.log("Cupones disponibles:", cuponesDisponibles);
   console.log("Estado Activo:", estadoActivo);
-  
   const botonDeshabilitado = !(cuponesDisponibles && estadoActivo);
   console.log("Botón deshabilitado:", botonDeshabilitado);
 
@@ -226,55 +299,63 @@ const MakeYourPizza = () => {
   };
   const handleConfirmarPizza = () => {
     if (!sizeSeleccionado) {
-      alert('Por favor selecciona un tamaño.');
-      return;
+        alert('Por favor selecciona un tamaño.');
+        return;
     }
-  
+
     // Crear el objeto de la pizza personalizada
     const nuevaPizza = {
-      id: 101, 
-      nombre: 'PP1',
-      size: sizeSeleccionado,
-      cantidad: 1,
-      total: totalPrice,
-      basePrice: preciosBase[sizeSeleccionado], 
-      extraIngredients: ingredientesSeleccionados.map((ing) => ({
-        IDI: ing.IDI,
-        nombre: ing.nombre,
-        precio: ing.precio, // Precio ya calculado desde ingredientesExtraPrecios
-      })),
+        id: 101, 
+        nombre: 'PP1',
+        size: sizeSeleccionado,
+        cantidad: 1,
+        total: totalPrice,
+        basePrice: preciosBase[sizeSeleccionado], 
+        extraIngredients: ingredientesSeleccionados.map((ing) => {
+            const matchingIngredient = activePizzas
+                .flatMap(pizza => JSON.parse(pizza.ingredientes)) // Convertimos JSON en array
+                .find(item => item.IDI === ing.IDI); // Buscamos el ingrediente en las pizzas activas
+
+            return {
+                IDI: ing.IDI,
+                nombre: ing.nombre,
+                cantBySize: matchingIngredient?.cantBySize?.[sizeSeleccionado] || 0, // Cantidad por tamaño
+                precio: ing.precio, // Precio ya calculado desde ingredientesExtraPrecios
+            };
+        }),
     };
-  
+
     // Actualizar el estado de la compra
     setCompra((prevCompra) => {
-      const nuevaVenta = [...prevCompra.venta, nuevaPizza];
-      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
-  
-      return {
-        ...prevCompra,
-        venta: nuevaVenta,
-        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
-        total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
-        productos: [
-          ...(prevCompra.productos || []),
-          {
-            id_pizza: nuevaPizza.id,
-            cantidad: nuevaPizza.cantidad,
-            size: nuevaPizza.size,
-            price: nuevaPizza.basePrice,
-            extraIngredients: nuevaPizza.extraIngredients.map((ing) => ({
-              IDI: ing.IDI,
-              nombre: ing.nombre,
-              precio: ing.precio,
-            })),
-            halfAndHalf: {
-              ...nuevaPizza.halfAndHalf
-            }
-          },
-        ],
-      };
+        const nuevaVenta = [...prevCompra.venta, nuevaPizza];
+        const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
+
+        return {
+            ...prevCompra,
+            venta: nuevaVenta,
+            total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+            total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
+            productos: [
+                ...(prevCompra.productos || []),
+                {
+                    id_pizza: nuevaPizza.id,
+                    cantidad: nuevaPizza.cantidad,
+                    size: nuevaPizza.size,
+                    price: nuevaPizza.basePrice,
+                    extraIngredients: nuevaPizza.extraIngredients.map((ing) => ({
+                        IDI: ing.IDI,
+                        nombre: ing.nombre,
+                        cantBySize: ing.cantBySize, // Incluir el cantBySize en la estructura
+                        precio: ing.precio,
+                    })),
+                    halfAndHalf: {
+                        ...nuevaPizza.halfAndHalf
+                    }
+                },
+            ],
+        };
     });
-  
+
     // Reiniciar el estado
     setSizeSeleccionado('');
     setIngredientesSeleccionados([]);
@@ -283,8 +364,7 @@ const MakeYourPizza = () => {
     calcularTotalDescuentos();
     alert('Pizza añadida al carrito');
     console.log('Pizza añadida al carrito:', nuevaPizza);
-    
-  };  
+};
   const handleEditProduct = (productoEditado) => {
     setSizeSeleccionado(productoEditado.size);
     setIngredientesSeleccionados(productoEditado.extraIngredients || []);
@@ -798,58 +878,60 @@ const MakeYourPizza = () => {
         
       ) : (
 
-        <>
-          <h2>Crea tu Pizza</h2>
-  
-          {/* Selección de tamaño */}
-          <div className="size-selection">
-            <h3>Selecciona el tamaño:</h3>
-            <select
-              value={sizeSeleccionado}
-              onChange={(e) => setSizeSeleccionado(e.target.value)}
-            >
-              <option value="">Selecciona un tamaño</option>
-              {Object.keys(preciosBase).map((size) => (
-                <option key={size} value={size}>
-                  {size} - {preciosBase[size].toFixed(2)}€
-                </option>
-              ))}
-            </select>
-          </div>
-  
-          {/* Panel de ingredientes */}
-          <div className="ingredientes-panel">
-            <h3>Selecciona tus ingredientes:</h3>
-            <div className="ingredientes-grid">
-              {ingredientesDisponibles.map((ingrediente) => (
-                <button
-                  key={ingrediente.IDI}
-                  className={`ingrediente-boton ${
-                    ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)
-                      ? "seleccionado"
-                      : ""
-                  }`}
-                  onClick={() => handleAgregarIngrediente(ingrediente)}
-                >
-                  <span>{ingrediente.nombre}</span>
-                  <span>
-                    (
-                    {sizeSeleccionado && ingredientesExtraPrecios[sizeSeleccionado]
-                      ? `${ingredientesExtraPrecios[sizeSeleccionado].toFixed(2)}€`
-                      : "0.00€"}
-                    )
-                  </span>
-                </button>
-              ))}
+      <>
+        <h2>Crea tu Pizza</h2>
+
+        {/* Selección de tamaño */}
+        <div className="size-selection">
+          <h3>Selecciona el tamaño:</h3>
+          <select
+            value={sizeSeleccionado}
+            onChange={(e) => setSizeSeleccionado(e.target.value)}
+          >
+            <option value="">Selecciona un tamaño</option>
+            {Object.keys(preciosBase).map((size) => (
+              <option key={size} value={size}>
+                {size} - {preciosBase[size].toFixed(2)}€
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Mostrar solo si el tamaño ha sido seleccionado */}
+        {sizeSeleccionado && (
+          <>
+            {/* Panel de ingredientes */}
+            <div className="ingredientes-panel">
+              <h3>Selecciona tus ingredientes:</h3>
+              <div className="ingredientes-grid">
+                {ingredientesDisponibles.map((ingrediente) => (
+                  <button
+                    key={ingrediente.IDI}
+                    className={`ingrediente-boton ${
+                      ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)
+                        ? "seleccionado"
+                        : ""
+                    }`}
+                    onClick={() => handleAgregarIngrediente(ingrediente)}
+                  >
+                    <span>{ingrediente.nombre}</span>
+                    <span>
+                      (
+                      {sizeSeleccionado && ingredientesExtraPrecios[sizeSeleccionado]
+                        ? `${ingredientesExtraPrecios[sizeSeleccionado].toFixed(2)}€`
+                        : "0.00€"}
+                      )
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-          </div>
-  
-          {/* Ingredientes seleccionados */}
-          <div className="ingredientes-seleccionados-contenedor">
-            <h4>Ingredientes seleccionados:</h4>
-            <div className="ingredientes-horizontales">
-              {sizeSeleccionado && (
+            {/* Ingredientes seleccionados */}
+            <div className="ingredientes-seleccionados-contenedor">
+              <h4>Ingredientes seleccionados:</h4>
+              <div className="ingredientes-horizontales">
+                {/* Base de la pizza siempre va primero */}
                 <div className="ingrediente-cuadro">
                   <span>
                     Base de Pizza <br />
@@ -857,35 +939,42 @@ const MakeYourPizza = () => {
                     {preciosBase[sizeSeleccionado]?.toFixed(2)}€
                   </span>
                 </div>
-              )}
-              {ingredientesSeleccionados.map((ing, index) => (
-                <React.Fragment key={ing.IDI}>
-                  {index > 0 || sizeSeleccionado ? (
-                    <span className="separador">➕</span>
-                  ) : null}
-                  <div className="ingrediente-cuadro">
-                    <span>{ing.nombre}</span>
-                    <span>({ing.precio.toFixed(2)}€)</span>
-                    <button
-                      className="boton-eliminar"
-                      onClick={() => handleEliminarIngrediente(ing.IDI)}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </React.Fragment>
-              ))}
+
+                {/* Agregar el separador después de la base de pizza si hay ingredientes */}
+                {ingredientesSeleccionados.length > 0 && <span className="separador">➕</span>}
+
+                {/* Renderizar los ingredientes con separadores solo entre ellos */}
+                {ingredientesSeleccionados.map((ing, index) => (
+                  <React.Fragment key={ing.IDI}>
+                    <div className="ingrediente-cuadro">
+                      <span>{ing.nombre}</span>
+                      <span>({ing.precio.toFixed(2)}€)</span>
+                      <button
+                        className="boton-eliminar"
+                        onClick={() => handleEliminarIngrediente(ing.IDI)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+
+                    {/* Agregar separador después de cada ingrediente, excepto después del último */}
+                    {index < ingredientesSeleccionados.length - 1 && (
+                      <span className="separador">➕</span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
-          </div>
-  
-          {/* Precio total */}
-          <h3>Precio Total: {totalPrice.toFixed(2)}€</h3>
-          <button
-            onClick={isEditing ? handleUpdateProduct : handleConfirmarPizza}
-          >
-            {isEditing ? "Editar Pizza" : "Añadir al Carrito"}
-          </button>
-        </>
+
+            {/* Precio total y botón de añadir */}
+            <h3>Precio Total: {totalPrice.toFixed(2)}€</h3>
+            <button onClick={isEditing ? handleUpdateProduct : handleConfirmarPizza}>
+              {isEditing ? "Editar Pizza" : "Añadir al Carrito"}
+            </button>
+          </>
+        )}
+      </>
+
       )}
     </div>
   );

@@ -1,7 +1,6 @@
-import { createContext, useState, useCallback,  useEffect, useContext, useMemo, useRef  } from 'react';
+import { createContext, useState, useCallback,  useEffect, } from 'react';
 import { determinarZonaRiesgo, determinarEstadoDelProducto, calcularZonaRiesgoIDI, calcularTotalesPorIDI } from './_ListaIngredientes';
 import { generarDescripcion} from './_MenuOverview'
-import { useRanking  } from './RankING'
 import axios from 'axios';
 import moment from 'moment';
 
@@ -42,13 +41,8 @@ export const _PizzaContext = createContext({
   pizzasConEstadoActualizado: [],
   ingredientesProximosACaducar: [], 
   setIngredientesProximosACaducar:  () => {},
-  ranking: [],
-  pizzasSugeridasPara2x1: [],
-  setPizzasSugeridasPara2x1: () => {},
-  ofertaPizzaMasCompradaDisponible: false,
-  setOfertaPizzaMasCompradaDisponible: () => {},
   compra: {
-    id_orden: '',
+    id_order: '',
     fecha: '',
     hora: '',
     id_cliente: '',
@@ -66,20 +60,10 @@ export const _PizzaContext = createContext({
   suspensionEndTime: null,   
   setSuspensionState: () => {},  
 });
-
-
-
 export const PizzaProvider = ({ children }) => {
   
   const [currentPizza, setCurrentPizza] = useState(null);
   const [riesgos, setRiesgos] = useState({ sinRiesgo: 0, bajo: 0, medio: 0, alto: 0, inactivo: 0 });
-  const [ingredientesPorZonaRiesgo, setIngredientesPorZonaRiesgo] = useState({
-    sinRiesgo: [],
-    bajo: [],
-    medio: [],
-    alto: [],
-    inactivo: []
-  });
   const [ingredientes, setIngredientes] = useState([]);
   const [inventario, setInventario] = useState([]);
   const [ingredientesInactivos, setIngredientesInactivos] = useState([]); 
@@ -87,6 +71,29 @@ export const PizzaProvider = ({ children }) => {
   const [pizzas, setPizzas] = useState([]);
   const [activePizzas, setActivePizzas] = useState([]);
   const [cart, setCart] = useState([]);
+  const [ofertasPorSegmento, setOfertasPorSegmento] = useState([]);
+  const [zonasDeRiesgoPorIDI, setZonasDeRiesgoPorIDI] = useState({});
+  const [limites, setLimites] = useState({});
+  const [estaCargandoLimites, setEstaCargandoLimites] = useState(false);
+  const [errorLimites, setErrorLimites] = useState(null);
+  const [pizzasConEstadoActualizado, setPizzasConEstadoActualizado] = useState([]);
+  const [ingredientesProximosACaducar, setIngredientesProximosACaducar] = useState([]);
+  const [isServiceSuspended, setIsServiceSuspended] = useState(false);
+  const [suspensionEndTime, setSuspensionEndTime] = useState(null);
+  const [compra, setCompra] = useState({
+    id_order: '',
+    fecha: moment().format('YYYY-MM-DD'),
+    hora: moment().format('HH:mm:ss'),
+    id_cliente: '',
+    DescuentosCupon: 0,
+    DescuentosDailyChallenge: 0,
+    Max_Amount: 0,
+    Oferta_Id: null,
+    total_sin_descuento: 0,
+    total_a_pagar_con_descuentos: 0,
+    venta: [],
+    Delivery: { opcion: false, costo: 0 },
+  });
   const [sessionData, setSessionData] = useState(() => {
     const storedData = localStorage.getItem('sessionData');
     return storedData
@@ -103,45 +110,13 @@ export const PizzaProvider = ({ children }) => {
           comentariosPositivosRecientes: 0,
         };
   });
-  const [ofertasPorSegmento, setOfertasPorSegmento] = useState([]);
-  const [zonasDeRiesgoPorIDI, setZonasDeRiesgoPorIDI] = useState({});
-  const [limites, setLimites] = useState({});
-  const [estaCargandoLimites, setEstaCargandoLimites] = useState(false);
-  const [errorLimites, setErrorLimites] = useState(null);
-  const [pizzasConEstadoActualizado, setPizzasConEstadoActualizado] = useState([]);
-  const [ingredientesProximosACaducar, setIngredientesProximosACaducar] = useState([]);
-  const cargarOfertasPorSegmento = useCallback(async (segmento) => {
-    // console.log(`Cargando ofertas para el segmento: ${segmento}`);
-    try {
-      const response = await axios.get(`http://localhost:3001/ofertas/${segmento}`);
-      if (response.data) {
-        // console.log('Ofertas cargadas:', response.data.data);
-        setOfertasPorSegmento(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error al cargar ofertas por segmento:', error);
-    }
-  }, []);
-  const ranking = useRanking();
-  const [pizzasSugeridasPara2x1, setPizzasSugeridasPara2x1] = useState([]);
-  const [ofertaPizzaMasCompradaDisponible , setOfertaPizzaMasCompradaDisponible ] = useState(false);
-  const [isServiceSuspended, setIsServiceSuspended] = useState(false);
-  const [suspensionEndTime, setSuspensionEndTime] = useState(null);
-  const [compra, setCompra] = useState({
-    id_orden: '',
-    fecha: moment().format('YYYY-MM-DD'),
-    hora: moment().format('HH:mm:ss'),
-    id_cliente: '',
-    DescuentosCupon: 0,
-    DescuentosDailyChallenge: 0,
-    Max_Amount: 0,
-    Oferta_Id: null,
-    total_sin_descuento: 0,
-    total_a_pagar_con_descuentos: 0,
-    venta: [],
-    Delivery: { opcion: false, costo: 0 },
+  const [ingredientesPorZonaRiesgo, setIngredientesPorZonaRiesgo] = useState({
+    sinRiesgo: [],
+    bajo: [],
+    medio: [],
+    alto: [],
+    inactivo: []
   });
-  
 
   const updateSessionData = useCallback((data) => {
     setSessionData((prevData) => {
@@ -166,7 +141,6 @@ export const PizzaProvider = ({ children }) => {
       console.error('Error fetching client data:', err);
     }
   }, [updateSessionData]);
-
   const clearSessionData = useCallback(() => {
     localStorage.removeItem('sessionData');
     setSessionData({
@@ -181,7 +155,18 @@ export const PizzaProvider = ({ children }) => {
       comentariosPositivosRecientes: 0,
     });
   }, []);
-
+  const cargarOfertasPorSegmento = useCallback(async (segmento) => {
+    // console.log(`Cargando ofertas para el segmento: ${segmento}`);
+    try {
+      const response = await axios.get(`http://localhost:3001/ofertas/${segmento}`);
+      if (response.data) {
+        // console.log('Ofertas cargadas:', response.data.data);
+        setOfertasPorSegmento(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar ofertas por segmento:', error);
+    }
+  }, []);
 
 useEffect(() => {
     if (sessionData.id_cliente) {
@@ -195,31 +180,15 @@ useEffect(() => {
 }, [sessionData.segmento, cargarOfertasPorSegmento]);
 useEffect(() => {
   const cargarInventario = async () => {
-    try {
-      const response = await axios.get('http://localhost:3001/inventario');
-      const inventarioCargado = response.data.data; 
-      const ingredientesCargados = inventarioCargado.filter(item => item.categoria === "Ingredientes");
-      // console.log('Inventario de ingredientes cargado en el context:', ingredientesCargados);
-      setIngredientes(ingredientesCargados); 
-      calcularRiesgos(ingredientesCargados);
-      const nombres = ingredientesCargados.map(ing => ing.producto);
-      setNombresDeProductos(nombres); 
-      const ingredientesInactivosCalculados = ingredientesCargados.filter(ing => {
-        const zonaRiesgo = determinarZonaRiesgo(ing.disponible, ing.limite, ing.fechaCaducidad);
-        const esProductoInactivo = !determinarEstadoDelProducto(zonaRiesgo);
-        const estaForzadoInactivo = ing.estadoForzado === 1;
-      return esProductoInactivo || estaForzadoInactivo;
-      });
-
-      // Finalmente, actualizamos el estado con los ingredientes inactivos
-      setIngredientesInactivos(ingredientesInactivosCalculados);
-
-      // console.log("Ingredientes inactivos calculados:", ingredientesInactivosCalculados);  
-    } catch (error) {
-      console.error('Hubo un error obteniendo los datos del inventario:', error);
-    }
+      try {
+          const response = await axios.get('http://localhost:3001/inventario');
+          const inventarioCargado = response.data.data;
+          setInventario(inventarioCargado);
+      } catch (error) {
+          console.error('❌ Error obteniendo los datos del inventario:', error);
+      }
   };
-cargarInventario();
+  cargarInventario();
 }, []);
 useEffect(() => {
   const cargarLimites = async () => {
@@ -338,31 +307,69 @@ useEffect(() => {
   }
 }, [pizzas]);
 useEffect(() => {
-  //  console.log('Ingredientes inactivos:', ingredientesInactivos);
-  // console.log('Lista de pizzas antes de actualizar el estado:', pizzas);
+  // console.log("📌 [LOG] Iniciando actualización de pizzas...");
+  // console.log("🛠️ [LOG] Lista de pizzas cargadas:", pizzas);
+  // console.log("🛠️ [LOG] Inventario actual:", inventario);
 
-  // Cambio importante aquí: no dependes de que haya ingredientes inactivos para actualizar el estado
-  if (pizzas.data && pizzas.data.length > 0) {
-    const pizzasConEstado = pizzas.data.map(pizza => {
-      const ingredientesPizza = JSON.parse(pizza.ingredientes); // Asegúrate de que esto es un array de objetos de ingredientes
-      // Si no hay ingredientes inactivos, asumimos que la pizza está activa
-      const esPizzaActiva = ingredientesInactivos.length === 0 || ingredientesPizza.every(ingrediente => 
-        !ingredientesInactivos.includes(ingrediente.IDI)
+  if (!pizzas || !pizzas.data || !Array.isArray(pizzas.data) || pizzas.data.length === 0) {
+    console.warn("⚠️ No hay pizzas en el array o la estructura es incorrecta.");
+    return;
+  }
+
+  const pizzasConEstado = pizzas.data.map(pizza => {
+    try {
+      // console.log(`🔎 Analizando pizza: ${pizza.nombre} (ID: ${pizza.id})`);
+      // console.log("🔹 Ingredientes en JSON (sin parsear):", pizza.ingredientes);
+
+      // 🔥 Verificar si `pizza.ingredientes` es un JSON válido antes de parsear
+      let ingredientesPizza;
+      try {
+        ingredientesPizza = JSON.parse(pizza.ingredientes);
+        if (!Array.isArray(ingredientesPizza)) {
+          throw new Error("No es un array de ingredientes");
+        }
+      } catch (error) {
+        console.error(`❌ Error parseando ingredientes de ${pizza.nombre}:`, error);
+        return { ...pizza, estado: 'Inactiva' };  // Si hay error, la marcamos como inactiva
+      }
+
+      // console.log("🧑‍🍳 Ingredientes de la pizza después de parsear:", ingredientesPizza);
+
+      // ✅ Verificamos qué ingredientes están inactivos según estadoGEN en inventario
+      const ingredientesInactivos = ingredientesPizza.filter(ingrediente =>
+        inventario.some(inv => inv.IDI === ingrediente.IDI && inv.estadoGEN === 1)
       );
+
+      // console.log("⚠️ Ingredientes inactivos en esta pizza:", ingredientesInactivos);
+
+      // ✅ Si algún ingrediente base está inactivo, la pizza se considera inactiva
+      const esActiva = ingredientesInactivos.length === 0;
+      console.log(`✅ Estado de la pizza ${pizza.nombre}: ${esActiva ? 'Activa' : 'Inactiva'}`);
+
+      // 🔥 Nueva lógica para ingredientes extra
+      const ingredientesExtrasDisponibles = ingredientesPizza.filter(ingrediente =>
+        inventario.some(inv => inv.IDI === ingrediente.IDI && inv.estadoGEN === 0)
+      );
+
+      console.log("✅ Ingredientes extras disponibles:", ingredientesExtrasDisponibles);
+
       return {
         ...pizza,
-        estado: esPizzaActiva ? 'Activa' : 'Inactiva',
+        estado: esActiva ? 'Activa' : 'Inactiva',
+        ingredientesExtras: ingredientesExtrasDisponibles, // Ahora filtramos solo los activos
         descripcion: generarDescripcion(ingredientesPizza)
       };
-    });
+    } catch (error) {
+      console.error("❌ Error procesando ingredientes de la pizza:", error);
+      return { ...pizza, estado: 'Inactiva' };  // Fallback a inactiva si hay error
+    }
+  });
 
-    // console.log('Pizzas con estado actualizado:', pizzasConEstado);
-    setPizzasConEstadoActualizado(pizzasConEstado);
-  }
-}, [ingredientesInactivos, pizzas]);
+  // console.log("📊 [LOG] Resultado final de pizzasConEstadoActualizado:", pizzasConEstado);
+  setPizzasConEstadoActualizado(pizzasConEstado);
+}, [pizzas, inventario]);
 useEffect(() => {
   const activePizzas = pizzasConEstadoActualizado.filter(pizza => pizza.estado === 'Activa');
-  // console.log("pizzas activas calculadas en el contexto:", activePizzas);
   setActivePizzas(activePizzas);
 }, [pizzasConEstadoActualizado]);
 useEffect(() => {
@@ -393,24 +400,21 @@ useEffect(() => {
   };
 
   cargarProximosACaducar();
-// Dependencias del efecto; asegúrate de que 'inventario' sea parte de tu estado o contexto si es necesario
+
 }, []); 
-useEffect(() => {
-//  console.log('Ranking de ingredientes actualizado EN EL CONTEXT:', ranking);
-}, [ranking]);
-useEffect(() => {
-  const esPizzaMasCompradaActiva = activePizzas.some(pizza => pizza.id === sessionData.pizzaMasComprada?.id);
-  const cumpleCondicionesOferta = sessionData.numeroDeCompras > 5 && sessionData.ticketPromedio > 10;
-  const ofertaDisponible = esPizzaMasCompradaActiva && cumpleCondicionesOferta;
-  setOfertaPizzaMasCompradaDisponible(ofertaDisponible);
-}, [activePizzas, sessionData.numeroDeCompras, sessionData.ticketPromedio, sessionData.pizzaMasComprada]);
 useEffect(() => {
   // console.log('sessionData.id_cliente:', sessionData.id_cliente); 
   if (sessionData.id_cliente) {
     fetchClientData(sessionData.id_cliente);
   }
 }, [sessionData.id_cliente, fetchClientData]);
-
+useEffect(() => {
+  if (inventario.length > 0) {
+    const ingredientesExtraidos = inventario.filter(ing => ing.categoria === 'Ingredientes');
+    setIngredientes(ingredientesExtraidos);
+    console.log("✅ Ingredientes extraídos desde el inventario:", ingredientesExtraidos);
+  }
+}, [inventario]);
 
 
 
@@ -461,7 +465,6 @@ const addPizzaToOrder  = (pizza) => {
       return updatedCart;
     });
 };
-
 const agruparInventarioPorIDI = (inventario) => {
     const inventarioAgrupado = {};
   
@@ -479,9 +482,6 @@ const agruparInventarioPorIDI = (inventario) => {
     return inventarioAgrupado;
 };
 
-
-
- 
   return (
     <_PizzaContext.Provider value={{
       currentPizza,
@@ -515,11 +515,6 @@ const agruparInventarioPorIDI = (inventario) => {
       setPizzasConEstadoActualizado,
       ingredientesProximosACaducar, 
       setIngredientesProximosACaducar,
-      ranking,
-      pizzasSugeridasPara2x1,
-      setPizzasSugeridasPara2x1,
-      ofertaPizzaMasCompradaDisponible,
-      setOfertaPizzaMasCompradaDisponible,
       compra, 
       setCompra,
       isServiceSuspended,
@@ -530,6 +525,5 @@ const agruparInventarioPorIDI = (inventario) => {
     </_PizzaContext.Provider>
   );
 };
-
 
 export default _PizzaContext;

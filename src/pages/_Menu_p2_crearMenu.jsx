@@ -1,8 +1,8 @@
 import React, { useState, useContext, useRef, useEffect  } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import _PizzaContext from '../pages/_PizzaContext';
 import axios from 'axios';
+import '../styles/CustomerMenu.css';
 
 const CreateMenuForm = ({ pizzaData, onSubmit, isEditMode }) => {
   const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ const [ingredientesSeleccionados, setIngredientesSeleccionados] = useState([]);
 
 useEffect(() => {
   if (pizzaData) {
-  
+    console.log("Pizza data recibida:", pizzaData)
     setFormData({
       ...pizzaData,
       selectSize: pizzaData.selectSize || [], 
@@ -34,6 +34,9 @@ useEffect(() => {
     });
   }
 }, [pizzaData]);
+useEffect(() => {
+  console.log("🔍 Ingredientes en el contexto:", ingredientes);
+}, [ingredientes]);
 
 const ingredientesUnicosPorIDI = Object.values(ingredientes.reduce((acc, ingrediente) => {
   if (ingrediente.categoria === 'Ingredientes' && !acc[ingrediente.IDI]) {
@@ -129,7 +132,7 @@ const handleIngredientChange = (e, index) => {
         Ingredientes: updatedIngredientes,
       };
     });
-  };
+};
 const handleAmountChange = (e, index, size) => {
   const { value } = e.target;
 
@@ -243,58 +246,6 @@ const handleCreatePizza = async (e, formData, actionType) => {
   }
   
 };
-
-
-// const handleFormSubmit = async (e) => {
-//   e.preventDefault();
-  
-//   const dataToSend = new FormData();
-  
-//   Object.entries(formData).forEach(([key, value]) => {
-//     if (key !== 'imagen') {
-//       dataToSend.append(key, typeof value === 'object' ? JSON.stringify(value) : value);
-//     }
-//   });
-
-//   if (imageFile && imageFile instanceof Blob) {
-//     dataToSend.append('imagen', imageFile, imageFile.name);
-//   }
-
-//   const url = isEditMode ? `http://localhost:3001/menu_pizzas/${pizzaId}` : 'http://localhost:3001/menu_pizzas';
-//   const method = isEditMode ? 'PATCH' : 'POST';
-
-//   try {
-//     const response = await axios({
-//       method: method,
-//       url: url,
-//       data: dataToSend,
-//       headers: {
-//         'Content-Type': 'multipart/form-data'
-//       }
-//     });
-
-//     console.log("Respuesta del servidor:", response.data);
-//     navigate('/_Inicio/_Menu_p1/_MenuOverview'); // Ajusta esta ruta según sea necesario
-//   } catch (error) {
-//     console.error("Error en la petición:", error);
-//     alert(`Error: ${error.message || error.toString()}`);
-//   }
-// };
-
-
-// const handleFormSubmit = (e) => {
-//   e.preventDefault();
-//   if (isEditMode) {
-//     // Actualizar pizza
-//     onSubmit(formData, 'update');
-//   } else {
-//     // Crear pizza
-//     handleCreatePizza(e, formData, 'create');
-//   }
-// };
-
-
-
 const handleFormSubmit = async (e) => {
   e.preventDefault();
 
@@ -333,7 +284,7 @@ const handleFormSubmit = async (e) => {
 
   return (
     <div>
-      <h1 className="PDCRL">{pizzaId ? 'Editar Menu' : 'Crear Menu'}</h1>
+      {/* <h1 className="PDCRL">{pizzaId ? 'Editar Menu' : 'Crear Menu'}</h1> */}
       <h1>{pizzaId ? 'Editar Pizza' : 'Crear Una Pizza'}</h1>
       <form ref={formRef} className="form_crearpizza" onSubmit={handleFormSubmit}>
         <div>
@@ -366,34 +317,32 @@ const handleFormSubmit = async (e) => {
           <label>Tamaños y Precios: </label>
         <div className="sizes-prices-container">
         {sizes.map((size) => (
-        <div key={size} className="size-price">
-          <label className="size-checkbox">
-            <input
-              type="checkbox"
-              name="size"
-              value={size}
-              checked={formData.selectSize.includes(size)}
-              onChange={handleSizeChange}
-            />
-            
-            {size}
-            
-          </label>
-          
-            {formData.selectSize.includes(size) && (
-              <input
-                type="number"
-                className="price-input"
-                placeholder={`Precio ${size}`}
-                value={formData.PriceBySize[size] || ''}
-                onChange={(e) => handlePriceChange(e, size)}
-              />
-              
-            )}
-            
-          </div>
-          
-        ))}
+              <div 
+                key={size} 
+                className={`size-price ${formData.selectSize.includes(size) ? 'checked' : ''}`}
+              >
+                <label className="size-checkbox">
+                  <input
+                    type="checkbox"
+                    name="size"
+                    value={size}
+                    checked={formData.selectSize.includes(size)}
+                    onChange={handleSizeChange}
+                  />
+                  {size}
+                </label>
+                
+                {formData.selectSize.includes(size) && (
+                  <input
+                    type="number"
+                    className="price-input"
+                    placeholder={`Precio ${size}`}
+                    value={formData.PriceBySize[size] || ''}
+                    onChange={(e) => handlePriceChange(e, size)}
+                  />
+                )}
+              </div>
+            ))}
           </div>
           </div>
           <fieldset>

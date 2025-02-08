@@ -346,6 +346,91 @@ const traducirDia = (diaIngles) => {
 const normalizarTexto = (texto) => {
   return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 };
+const actualizarRankingIngredientes = async () => {
+  try {
+      console.log("🔄 Iniciando actualización del ranking...");
+
+      // 1️⃣ Obtener TODAS las ventas correctamente
+      const respuestaVentas = await db.all('SELECT productos FROM registro_ventas');
+
+      if (!respuestaVentas || respuestaVentas.length === 0) {
+          console.error("❌ Error: No hay datos en productos.");
+          return;
+      }
+
+      let ventas = [];
+      try {
+          for (const row of respuestaVentas) {
+              const productos = JSON.parse(row.productos); // Convertir JSON de cada fila
+              if (Array.isArray(productos)) {
+                  ventas = ventas.concat(productos);
+              }
+          }
+      } catch (error) {
+          console.error("❌ Error al parsear productos:", error);
+          return;
+      }
+
+      if (!Array.isArray(ventas) || ventas.length === 0) {
+          console.error("❌ Error: ventas no es un array válido.", ventas);
+          return;
+      }
+
+      console.log("📊 Ventas obtenidas:", ventas);
+
+      // 2️⃣ Obtener menú de pizzas
+      const respuestaMenuPizzas = await db.all('SELECT id, ingredientes FROM menu_pizzas');
+      const menuPizzas = respuestaMenuPizzas.map(pizza => ({
+          ...pizza,
+          ingredientes: JSON.parse(pizza.ingredientes) // Convertir ingredientes a JSON
+      }));
+
+      console.log("🍕 Menú de pizzas obtenido:", menuPizzas);
+
+      // 3️⃣ Calcular ranking
+      const totalesPorIngrediente = {};
+
+      ventas.forEach(venta => {
+          const pizzaVendida = menuPizzas.find(pizza => pizza.id === venta.id_pizza);
+          if (pizzaVendida) {
+              pizzaVendida.ingredientes.forEach(ing => {
+                  if (ing.cantBySize && ing.cantBySize[venta.size]) {
+                      const cantidadIngrediente = ing.cantBySize[venta.size] * venta.cantidad;
+                      if (totalesPorIngrediente[ing.IDI]) {
+                          totalesPorIngrediente[ing.IDI].cantidad += cantidadIngrediente;
+                      } else {
+                          totalesPorIngrediente[ing.IDI] = {
+                              cantidad: cantidadIngrediente,
+                              nombre: ing.ingrediente
+                          };
+                      }
+                  } else {
+                      console.warn(`⚠️ Ingrediente ${ing.ingrediente} no tiene cantidad definida para tamaño ${venta.size}`);
+                  }
+              });
+          } else {
+              console.error(`⚠️ No se encontró la pizza con ID ${venta.id_pizza}`);
+          }
+      });
+
+      console.log("📈 Ranking de ingredientes calculado:", totalesPorIngrediente);
+
+      // 4️⃣ Guardar en `ranking_ingredientes`
+      await db.run("DELETE FROM ranking_ingredientes"); // Limpiar la tabla antes de actualizar
+      for (const [idi, info] of Object.entries(totalesPorIngrediente)) {
+          await db.run(
+              "INSERT INTO ranking_ingredientes (IDI, totalVendido, nombre) VALUES (?, ?, ?)",
+              [idi, info.cantidad, info.nombre]
+          );
+      }
+
+      console.log("✅ Ranking actualizado en la base de datos.");
+
+  } catch (error) {
+      console.error("❌ Error actualizando ranking:", error);
+  }
+};
+
 
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
@@ -535,6 +620,101 @@ cron.schedule('0 0 * * *', () => {
 
 
 // the get zone
+app.get("/api/ingredientes-uso", (req, res) => {
+  const query = `
+    WITH base_ingredients AS (
+        SELECT
+            json_extract(i.value, '$.IDI') AS IDI,
+            json_extract(i.value, '$.ingrediente') AS ingrediente,
+            SUM(json_extract(p.value, '$.cantidad') * json_extract(i.value, '$.cantBySize.' || json_extract(p.value, '$.size'))) AS total_vendido
+        FROM registro_ventas r
+        JOIN json_each(r.productos) p  
+        JOIN menu_pizzas mp ON json_extract(p.value, '$.id_pizza') = mp.id
+        JOIN json_each(mp.ingredientes) i  
+        GROUP BY json_extract(i.value, '$.IDI')
+    ), extra_ingredients AS (
+        SELECT
+            json_extract(e.value, '$.IDI') AS IDI,
+            json_extract(e.value, '$.nombre') AS ingrediente,
+            SUM(json_extract(p.value, '$.cantidad') * json_extract(e.value, '$.cantBySize')) AS total_vendido
+        FROM registro_ventas r
+        JOIN json_each(r.productos) p  
+        JOIN json_each(p.value, '$.extraIngredients') e  
+        GROUP BY json_extract(e.value, '$.IDI')
+    ), daily_consumption AS (
+        SELECT
+            json_extract(i.value, '$.IDI') AS IDI,
+            json_extract(i.value, '$.ingrediente') AS ingrediente,
+            date(r.fecha) AS dia,
+            SUM(json_extract(p.value, '$.cantidad') * json_extract(i.value, '$.cantBySize.' || json_extract(p.value, '$.size'))) AS total_diario
+        FROM registro_ventas r
+        JOIN json_each(r.productos) p
+        JOIN menu_pizzas mp ON json_extract(p.value, '$.id_pizza') = mp.id
+        JOIN json_each(mp.ingredientes) i
+        WHERE r.fecha >= date('now', '-6 days')
+        GROUP BY json_extract(i.value, '$.IDI'), dia
+    ), aggregated_daily AS (
+        SELECT 
+            IDI, ingrediente, 
+            json_group_array(total_diario) AS consumo_diario,
+            AVG(total_diario) AS promedio_semanal
+        FROM daily_consumption
+        GROUP BY IDI
+    )
+    SELECT 
+        COALESCE(bi.IDI, ei.IDI) AS IDI,
+        COALESCE(bi.ingrediente, ei.ingrediente) AS ingrediente,
+        COALESCE(bi.total_vendido, 0) + COALESCE(ei.total_vendido, 0) AS total_vendido,
+        IFNULL(ad.consumo_diario, '[]') AS consumo_diario,
+        IFNULL(ad.promedio_semanal, 0) AS promedio_semanal
+    FROM base_ingredients bi
+    FULL OUTER JOIN extra_ingredients ei ON bi.IDI = ei.IDI
+    LEFT JOIN aggregated_daily ad ON COALESCE(bi.IDI, ei.IDI) = ad.IDI
+    GROUP BY COALESCE(bi.IDI, ei.IDI), COALESCE(bi.ingrediente, ei.ingrediente)
+    ORDER BY total_vendido DESC;
+  `;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error("❌ Error en la consulta SQL:", err);
+      return res.status(500).json({ error: "Error en la consulta SQL" });
+    }
+
+    console.log("📊 Datos obtenidos en el backend:", rows);
+
+    if (!rows || rows.length === 0) {
+      console.warn("⚠️ No se encontraron resultados en la consulta.");
+      return res.json([]);
+    }
+
+    res.json(rows);
+  });
+});
+app.get('/ranking_ingredientes', (req, res) => {
+  const query = 'SELECT * FROM ranking_ingredientes';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error('Error al obtener los datos de ranking_ingredientes:', err.message);
+      res.status(500).json({ error: 'Error al obtener los datos' });
+    } else {
+      res.status(200).json(rows);
+    }
+  });
+});
+app.get('/registro_ventas/by_fecha_ASC', (req, res) => {
+  const sql = 'SELECT * FROM registro_ventas WHERE venta_procesada = 0 ORDER BY fecha ASC';
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(400).json({ "error": err.message });
+      return;
+    }
+    res.json({
+      "message": "success",
+      "data": rows
+    });
+  });
+});
 app.get('/api/daily-challenges', (req, res) => {
   const query = `SELECT * FROM ofertas WHERE Tipo_Oferta = 'DailyChallenge'`;
 
@@ -1312,35 +1492,56 @@ app.get('/inventario/:IDR', (req, res) => {
 });
 app.get('/inventario/por-idi/:IDI', (req, res) => {
   const { IDI } = req.params;
-  const sql = "SELECT * FROM inventario WHERE IDI = ?";
+  const sql = "SELECT IDR, IDI, producto, disponible, unidadMedida, fechaCaducidad FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC";
   const params = [IDI];
 
   db.all(sql, params, (err, rows) => {
     if (err) {
-      res.status(400).json({"error":err.message});
+      res.status(400).json({ "error": err.message });
       return;
     }
+
+    if (rows.length === 0) {
+      res.json({
+        "message": "No hay lotes disponibles para este ingrediente.",
+        "data": []
+      });
+      return;
+    }
+
     res.json({
-      "message":"success",
-      "data":rows
+      "message": "success",
+      "data": rows
     });
   });
 });
 app.get('/menu_pizzas/:id', (req, res) => {
   const id = req.params.id;
-  // Aquí deberías tener la lógica para buscar la pizza con el id proporcionado
-  // Por ejemplo, si estás utilizando una base de datos SQLite:
   const sql = "SELECT * FROM menu_pizzas WHERE id = ?";
   const params = [id];
+
   db.get(sql, params, (err, row) => {
     if (err) {
-      res.status(400).json({"error":err.message});
+      res.status(400).json({ "error": err.message });
       return;
     }
+
+    try {
+      // Convertir los campos que están en formato string JSON a objetos reales
+      row.ingredientes = JSON.parse(row.ingredientes);
+      row.selectSize = JSON.parse(row.selectSize);
+      row.PriceBySize = JSON.parse(row.PriceBySize);
+      row.PIDI = JSON.parse(row.PIDI);
+    } catch (error) {
+      console.error("Error al parsear datos JSON:", error);
+      res.status(500).json({ "error": "Error interno al parsear datos." });
+      return;
+    }
+
     res.json({
-      "message":"success",
-      "data":row
-    })
+      "message": "success",
+      "data": row
+    });
   });
 });
 app.get('/menu_pizzas', (req, res) => {
@@ -2616,9 +2817,9 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
     // Campos que ya tenías
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Max_Amount,
-    Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
-    Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon,
+    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Id_cliente_Asig, 
+    Max_Amount, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
+    Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon, 
     
     // Campos donde REALMENTE te llega la info del DailyChallenge
     Link_DailyChallenge,
@@ -2691,6 +2892,7 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
       quantity_condition,
       Dias_Ucompra,
       Numero_Compras,
+      Id_cliente_Asig,
       Max_Amount,
       Instrucciones_Link,         
       Additional_Instructions,    
@@ -2706,7 +2908,7 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
       Precio_Cupon,
       Modo_Precio_Cupon
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   // Orden de parámetros
@@ -2724,6 +2926,7 @@ app.post('/ofertas', upload.single('Imagen'), (req, res) => {
     quantity_condition || null,
     Dias_Ucompra || null,
     Numero_Compras || null,
+    Id_cliente_Asig  || null,
     Max_Amount || null,
     Instrucciones_Link,          
     Additional_Instructions,      
@@ -3001,7 +3204,7 @@ app.post('/registro_ventas', (req, res) => {
           }
 
           const {
-              id_orden,
+              id_order,
               fecha,
               hora,
               id_cliente,
@@ -3049,7 +3252,7 @@ app.post('/registro_ventas', (req, res) => {
           db.run(
               insertVentaSql,
               [
-                  id_orden,
+                  id_order,
                   fecha,
                   hora,
                   id_cliente,
@@ -3119,7 +3322,7 @@ app.post('/registro_ventas', (req, res) => {
                                                   Se ha registrado un nuevo pedido de Delivery.
 
                                                   Detalles del pedido:
-                                                  - Orden ID: ${id_orden}
+                                                  - Orden ID: ${id_order}
                                                   - Dirección de entrega: ${parsedMetodoEntrega.Delivery?.address || 'No especificada'}
                                                   - Cliente ID: ${id_cliente}
                                                   - Hora del pedido: ${hora}
@@ -3150,7 +3353,7 @@ app.post('/registro_ventas', (req, res) => {
 
                           // Generar factura en PDF y enviar al cliente
                           const doc = new PDFDocument({ margin: 30 });
-                          const pdfFilePath = path.join(__dirname, `factura_${id_orden}.pdf`);
+                          const pdfFilePath = path.join(__dirname, `factura_${id_order}.pdf`);
                           const writeStream = fs.createWriteStream(pdfFilePath);
                           doc.pipe(writeStream);
 
@@ -3161,7 +3364,7 @@ app.post('/registro_ventas', (req, res) => {
                           doc.text(`Teléfono: ${infoEmpresa?.telefono_contacto || 'No disponible'}`);
                           doc.text(`Correo: ${infoEmpresa?.correo_contacto || 'No disponible'}`);
                           doc.moveDown(1);
-                          doc.fontSize(12).text(`Orden: ${id_orden}`);
+                          doc.fontSize(12).text(`Orden: ${id_order}`);
                           doc.text(`Fecha: ${fecha}`);
                           doc.text(`Hora: ${hora}`);
                           doc.text(`Cliente ID: ${id_cliente}`);
@@ -3184,7 +3387,7 @@ app.post('/registro_ventas', (req, res) => {
                                   text: 'Adjuntamos tu factura digital en formato PDF.',
                                   attachments: [
                                       {
-                                          filename: `factura_${id_orden}.pdf`,
+                                          filename: `factura_${id_order}.pdf`,
                                           path: pdfFilePath,
                                       },
                                   ],
@@ -3448,7 +3651,136 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+app.patch('/inventario/descontar', async (req, res) => {
+  try {
+      console.log("🔄 Recibida solicitud en /inventario/descontar con datos:", req.body);  
 
+      const { id_venta } = req.body;
+
+      if (!id_venta) {
+          console.error("❌ Error: No se recibió un id_venta.");
+          return res.status(400).json({ error: "Se requiere un id_venta para descontar ingredientes." });
+      }
+
+      // 1️⃣ Obtener los productos de la venta específica desde `registro_ventas`
+      const venta = await new Promise((resolve, reject) => {
+          db.get("SELECT productos FROM registro_ventas WHERE id_venta = ?", [id_venta], (err, row) => { 
+              if (err) reject(err);
+              else resolve(row);
+          });
+      });
+
+      if (!venta || !venta.productos) {
+          console.error(`❌ Venta con id_venta ${id_venta} no encontrada o sin productos.`);
+          return res.status(404).json({ error: "Venta no encontrada o sin productos." });
+      }
+
+      console.log("✅ Productos encontrados:", venta.productos);
+
+      const productos = JSON.parse(venta.productos);  // Convertir string JSON a objeto
+
+      for (const producto of productos) {
+          console.log(`🔍 Procesando pizza ID: ${producto.id_pizza}`);
+
+          let ingredientes = [];
+
+          // ✅ Si es una pizza personalizada (ID 101 o 103), usar `extraIngredients` directamente
+          if (producto.id_pizza === 101 || producto.id_pizza === 103) {
+              console.log(`🛑 Bypass activado para pizza ID ${producto.id_pizza}. Usando ingredientes extra.`);
+              ingredientes = producto.extraIngredients || [];
+          } else {
+              // 2️⃣ Obtener ingredientes de la pizza desde `menu_pizzas`
+              const pizza = await new Promise((resolve, reject) => {
+                  db.get("SELECT ingredientes FROM menu_pizzas WHERE id = ?", [producto.id_pizza], (err, row) => {
+                      if (err) reject(err);
+                      else resolve(row);
+                  });
+              });
+
+              if (!pizza) {
+                  console.error(`❌ No se encontraron ingredientes para la pizza ID: ${producto.id_pizza}`);
+                  continue;
+              }
+
+              ingredientes = JSON.parse(pizza.ingredientes);
+          }
+
+          console.log(`✅ Ingredientes obtenidos para pizza ID: ${producto.id_pizza}`, ingredientes);
+
+          // 3️⃣ Validar disponibilidad en inventario antes de descontar
+          ingredientes = await Promise.all(ingredientes.map(async (ing) => {
+              const lotes = await new Promise((resolve, reject) => {
+                  db.all(
+                      "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
+                      [ing.IDI],
+                      (err, rows) => {
+                          if (err) reject(err);
+                          else resolve(rows);
+                      }
+                  );
+              });
+
+              const cantidadDisponible = lotes.reduce((acc, lote) => acc + lote.disponible, 0);
+              const cantidadNecesaria = ((ing.cantBySize?.[producto.size] || ing.cantBySize) || 0) * producto.cantidad;
+
+              if (cantidadDisponible < cantidadNecesaria) {
+                  console.warn(`⚠️ No hay suficiente stock para ${ing.nombre} (IDI: ${ing.IDI}). Necesita ${cantidadNecesaria}, disponible ${cantidadDisponible}. Eliminando del procesamiento.`);
+                  return null;
+              }
+              return ing;
+          }));
+
+          ingredientes = ingredientes.filter(Boolean); // Eliminar ingredientes nulos
+
+          for (const ing of ingredientes) {
+            console.log(`🔄 Procesando ingrediente: ${ing.nombre} (IDI: ${ing.IDI})`);
+          
+            // Buscar lotes disponibles
+            const lotes = await new Promise((resolve, reject) => {
+              db.all(
+                "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
+                [ing.IDI],
+                (err, rows) => {
+                  if (err) reject(err);
+                  else resolve(rows);
+                }
+              );
+            });
+          
+            let cantidadRestante = ((ing.cantBySize?.[producto.size] || ing.cantBySize) || 0) * producto.cantidad;
+          
+            for (let lote of lotes) {
+              if (cantidadRestante <= 0) break;
+          
+              let cantidadADescontar = Math.min(cantidadRestante, lote.disponible);
+              cantidadRestante -= cantidadADescontar;
+          
+              console.log(`➖ Descontando ${cantidadADescontar} de lote IDR ${lote.IDR}`);
+          
+              await new Promise((resolve, reject) => {
+                db.run(
+                  "UPDATE inventario SET disponible = ? WHERE IDR = ?",
+                  [lote.disponible - cantidadADescontar, lote.IDR],
+                  (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                  }
+                );
+              });
+            }
+          
+            if (cantidadRestante > 0) {
+              console.warn(`⚠️ No se pudo cubrir completamente el ingrediente ${ing.nombre} (${ing.IDI}). Faltan ${cantidadRestante} unidades.`);
+            }
+          }          
+      }
+
+      res.json({ message: "✅ Ingredientes descontados correctamente." });
+  } catch (error) {
+      console.error("❌ Error interno al descontar ingredientes:", error);
+      res.status(500).json({ error: "Error interno al descontar ingredientes." });
+  }
+});
 app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
   const offerId = req.params.id;
   const { Cupones_Disponibles } = req.body;
@@ -3924,7 +4256,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   const {
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Categoria_Cupon,
-    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Max_Amount,
+    Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra, Numero_Compras, Id_cliente_Asig, Max_Amount,
     Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos, Hora_Inicio, Hora_Fin,
     Additional_Instructions, Tipo_Oferta, Precio_Cupon, Modo_Precio_Cupon
   } = req.body;
@@ -3976,7 +4308,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     SET
       Cupones_Asignados = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
       Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Categoria_Cupon = ?,
-      Condiciones_Extras = ?, Ticket_Promedio = ?, quantity_condition = ?, Dias_Ucompra = ?, Numero_Compras = ?,
+      Condiciones_Extras = ?, Ticket_Promedio = ?, quantity_condition = ?, Dias_Ucompra = ?, Numero_Compras = ?, Id_cliente_Asig  = ?,
       Max_Amount = ?, Instrucciones_Link = ?, Estado = ?, Origen = ?, Tipo_Cupon = ?,
       Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?,
       Tipo_Oferta = ?, Precio_Cupon = ?, Modo_Precio_Cupon = ?
@@ -3996,6 +4328,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     quantity_condition || null,
     Dias_Ucompra || null,
     Numero_Compras || null,
+    Id_cliente_Asig  || null,
     Max_Amount,
     Instrucciones_Link || null,          
     Estado,
@@ -4205,7 +4538,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   const {
     Cupones_Asignados, Descripcion, Segmentos_Aplicables,
     Min_Descuento_Percent, Max_Descuento_Percent, Condiciones_Extras, Ticket_Promedio, quantity_condition, Dias_Ucompra,
-    Numero_Compras, Max_Amount, Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos,
+    Numero_Compras, Id_cliente_Asig, Max_Amount, Instrucciones_Link, Estado, Origen, Tipo_Cupon, Dias_Activos,
     Hora_Inicio, Hora_Fin, Additional_Instructions
   } = req.body;
 
@@ -4255,7 +4588,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
       SET
           Cupones_Asignados = ?, Cupones_Disponibles = ?, Descripcion = ?, Segmentos_Aplicables = ?, Imagen = ?,
           Min_Descuento_Percent = ?, Max_Descuento_Percent = ?, Condiciones_Extras = ?, Ticket_Promedio = ?, quantity_condition = ?,
-          Dias_Ucompra = ?, Numero_Compras = ?, Max_Amount = ?, Instrucciones_Link = ?, Estado = ?,
+          Dias_Ucompra = ?, Numero_Compras = ?, Id_cliente_Asig  = ?, Max_Amount = ?, Instrucciones_Link = ?, Estado = ?,
           Origen = ?, Tipo_Cupon = ?, Dias_Activos = ?, Hora_Inicio = ?, Hora_Fin = ?, Additional_Instructions = ?
       WHERE Oferta_Id = ?
     `;
@@ -4263,7 +4596,7 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
     const params = [
       Cupones_Asignados, Cupones_Disponibles, Descripcion, JSON.stringify(parsedSegmentos), Imagen,
       Min_Descuento_Percent || null, Max_Descuento_Percent || null, Condiciones_Extras,
-      Ticket_Promedio || null, quantity_condition || null, Dias_Ucompra || null, Numero_Compras || null, Max_Amount,
+      Ticket_Promedio || null, quantity_condition || null, Dias_Ucompra || null, Numero_Compras || null, Id_cliente_Asig  || null, Max_Amount,
       Instrucciones_Link || null, Estado, Origen, Tipo_Cupon, JSON.stringify(parsedDiasActivos),
       Hora_Inicio, Hora_Fin, Additional_Instructions || null, req.params.Oferta_Id
     ];
@@ -4487,6 +4820,19 @@ app.patch('/limites/:IDI', (req, res) => {
 });
 
 // the drop zone //
+app.delete('/inventario/eliminar/:IDR', (req, res) => {
+  const { IDR } = req.params;
+  const query = 'DELETE FROM inventario WHERE IDR = ?';
+
+  db.run(query, IDR, function (err) {
+    if (err) {
+      console.error(`❌ Error al eliminar ingrediente con IDR ${IDR}:`, err.message);
+      res.status(500).json({ error: 'Error al eliminar el ingrediente' });
+    } else {
+      res.json({ message: 'Ingrediente eliminado correctamente', IDR });
+    }
+  });
+});
 app.delete("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const query = "DELETE FROM rutas WHERE id_ruta = ?";
@@ -4568,27 +4914,6 @@ app.delete('/ofertas/:id', (req, res) => {
           return;
       }
       res.json({ "message": "success", "deletedId": id });
-  });
-});
-app.delete('/inventario/:IDR', (req, res) => {
-  const { IDR } = req.params;
-  const sql = 'DELETE FROM inventario WHERE IDR = ?';
-  const params = [IDR];
-
-  db.run(sql, params, function (err) {
-    if (err) {
-      res.status(400).json({ "error": err.message });
-      return;
-    }
-    if (this.changes > 0) {
-      res.json({
-        "message": "success",
-        "changes": this.changes
-      });
-    } else {
-      // Si no se encontró el registro para eliminar
-      res.status(404).json({ "error": "Item not found" });
-    }
   });
 });
 app.delete('/menu_pizzas/:id', (req, res) => {

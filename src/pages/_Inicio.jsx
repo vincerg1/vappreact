@@ -1,41 +1,41 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import inicio_style from '../styles/inicio_style.css';
+import '../styles/inicio_style.css';
 
 export const Inicio = () => {
   const navigate = useNavigate();
-
-  // Estado para el formulario de inicio de sesión
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false); // Control de acceso al panel
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false); // ✅ Estado de carga agregado
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true); // ⏳ Inicia la carga
+    setError(null);
+
     try {
       const response = await axios.post('http://localhost:3001/admin/login', { correo, contrasena });
 
       if (response.data.admin) {
-        // Guardar información en localStorage
         localStorage.setItem('loggedIn', JSON.stringify(true));
         localStorage.setItem('admin', JSON.stringify(response.data.admin));
-        
-        // Actualizar el estado de inicio de sesión
+
         setLoggedIn(true);
-        setError(null);
       }
     } catch (error) {
       if (error.response && error.response.status === 401) {
-        setError('Credenciales incorrectas. Por favor, intenta nuevamente.');
+        setError('❌ Credenciales incorrectas. Intenta nuevamente.');
       } else {
-        setError('Error al iniciar sesión. Por favor, intenta más tarde.');
+        setError('⚠ Error al iniciar sesión. Inténtalo más tarde.');
       }
+    } finally {
+      setLoading(false); // 🔄 Finaliza la carga
     }
   };
 
-  // Funciones de navegación
   const handleInformacionClick = () => navigate('/_Inicio/_Informacion');
   const handleMenuClick = () => navigate('/_Inicio/_Menu_p1');
   const handleInvClick = () => navigate('/_Inicio/_InvIngDB');
@@ -45,44 +45,51 @@ export const Inicio = () => {
   const handleRouteSetterClick = () => navigate('/RouteSetterAdmin');
 
   return (
-    <div>
+    <div className="login-container">
       {!loggedIn ? (
-        // Mostrar formulario de inicio de sesión
         <section className="login-section">
-          <h2>Inicio de Sesión - Administrador</h2>
-          <form onSubmit={handleLogin}>
-            <div>
+          <h2 className="login-title">Inicio de Sesión - Administrador</h2>
+
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="input-group">
               <label htmlFor="correo">Correo:</label>
               <input
                 type="email"
                 id="correo"
+                placeholder="ejemplo@correo.com"
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 required
               />
             </div>
-            <div>
+
+            <div className="input-group">
               <label htmlFor="contrasena">Contraseña:</label>
               <input
                 type="password"
                 id="contrasena"
+                placeholder="********"
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
                 required
               />
             </div>
+
             {error && <p className="error-message">{error}</p>}
-            <button type="submit">Iniciar Sesión</button>
+
+            <button type="submit" className="login-button" disabled={loading}>
+              {loading ? 'Ingresando...' : 'Iniciar Sesión'}
+            </button>
           </form>
-          <p>
+
+          <p className="register-link">
             ¿No tienes una cuenta?{' '}
-            <a href="/register" onClick={() => navigate('/register')}>
+            <span onClick={() => navigate('/register')} className="register-link-text">
               Crear una cuenta
-            </a>
+            </span>
           </p>
         </section>
       ) : (
-        // Mostrar panel de control con el encabezado
         <>
           <h1 className="PDCRL">Panel de Control / My_Backoffice</h1>
           <section className="contenedorPC">
@@ -112,7 +119,7 @@ export const Inicio = () => {
       )}
     </div>
   );
-  
 };
 
 export default Inicio;
+

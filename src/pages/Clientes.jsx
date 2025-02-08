@@ -13,8 +13,8 @@ function Clientes() {
       <h2>Clientes</h2>
       <div className="botones-acciones">
         <button onClick={() => navigate('/clientes/crear')}>Crear Cliente</button>
-        <button onClick={() => navigate('/clientes/ver')}>Ver Clientes</button>
         <button onClick={() => navigate('/clientes/mapa')}>Mapa Clientes</button>
+        <button onClick={() => navigate('/clientes/ver')}>Ver Clientes</button>
       </div>
     </div>
   );

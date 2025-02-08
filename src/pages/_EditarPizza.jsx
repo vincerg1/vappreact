@@ -16,53 +16,53 @@ const EditarPizza = () => {
     metodoCoccion: '',
     imagen: null,
   });
-  const [imageFile, setImageFile] = useState(null); // Estado para manejar el archivo de imagen
-  
-  useEffect(() => {
-    if (pizzaId) {
-      const fetchPizzaData = async () => {
-        try {
-          const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
-          if (response.data && response.data.data) {
+  const [imageFile, setImageFile] = useState(null); 
+  const [isLoading, setIsLoading] = useState(true);
 
-            const ingredientesParsed = JSON.parse(response.data.data.ingredientes);
+useEffect(() => {
+  if (pizzaId) {
+    const fetchPizzaData = async () => {
+      try {
+        const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
+        if (response.data && response.data.data) {
+          const ingredientesParsed = typeof response.data.data.ingredientes === 'string'
+        ? JSON.parse(response.data.data.ingredientes)
+        : response.data.data.ingredientes;
 
-            setFormData({
-              ...response.data.data,
-              Nombre: response.data.data.nombre || '',
-              Categoria: response.data.data.categoria || '',
-              selectSize: JSON.parse(response.data.data.selectSize) || [],
-              PriceBySize: response.data.data.PriceBySize ? JSON.parse(response.data.data.PriceBySize) : {},
-              Ingredientes: ingredientesParsed || [],
-              metodoCoccion: response.data.data.metodoCoccion || '',
-              imagen: response.data.data.imagen || null,
+        setFormData({
+          ...response.data.data,
+          Nombre: response.data.data.nombre || '',
+          Categoria: response.data.data.categoria || '',
+          selectSize: typeof response.data.data.selectSize === 'string'
+            ? JSON.parse(response.data.data.selectSize)
+            : response.data.data.selectSize || [],
+          PriceBySize: typeof response.data.data.PriceBySize === 'string'
+            ? JSON.parse(response.data.data.PriceBySize)
+            : response.data.data.PriceBySize || {},
+          Ingredientes: ingredientesParsed || [],
+          metodoCoccion: response.data.data.metodoCoccion || '',
+          imagen: response.data.data.imagen || null,
+        });
 
-            });
-
-        
-          } else {
-            // Manejar la ausencia de datos o un formato de datos incorrecto
-            console.error('Datos de pizza no encontrados o en formato incorrecto:', response.data);
-            setMessage('Datos de pizza no encontrados o en formato incorrecto');
-          }
-          
-          console.log('selectSize after fetch', formData.selectSize);
-
-        } catch (error) {
-          if (error.response && error.response.status === 404) {
-            setMessage('Pizza no encontrada');
-          } else {
-            console.error('Error al cargar los datos de la pizza:', error);
-            setMessage('Error al cargar los datos de la pizza');
-          }
+          setIsLoading(false);  // Marcar como cargado
+        } else {
+          console.error('Datos de pizza no encontrados o en formato incorrecto:', response.data);
+          setMessage('Datos de pizza no encontrados o en formato incorrecto');
         }
-      };
-      fetchPizzaData();
-    }
-  }, [pizzaId]);
-
+      } catch (error) {
+        if (error.response && error.response.status === 404) {
+          setMessage('Pizza no encontrada');
+        } else {
+          console.error('Error al cargar los datos de la pizza:', error);
+          setMessage('Error al cargar los datos de la pizza');
+        }
+      }
+    };
+    fetchPizzaData();
+  }
+}, [pizzaId]);
   useEffect(() => {
-    console.log('formData actualizado:', formData);
+    console.log('formData actualizado en EP:', formData);
   }, [formData]);
 
   const handleImageChange = (e) => {
@@ -70,7 +70,6 @@ const EditarPizza = () => {
       setImageFile(e.target.files[0]);
     }
   };
-
   const handleUpdatePizza = async (updatedFormData) => {
     const dataToSend = new FormData();
     Object.entries(updatedFormData).forEach(([key, value]) => {

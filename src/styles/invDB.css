@@ -223,9 +223,14 @@ html, body {
 }*/
 .Filtros {
   display: flex;
-  align-items: center; /* Centra los elementos verticalmente */
-  padding-left: 5%; /* Ajusta según sea necesario */
-  gap: 10px; /* Espacio entre elementos */
+  align-items: center; 
+  padding-left: 5%; 
+  gap: 10px; 
+}
+.boton-escaneo {
+  position: absolute;
+  right: 100px;
+  top: 10px;
 }
 
 .boton-agregar, .boton-dashboard, .Filtro1 {
@@ -237,7 +242,9 @@ html, body {
 
 /* Si necesitas un ancho específico para los selectores, puedes establecerlo aquí */
 .Filtro1 {
-  width: auto; /* O cualquier otro valor que necesites */
+  width: auto;
+  padding: 0 20px;
+  margin-top: .5rem;
 }
 
 /* Para el botón, si quieres que se ajuste al contenido */
@@ -425,4 +432,47 @@ input[type="text"], button, label {
   pointer-events: none;
 }
 
+.Titulo{
+  margin-top: 2rem;
+  margin-bottom: 4rem;
+}
 
+/*tabla de ingredinntes mas vendidos*/
+.info-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+.grafico-section {
+  width: 60%;
+}
+
+.top-ingredientes-section {
+  width: 38%;
+  border: 2px solid #ddd;
+  padding: 15px;
+  background-color: #ffffff;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.top-ingredientes-section table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.top-ingredientes-section th, 
+.top-ingredientes-section td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  color: #020202;
+}
+
+.top-ingredientes-section th {
+  background-color: #f8f8f8;
+  font-weight: bold;
+}

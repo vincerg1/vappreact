@@ -43,7 +43,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     }
   }, [compra.Entrega]);
   useEffect(() => {
-    setCompra(prevCompra => ({ ...prevCompra, id_orden: orderId }));
+    setCompra(prevCompra => ({ ...prevCompra, id_order: orderId }));
   }, [orderId, setCompra]);
   useEffect(() => {
     if (compra.Entrega?.Delivery) {
@@ -149,7 +149,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       console.log('Email del cliente para enviar factura:', email); // Log para verificar el email
       const estadoEntrega = "Pendiente";
       const compraData = {
-        id_orden: orderId,
+        id_order: orderId,
         fecha,
         hora,
         id_cliente: sessionData.id_cliente,
@@ -622,7 +622,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
 
       {compra?.Entrega && (
         <div className="qr-code-container">
-          <h4 className="track-title">Order Track ({compra.id_orden})</h4>
+          <h4 className="track-title">Order Track ({compra.id_order})</h4>
           <div className="qr-with-text">
             <span className="vertical-text">Escanea el QR para el seguimiento de tu orden</span> 
             <QRCode value={qrData} size={128} />
