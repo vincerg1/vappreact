@@ -52,6 +52,17 @@ import CrearCliente from './pages/CrearCliente.jsx';
 import VerClientes from './pages/VerClientes.jsx';
 import MapaClientes from './pages/MapaClientes.jsx';
 import SeguimientoCliente from './pages/SeguimientoCliente.jsx';
+import ControlHorarioIndex from "./pages/ControlHorarioIndex";
+import EmpleadosIndex from "./pages/EmpleadosIndex"; 
+import EmpleadosForm from "./pages/EmpleadosForm"; 
+import EmpleadosLista from "./pages/EmpleadosLista"; 
+import EmpleadosEditar from "./pages/EmpleadosEditar"; 
+import HorariosIndex from "./pages/HorariosIndex"; 
+import HorariosCrear from "./pages/HorariosCrear"; 
+import HorariosLista from "./pages/HorariosLista"; 
+import HorariosEditar from './pages/HorariosEditar.jsx';
+import HorariosMalla from './pages/HorariosMalla.jsx';
+import HorariosDetalles from './pages/HorariosDetalles.jsx';
 
 function App() {
   const [menus, setMenus] = useState([]);
@@ -60,7 +71,19 @@ function App() {
     <PizzaProvider>
       <BrowserRouter>
         <Routes>
-     
+        <Route path="/control-horario" element={<ControlHorarioIndex />} />
+        <Route path="/control-horario/empleados" element={<EmpleadosIndex />} />
+        <Route path="/control-horario/empleados/crear" element={<EmpleadosForm />} />
+        <Route path="/control-horario/empleados/lista" element={<EmpleadosLista />} />
+        <Route path="/control-horario/empleados/editar/:id" element={<EmpleadosEditar />} />
+        <Route path="/control-horario/horarios" element={<HorariosIndex />} />
+        <Route path="/control-horario/horarios/crear" element={<HorariosCrear />} />
+        <Route path="/control-horario/horarios/lista" element={<HorariosLista />} />
+        <Route path="/control-horario/horarios/editar/:id" element={<HorariosEditar />} />
+        <Route path="/control-horario/horarios/malla/:id" element={<HorariosMalla />} />
+        <Route path="/control-horario/horarios/detalles/:id" element={<HorariosDetalles />} />
+
+        {/* Otras Rutas 1 */}
          <Route path="/GestionarIngredientesExtras" element={<GestionarIngredientesExtras />} />
          <Route path="/register" element={<CrearAdmin />} />
          <Route path="/repartidores-reportes" element={<RRep />} />
@@ -90,7 +113,7 @@ function App() {
           <Route path="/clientes/mapa" element={<MapaClientes />} />
           <Route path="/clientes/seguimiento/:id" element={<SeguimientoCliente />} />
 
-          {/* Otras Rutas */}
+          {/* Otras Rutas 2 */}
           <Route path="/ReviewForm" element={<ReviewForm />} />
           <Route path="/clientes" element={<Clientes />} />
           <Route path="/seguimiento" element={<Seguimiento />} />

@@ -24,7 +24,7 @@ const InicioSesion = () => {
   
     try {
       if (email && password) {
-        console.log('Attempting login with email and password:', email); // Log para confirmar que se intenta iniciar sesión
+        // console.log('Attempting login with email and password:', email); 
   
         // Intentar iniciar sesión con email y contraseña
         const { data } = await axios.post('http://localhost:3001/api/auth/login', { email, password });
@@ -51,11 +51,11 @@ const InicioSesion = () => {
   
         navigate('/customer');
       } else if (email && !password) {
-        console.log('Attempting Remember Me with email:', email); // Verifica el intento de recordar contraseña
+        // console.log('Attempting Remember Me with email:', email); 
   
         // Intentar "Remember Me" con solo email
         const { data } = await axios.post('http://localhost:3001/api/auth/remember-me', { email });
-        console.log('Password loaded from backend:', data.password); // Verifica la contraseña cargada
+        // console.log('Password loaded from backend:', data.password); 
   
         setPassword(data.password); // Rellenar automáticamente la contraseña
         alert('Credentials loaded. Press the button again to log in.');

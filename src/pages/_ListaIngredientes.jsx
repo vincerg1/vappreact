@@ -164,7 +164,6 @@ useEffect(() => {
    // Limpiar el intervalo cuando el componente se desmonte
    return () => clearInterval(intervalo);
  }, []);
-
 useEffect(() => {
   let resultados = [...inventario];
 
@@ -211,7 +210,6 @@ useEffect(() => {
   setInventarioAgrupadoPorIDI(agrupadoPorIDI);
 
 }, [inventario, filtrosubcategoria, ubicacionSeleccionada, filtroEstado, terminoBusqueda, esOrdenAlfabetico]);
-
 useEffect(() => {
   axios.get('http://localhost:3001/inventario')
     .then(response => {
@@ -231,11 +229,9 @@ useEffect(() => {
       console.error('Hubo un error obteniendo los datos:', error);
     });
 }, []);
-
 useEffect(() => {
   fetchLimits();
 }, []); 
-
 useEffect(() => {
   if (Object.keys(limites).length > 0 && inventario.length > 0) {
     const nuevaZonaRiesgoPorIDI = {};
@@ -271,7 +267,6 @@ const fetchLimits = async () => {
     console.error('Error al cargar los límites:', error);
   }
 }
-
 const handleChange = (e) => {
   const { name, value } = e.target;
   setNuevoIngrediente(prev => ({
@@ -279,7 +274,6 @@ const handleChange = (e) => {
       [name]: name === 'disponible' || name === 'limite' ? Number(value) : value
   }));
 }
-
 const handleEstadoIDI = async (IDI, esActivo) => {
   const mensaje = esActivo
     ? "¿Estás seguro de que quieres desactivar todos los lotes de este ingrediente?"
@@ -321,7 +315,6 @@ const handleEstadoIDI = async (IDI, esActivo) => {
     alert(`Error al intentar actualizar el estado: ${error}`);
   }
 };
-
 const handleEstadoLoteClick = async (IDR, esActivo) => {
   const ingrediente = inventario.find(ing => ing.IDR === IDR);
   if (!ingrediente) {
@@ -335,7 +328,7 @@ const handleEstadoLoteClick = async (IDR, esActivo) => {
   if (!window.confirm(mensajeConfirmacion)) return;
 
   try {
-    const estadoForzadoInt = esActivo ? 1 : 0; // 1 para inactivo, 0 para activo
+    const estadoForzadoInt = esActivo ? 1 : 0; 
     const response = await fetch(`http://localhost:3001/inventario/${IDR}`, {
       method: 'PATCH',
       headers: {
@@ -374,7 +367,6 @@ const handleEstadoLoteClick = async (IDR, esActivo) => {
     alert(`Error al intentar actualizar el estado: ${error}`);
   }
 };
-
 const handlesubcategoriaChange = (e) => {
   setFiltrosubcategoria(e.target.value);
 };
@@ -449,7 +441,6 @@ const actualizarTLimite = async (IDI, nuevoLimite) => {
     return Promise.reject(new Error('Límite inválido'));
   }
 };
-
 const handleSearchChange = (event) => {
   setTerminoBusqueda(event.target.value);
 };

@@ -16,6 +16,20 @@ const ActualizaStock = () => {
   const [currentLimite, setCurrentLimite] = useState(0);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [lastId, setLastId] = useState(100);
+  const [productosFiltrados, setProductosFiltrados] = useState([]);
+  const [filtrosubcategoria, setFiltrosubcategoria] = useState('Todos');
+  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [inventarioFinal, setInventarioFinal] = useState([]);
+  const [inventarioFiltrado, setInventarioFiltrado] = useState([]);
+  const [fechaCaducidad, setFechaCaducidad] = useState(new Date());
+  const [currentFechaCaducidad, setCurrentFechaCaducidad] = useState(new Date());
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
+  const [subcategoriaSeleccionada, setSubcategoriaSeleccionada] = useState('');
+  const [productoSeleccionado, setProductoSeleccionado] = useState('');
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [inventarioOriginal, setInventarioOriginal] = useState([]);
+  const [esOrdenAlfabetico, setEsOrdenAlfabetico] = useState(false);
   const [categorias, setCategorias] = useState({
     Ingredientes: {
       Lacteos: [
@@ -392,21 +406,6 @@ const ActualizaStock = () => {
     unidadMedida: '',
     referencia: '',
   });
-  const [productosFiltrados, setProductosFiltrados] = useState([]);
-  const [filtrosubcategoria, setFiltrosubcategoria] = useState('Todos');
-  const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [inventarioFinal, setInventarioFinal] = useState([]);
-  const [inventarioFiltrado, setInventarioFiltrado] = useState([]);
-  const [fechaCaducidad, setFechaCaducidad] = useState(new Date());
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('');
-  const [subcategoriaSeleccionada, setSubcategoriaSeleccionada] = useState('');
-  const [productoSeleccionado, setProductoSeleccionado] = useState('');
-  const [currentFechaCaducidad, setCurrentFechaCaducidad] = useState(new Date());
-  const [terminoBusqueda, setTerminoBusqueda] = useState('');
-  const [inventarioOriginal, setInventarioOriginal] = useState([]);
-  const [esOrdenAlfabetico, setEsOrdenAlfabetico] = useState(false);
-
 
 useEffect(() => {
     axios.get('http://localhost:3001/inventario')
@@ -480,7 +479,9 @@ const agregarIngrediente = async (e) => {
   const { categoria, subcategoria, producto, disponible, unidadMedida, referencia } = nuevoIngrediente;
   const nuevoDisponible = Number(disponible);
   const ultimaModificacion = new Date().toISOString();
-
+  const fechaValida = currentFechaCaducidad instanceof Date && !isNaN(currentFechaCaducidad)
+  ? currentFechaCaducidad.toISOString()
+  : null; // ⬅️ Si la fecha no es válida, se envía null
   const ingredienteParaEnviar = {
     categoria,
     subcategoria,
@@ -488,13 +489,12 @@ const agregarIngrediente = async (e) => {
     disponible: nuevoDisponible,
     unidadMedida,
     estadoForzado: false,
-    fechaCaducidad: currentFechaCaducidad.toISOString(),
+    fechaCaducidad: fechaValida, // ⬅️ Evita enviar valores incorrectos
     referencia,
     ultimaModificacion
   };
 
   try {
-    // Intentamos agregar el ingrediente al inventario
     const responseInventario = await fetch("http://localhost:3001/inventario", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -504,22 +504,19 @@ const agregarIngrediente = async (e) => {
     const dataInventario = await responseInventario.json();
     if (!responseInventario.ok) throw new Error(dataInventario.error);
 
-    // ⚠️ Verifica si dataInventario.data tiene IDI y IDR
     if (!dataInventario.data.IDI || !dataInventario.data.IDR) {
       throw new Error("El servidor no devolvió IDI o IDR correctamente.");
     }
 
-    // ✅ Asegurar que el estado incluya IDI e IDR correctamente
     setInventario(prevInventario => [
       ...prevInventario,
       { 
         ...ingredienteParaEnviar, 
         IDR: dataInventario.data.IDR, 
-        IDI: dataInventario.data.IDI  // Agregamos IDI
+        IDI: dataInventario.data.IDI  
       }
     ]);
 
-    // Reiniciamos el formulario y cerramos el modal o form
     setNuevoIngrediente({
       categoria: '',
       subcategoria: '',
@@ -539,77 +536,58 @@ const agregarIngrediente = async (e) => {
 const showForm = (IDR, disponible, fechaCaducidadStr) => {
   setCurrentId(IDR);
   setCurrentDisponible(disponible);
- 
 
-  if (fechaCaducidadStr) {
+  console.log("\n📥 showForm - Datos recibidos:", { IDR, disponible, fechaCaducidadStr });
+
+  if (fechaCaducidadStr && fechaCaducidadStr !== "0") {
     const fecha = new Date(fechaCaducidadStr);
     if (!isNaN(fecha.getTime())) {
+      console.log("✅ Fecha válida procesada:", fecha);
       setCurrentFechaCaducidad(fecha);
     } else {
-      console.error('La fecha de caducidad proporcionada no es válida:', fechaCaducidadStr);
-      setCurrentFechaCaducidad(new Date(fechaCaducidadStr)); 
+      console.error('❌ Fecha de caducidad no válida:', fechaCaducidadStr);
+      setCurrentFechaCaducidad(null);
     }
   } else {
-    console.error('No se proporcionó fecha de caducidad.');
-    setCurrentFechaCaducidad(new Date(fechaCaducidadStr)); 
+    console.warn('⚠️ No se proporcionó fecha de caducidad, se usará null.');
+    setCurrentFechaCaducidad(null);
   }
 
+  console.log("📅 Fecha establecida en el estado:", currentFechaCaducidad);
   setIsFormVisible(true);
-}
-const modificarIngrediente = async (IDR, IDI, nuevoProducto, nuevaUnidadMedida, currentDisponible, currentFechaCaducidad) => {
-  const nuevaFechaCaducidad = currentFechaCaducidad.toISOString();
-  const ultimaModificacion = new Date().toISOString();
-  const nuevoDisponible = Number(currentDisponible);
+};
+const modificarIngrediente = async (IDR, disponible, fechaCaducidadStr) => {
+  console.log('🔄 Enviando a modificarIngrediente:', { IDR, disponible, fechaCaducidadStr });
 
-  if (isNaN(nuevoDisponible)) {
-    alert("El valor de disponible no es válido.");
-    return;
-  }
-
-  if (!(currentFechaCaducidad instanceof Date && !isNaN(currentFechaCaducidad.getTime()))) {
-    alert("La fecha de caducidad no es válida.");
-    return;
-  }
-
-  const objetoParaEnviar = {
-    disponible: nuevoDisponible,
-    fechaCaducidad: nuevaFechaCaducidad,
-    ultimaModificacion
-  };
+  // Asegurar que la fecha esté en formato ISO antes de enviarla
+  const fechaValida = fechaCaducidadStr instanceof Date 
+    ? fechaCaducidadStr.toISOString() 
+    : fechaCaducidadStr;
 
   try {
-    // Actualizar en inventario
-    const responseInventario = await fetch(`http://localhost:3001/inventario/${IDR}`, {
+    const response = await fetch(`http://localhost:3001/inventario/${IDR}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(objetoParaEnviar)
+      body: JSON.stringify({ IDR, disponible, fechaCaducidad: fechaValida })  // 🔥 Cambiado a fechaCaducidad
     });
 
-    if (!responseInventario.ok) {
-      const errorData = await responseInventario.json();
-      throw new Error(errorData.error || 'Error al actualizar el ingrediente en el inventario');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error en la actualización');
     }
 
-    // Actualizar en ranking_ingredientes
-    const responseRanking = await fetch(`http://localhost:3001/ranking/actualizar`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ IDI, producto: nuevoProducto, unidadMedida: nuevaUnidadMedida })
-    });
+    const updatedData = await response.json();
+    console.log('✅ Respuesta del servidor:', updatedData);
 
-    if (!responseRanking.ok) {
-      const errorData = await responseRanking.json();
-      throw new Error(errorData.error || 'Error al actualizar el ingrediente en el ranking');
-    }
-
-    // Actualizar el estado
     setInventario(prevInventario =>
-      prevInventario.map(ingrediente => (ingrediente.IDR === IDR ? { ...ingrediente, ...objetoParaEnviar } : ingrediente))
+      prevInventario.map(ingrediente =>
+        ingrediente.IDR === IDR ? { ...ingrediente, ...updatedData } : ingrediente
+      )
     );
 
-    alert('Ingrediente modificado con éxito');
+    alert('Ingrediente actualizado con éxito');
   } catch (error) {
-    console.error('Error al modificar el ingrediente:', error);
+    console.error('❌ Error al modificar ingrediente:', error);
     alert('Error al modificar el ingrediente: ' + error.message);
   }
 };
@@ -807,7 +785,7 @@ return (
          <button 
         className="boton-escaneo"
         >
-        📷 Escanear Código
+        📷 Escanear Factura!
         </button>
 
           </div>
@@ -894,14 +872,6 @@ return (
                           value={nuevoIngrediente.disponible} 
                           onChange={handleChange} required />
                       </label>
-                      {/* <label>
-                          Límite:
-                          <input 
-                          type="number" 
-                          name="limite" 
-                          value={nuevoIngrediente.limite} 
-                          onChange={handleChange} required />
-                      </label> */}
                       <label>
                           Referencia:
                           <input 
@@ -910,7 +880,6 @@ return (
                           value={nuevoIngrediente.referencia} 
                           onChange={handleChange} required />
                       </label>
-                
                       <button 
                       type="submit"
                       >Guardar
@@ -928,7 +897,7 @@ return (
                     className='formulario-modificar'
                     onSubmit={e => {
                     e.preventDefault();
-                    modificarIngrediente(currentId, currentDisponible, currentLimite, currentFechaCaducidad);
+                    modificarIngrediente(currentId, currentDisponible, currentFechaCaducidad);
                     setIsFormVisible(false); 
                     }}
                     onClick={(e) => e.stopPropagation()}
@@ -994,7 +963,7 @@ return (
                                 <td>{ing.disponible}</td>
                                 {/* <td>{formatearLimite(ing.categoria, ing.limite)}</td> */}
                                 <td>
-                                    <button onClick={() => showForm(ing.IDR, ing.disponible, ing.fechaCaducidad)}>Modificar</button>
+                                    <button onClick={() => showForm(ing.IDR, ing.disponible, ing.fechaCaducidad)}>Editar</button>
                                     <button onClick={() => eliminarIngrediente(ing.IDR)}>Eliminar</button>
                                 </td>
                                 <td>{ing.referencia}</td>

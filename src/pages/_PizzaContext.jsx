@@ -344,14 +344,14 @@ useEffect(() => {
 
       // ✅ Si algún ingrediente base está inactivo, la pizza se considera inactiva
       const esActiva = ingredientesInactivos.length === 0;
-      console.log(`✅ Estado de la pizza ${pizza.nombre}: ${esActiva ? 'Activa' : 'Inactiva'}`);
+      // console.log(`✅ Estado de la pizza ${pizza.nombre}: ${esActiva ? 'Activa' : 'Inactiva'}`);
 
       // 🔥 Nueva lógica para ingredientes extra
       const ingredientesExtrasDisponibles = ingredientesPizza.filter(ingrediente =>
         inventario.some(inv => inv.IDI === ingrediente.IDI && inv.estadoGEN === 0)
       );
 
-      console.log("✅ Ingredientes extras disponibles:", ingredientesExtrasDisponibles);
+      // console.log("✅ Ingredientes extras disponibles:", ingredientesExtrasDisponibles);
 
       return {
         ...pizza,
@@ -412,7 +412,7 @@ useEffect(() => {
   if (inventario.length > 0) {
     const ingredientesExtraidos = inventario.filter(ing => ing.categoria === 'Ingredientes');
     setIngredientes(ingredientesExtraidos);
-    console.log("✅ Ingredientes extraídos desde el inventario:", ingredientesExtraidos);
+    // console.log("✅ Ingredientes extraídos desde el inventario:", ingredientesExtraidos);
   }
 }, [inventario]);
 

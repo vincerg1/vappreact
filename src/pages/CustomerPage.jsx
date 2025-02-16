@@ -1,14 +1,20 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { _PizzaContext } from './_PizzaContext';
+import { Tooltip } from 'react-tooltip';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPhone, faEnvelope, faSearch } from '@fortawesome/free-solid-svg-icons';
+import { faFacebook, faInstagram, faWhatsapp, faTiktok, faLinkedin, faTwitter } from '@fortawesome/free-brands-svg-icons';
+import { faGlobe } from '@fortawesome/free-solid-svg-icons'; 
 import ReviewForm from '../components/ReviewForm';
 import DailyChallengeCard from '../pages/DailyChallengeCard';
-import axios from 'axios';
-import '../styles/CustomerPage.css';
-import { Tooltip } from 'react-tooltip';
-import moment from 'moment';
-import 'moment/locale/es';
+import SearchWrapper from "../pages/SearchWrapper";
 import PizzaCarousel from './PizzaCarousel';
+import axios from 'axios';
+import moment from 'moment';
+import '../styles/CustomerPage.css';
+import 'moment/locale/es';
+
 
 const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, compra }) => {
   const { sessionData } = useContext(_PizzaContext);
@@ -744,6 +750,7 @@ const CustomerPage = (offer) => {
   const [isDailyChallengeEnabled, setIsDailyChallengeEnabled] = useState(false);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isLoadingOffers, setIsLoadingOffers] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   const [compra, setCompra] = useState({
     id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -788,7 +795,14 @@ const CustomerPage = (offer) => {
     }
     return null;
   };
-
+  const socialIcons = {
+    "Facebook": faFacebook,
+    "Instagram": faInstagram,
+    "Whatsapp": faWhatsapp,
+    "TikTok": faTiktok,
+    "LinkedIn": faLinkedin,
+    "Twitter": faTwitter
+  };
 
   useEffect(() => {
   const checkSuspensionStatus = async () => {
@@ -1081,7 +1095,34 @@ const CustomerPage = (offer) => {
     };
   
     fetchOffers();
-  }, []);  
+  }, []); 
+  useEffect(() => {
+    axios.get('http://localhost:3001/api/info-empresa')
+      .then((response) => {
+        if (response.data.length > 0) {
+          const empresa = response.data[0]; // 🔥 Tomar la primera tienda del array
+  
+          // Convertir `redes_sociales` en un array válido
+          let redesSociales = [];
+          try {
+            redesSociales = empresa.redes_sociales ? JSON.parse(empresa.redes_sociales) : [];
+          } catch (error) {
+            console.error("Error al parsear redes_sociales:", error);
+          }
+  
+          setCompanyInfo({
+            ...empresa,
+            redes_sociales: redesSociales
+          });
+        } else {
+          console.warn("No se encontró información de la empresa.");
+        }
+      })
+      .catch((error) => {
+        console.error('Error al cargar la información de la empresa:', error);
+      });
+  }, []);
+  
   
   const rotatingTexts = ["Order Now", "Explore Menu", "Make Your Pizza"];
   
@@ -1315,7 +1356,9 @@ const CustomerPage = (offer) => {
       console.error('Error al resetear los cupones:', error);
     }
   };
-
+  const filteredReviews = reviews.filter(review =>
+    review.review.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   
   const handleReviewButtonClick = () => setShowReviewForm(!showReviewForm);
   const handleCloseReviewForm = () => setShowReviewForm(false);
@@ -1445,6 +1488,7 @@ const CustomerPage = (offer) => {
               fontSize: '1.2rem',
               color: '#666',
               fontWeight: 'bold',
+              marginRight: '50px'
             }}
           >
             <div>
@@ -1521,78 +1565,21 @@ const CustomerPage = (offer) => {
           </style>
         </header>
 
+        <div className="search-bar-container">
+        <SearchWrapper onSelectPizza={handlePizzaSelect} />
+        </div>
 
           <div className="content-container">
-            {reviews.length > 0 && (
-           <div className="reviews-container">
-              {/* Promedio de Satisfacción (fijo) */}
-              <div 
-                  className="satisfaction-rating" 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    marginBottom: '15px', 
-                    cursor: 'pointer' 
-                  }}
-                  title={`Promedio de Satisfacción: ${averageRating} / 5`} 
-                >
-                  {[...Array(Math.floor(averageRating))].map((_, i) => (
-                    <span 
-                      key={`filled-star-${i}`} 
-                      className="star filled-star" 
-                      style={{ 
-                        color: '#FFD700', 
-                        fontSize: '2rem', 
-                        marginRight: '2px', 
-                        transition: 'transform 0.3s ease, text-shadow 0.3s ease',
-                        textShadow: '0 0 5px #FFD700' 
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'scale(1.3)';
-                        e.target.style.textShadow = '0 0 5px #FFD700, 0 0 2px #FFA500';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'scale(1)';
-                        e.target.style.textShadow = '0 0 10px #FFD700';
-                      }}
-                    >
-                      ★
-                    </span>
-                  ))}
-                  {[...Array(5 - Math.floor(averageRating))].map((_, i) => (
-                    <span 
-                      key={`empty-star-${i}`} 
-                      className="star empty-star" 
-                      style={{ 
-                        color: '#D3D3D3', 
-                        fontSize: '2rem', 
-                        marginRight: '2px', 
-                        transition: 'transform 0.3s ease, text-shadow 0.3s ease', 
-                        textShadow: 'none' 
-                      }}
-                      onMouseEnter={(e) => {
-                        e.target.style.transform = 'scale(1.2)';
-                        e.target.style.textShadow = '0 0 10px #C0C0C0';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.transform = 'scale(1)';
-                        e.target.style.textShadow = 'none';
-                      }}
-                    >
-                      ☆
-                    </span>
-                    
-                  ))}
-              </div>
-              {/* Comentarios (dinámicos en una línea) */}
+          {reviews.length > 0 && (
+            <div className="reviews-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '5px', width: '100%' }}>
+              {/* Comentario dinámico (80%) */}
               <div
                 className="reviews-slide"
-                style={{ textAlign: 'center', fontSize: '1rem', marginTop: '10px' }}
+                style={{ fontSize: '1rem', minWidth: '80%', maxWidth: '80%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center', flexShrink: 0 }}
               >
                 {reviews.length > 0 ? (
                   <p>
-                    <span style={{ fontWeight: 'bold', color: '#333' }}>
+                    <span style={{ fontWeight: 'bold', color: '#333', fontStyle: 'italic' }}>
                       {reviews[currentReviewIndex]?.email || 'Email no disponible'}
                     </span>{" "}
                     - {reviews[currentReviewIndex]?.review || 'Sin comentario disponible'} -{" "}
@@ -1604,9 +1591,33 @@ const CustomerPage = (offer) => {
                   <p>No hay comentarios disponibles.</p>
                 )}
               </div>
-           </div>
-            )}
-
+              {/* Promedio de Satisfacción (20%) */}
+              <div 
+                className="satisfaction-rating" 
+                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', minWidth: '20%', maxWidth: '20%', justifyContent: 'left', flexShrink: 0 }}
+                title={`Promedio de Satisfacción: ${averageRating} / 5`} 
+              >
+                {[...Array(Math.floor(averageRating))].map((_, i) => (
+                  <span 
+                    key={`filled-star-${i}`} 
+                    className="star filled-star" 
+                    style={{ color: '#FFD700', fontSize: '1.8rem', marginRight: '2px', transition: 'transform 0.3s ease', textShadow: '0 0 5px #FFD700' }}
+                  >
+                    ★
+                  </span>
+                ))}
+                {[...Array(5 - Math.floor(averageRating))].map((_, i) => (
+                  <span 
+                    key={`empty-star-${i}`} 
+                    className="star empty-star" 
+                    style={{ color: '#D3D3D3', fontSize: '1.8rem', marginRight: '2px', transition: 'transform 0.3s ease' }}
+                  >
+                    ☆
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
             <div className="buttons-container">
             <button 
                   onClick={handleContactButtonClick} 
@@ -1657,13 +1668,11 @@ const CustomerPage = (offer) => {
 
 
            </div>
-
             {showReviewForm && (
               <div className="review-form-container">
                 <ReviewForm onClose={handleCloseReviewForm} email={sessionData.email} />
               </div>
             )}
-            
             {showDailyChallenge && dailyChallenge && (
               <div className="review-form-container">
           <DailyChallengeCard
@@ -1679,9 +1688,36 @@ const CustomerPage = (offer) => {
             {showContactInfo && companyInfo && (
               <div className="review-form-container">
                 <div className="contact-info">
-                  <h3>Información de Contacto</h3>
-                  <p><strong>Teléfono:</strong> {companyInfo.telefono_contacto}</p>
-                  <p><strong>Correo:</strong> {companyInfo.correo_contacto}</p>
+                  <h3>Contact us</h3>
+
+                  {/* Contenedor unificado con iconos de FontAwesome */}
+                  <div className="contact-icons">
+                    {/* Teléfono */}
+                    <a href={`tel:${companyInfo.telefono_contacto}`} className="icon-item" title="Llamar">
+                      <FontAwesomeIcon icon={faPhone} />
+                    </a>
+
+                    {/* Correo */}
+                    <a href={`mailto:${companyInfo.correo_contacto}`} className="icon-item" title="Enviar Email">
+                      <FontAwesomeIcon icon={faEnvelope} />
+                    </a>
+
+                    {/* Redes Sociales */}
+                    {companyInfo.redes_sociales && companyInfo.redes_sociales.length > 0 &&
+                      companyInfo.redes_sociales.map((social, index) => (
+                        <a
+                          key={index}
+                          href={social.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="icon-item"
+                          title={social.nombre}
+                        >
+                          <FontAwesomeIcon icon={socialIcons[social.nombre] || faGlobe} />
+                        </a>
+                      ))
+                    }
+                  </div>
                 </div>
               </div>
             )}

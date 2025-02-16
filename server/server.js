@@ -431,12 +431,226 @@ const actualizarRankingIngredientes = async () => {
   }
 };
 
+//Funciones del control horario
+
+function autoCloseExpiredShifts(id_empleado, callback) {
+  // Aquí puedes cerrar turnos vencidos si es parte de tu flujo.
+  // Si no lo usas, omite esta función y llama directamente al siguiente.
+  console.log("🔍 [DEBUG] Revisando turnos vencidos (opcional)...");
+  return callback(null); 
+  // Si hubiese error, llamar callback(err).
+}
+function checkActiveEntry(id_empleado, callback) {
+  const query = `
+    SELECT * FROM timeRecord 
+    WHERE id_empleado = ? 
+    ORDER BY id_registro DESC 
+    LIMIT 1
+  `;
+  db.get(query, [id_empleado], (err, row) => {
+    if (err) {
+      console.error("❌ Error al verificar entrada activa:", err);
+      return callback(err);
+    }
+    if (!row) {
+      console.log("🔍 No hay registros en timeRecord para este empleado.");
+      return callback(null, false, "sin_registro"); 
+      // hasActiveEntry = false, lastStatus = "sin_registro"
+    }
+    console.log("✅ Última acción en timeRecord:", row);
+
+    const isEntryActive = (row.status === "entrada" && row.hora_fin === null);
+    return callback(null, isEntryActive, row.status); 
+    // hasActiveEntry, lastStatus
+  });
+}
+function getShiftForToday(id_empleado, callback) {
+  const days = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
+  const today = new Date();
+  const currentDay = days[today.getDay()].toLowerCase();
+  const currentHour = today.getHours();
+  const currentMinute = today.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute;
+
+  const query = `
+    SELECT * FROM horarioPersonal
+    WHERE id_empleado = ?
+      AND LOWER(day) = LOWER(?)
+    ORDER BY hora_inicio ASC
+  `;
+
+  db.all(query, [id_empleado, currentDay], (err, rows) => {
+    if (err) {
+      console.error("❌ Error en getShiftForToday:", err);
+      return callback(err);
+    }
+    if (!rows || rows.length === 0) {
+      console.log("🔍 No hay turnos asignados para hoy en la BD.");
+      return callback(null, null);
+    }
+
+    console.log("🔍 Turnos obtenidos (hoy):", rows);
+    let selectedShift = null;
+
+    for (const turno of rows) {
+      const [startHour, startMin] = turno.hora_inicio.split(":").map(Number);
+      const [endHour, endMin] = turno.hora_fin.split(":").map(Number);
+      const startTime = startHour * 60 + startMin;
+      const endTime = (endHour === 0 ? 1440 : endHour * 60 + endMin);
+
+      console.log(`⏳ Evaluando turno: ${turno.hora_inicio} - ${turno.hora_fin}`);
+      // 1) Si la hora actual está dentro del rango
+      if (currentTime >= startTime && currentTime <= endTime) {
+        console.log("✅ Turno en curso:", turno);
+        selectedShift = turno;
+        break; 
+      } 
+      // 2) Si la hora actual es menor al startTime, y aun no hemos tomado un turno, nos quedamos con ese
+      else if (currentTime < startTime && !selectedShift) {
+        console.log("🔜 Próximo turno de HOY:", turno);
+        selectedShift = turno;
+      }
+    }
+    console.log("📌 Turno seleccionado para hoy:", selectedShift);
+    return callback(null, selectedShift);
+  });
+}
+function findNextShift(id_empleado, callback) {
+  const days = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+  const today = new Date();
+  const currentDayIndex = today.getDay();  // 0=domingo, 1=lunes, etc.
+  const currentDay = days[currentDayIndex].toLowerCase();
+
+  const currentHour = today.getHours();
+  const currentMinute = today.getMinutes();
+  const currentTime = currentHour * 60 + currentMinute;
+
+  console.log(`🔍 Buscando próximo turno para empleado ${id_empleado} en ${currentDay} (hora actual: ${currentHour}:${currentMinute})`);
+
+  // ================================================================
+  // 1) Buscar turno hoy que NO esté consumido, ni finalizado
+  //    ni que ya haya pasado su hora_fin
+  // ================================================================
+  const querySameDay = `
+    SELECT *,
+      (CAST(SUBSTR(hora_inicio, 1, 2) AS INTEGER) * 60
+       + CAST(SUBSTR(hora_inicio, 4, 2) AS INTEGER)) AS hora_inicio_min,
+      (CASE 
+         WHEN CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER) = 0 
+         THEN 1440 -- si hora_fin es "00:00", interpretamos como 24:00
+         ELSE CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER)*60
+              + CAST(SUBSTR(hora_fin, 4, 2) AS INTEGER)
+       END) AS hora_fin_min
+    FROM horarioPersonal
+    WHERE id_empleado = ?
+      AND LOWER(day) = LOWER(?)
+      -- Excluir turnos que ya se usaron con salida en timeRecord
+      AND NOT EXISTS (
+        SELECT 1
+        FROM timeRecord
+        WHERE timeRecord.id_empleado = horarioPersonal.id_empleado
+          AND timeRecord.id_horario  = horarioPersonal.id_horario
+          AND status = 'salida'
+          -- Opcional: AND date = 'YYYY-MM-DD' si guardas fecha
+      )
+      -- Exigir que la hora_fin sea > currentTime (todavía no termina)
+      AND (
+        (CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER) != 0
+          AND (CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER)*60 
+               + CAST(SUBSTR(hora_fin, 4, 2) AS INTEGER)) > ?
+        )
+        OR (
+          CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER) = 0 
+          AND 1440 > ?
+        )
+      )
+    ORDER BY hora_inicio_min ASC
+    LIMIT 1
+  `;
+
+  db.get(querySameDay, [id_empleado, currentDay, currentTime, currentTime], (err, row) => {
+    if (err) {
+      console.error("❌ Error al buscar el próximo turno (mismo día):", err);
+      return callback(err);
+    }
+
+    if (row) {
+      console.log("✅ Próximo turno (mismo día):", row);
+      return callback(null, row);
+    }
+    console.log(`🔍 Verificando turnos del mismo día para empleado ${id_empleado}, día: ${currentDay} (${currentDayIndex})`);
+    console.log(`⏳ Hora actual en minutos: ${currentTime}`);
+    // ================================================================
+    // 2) Si NO hay más turnos hoy, buscar turnos en días siguientes
+    //    (misma lógica de exclusión: no devuelvas turnos usados ni
+    //     los que ya pasaron su hora_fin en el mismo día)
+    // ================================================================
+    console.log("🔍 No hay más turnos hoy. Buscando en días siguientes...");
+
+    const queryNextDays = `
+    SELECT *,
+  
+      CASE 
+        WHEN LOWER(day)='domingo'    THEN 0
+        WHEN LOWER(day)='lunes'     THEN 1
+        WHEN LOWER(day)='martes'    THEN 2
+        WHEN LOWER(day)='miercoles' THEN 3
+        WHEN LOWER(day)='jueves'    THEN 4
+        WHEN LOWER(day)='viernes'   THEN 5
+        WHEN LOWER(day)='sabado'    THEN 6
+      END AS day_num,
+      
+      (CAST(SUBSTR(hora_inicio, 1, 2) AS INTEGER)*60
+       + CAST(SUBSTR(hora_inicio, 4, 2) AS INTEGER)) AS hora_inicio_min,
+  
+      (CASE 
+        WHEN CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER) = 0 
+        THEN 1440
+        ELSE CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER)*60 
+             + CAST(SUBSTR(hora_fin, 4, 2) AS INTEGER)
+       END) AS hora_fin_min
+  
+    FROM horarioPersonal
+    WHERE id_empleado = ?
+      -- Excluir turnos usados con salida
+      AND NOT EXISTS (
+        SELECT 1
+        FROM timeRecord
+        WHERE timeRecord.id_empleado = horarioPersonal.id_empleado
+          AND timeRecord.id_horario  = horarioPersonal.id_horario
+          AND status = 'salida'
+      )
+  
+      -- 🚀 🔥 NUEVA CONDICIÓN: Si es el mismo día y ya pasó la última hora_fin, exclúyelo
+      AND NOT (day_num = ? AND hora_fin_min < ?)
+  
+    ORDER BY (((day_num - ?) + 7) % 7) ASC,
+             hora_inicio_min ASC
+    LIMIT 1
+  `;
+  
+  db.get(queryNextDays, [id_empleado, currentDayIndex, currentTime, currentDayIndex], (err2, nextRow) => {
+    if (err2) {
+      console.error("❌ Error al buscar turno en días siguientes:", err2);
+      return callback(err2);
+    }
+    if (nextRow) {
+      console.log("✅ Próximo turno (otro día):", nextRow);
+      return callback(null, nextRow);
+    } else {
+      console.log("❌ No hay más turnos registrados.");
+      return callback(null, null);
+    }
+  });  
+  });
+}
+
+
 
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 
 
 cron.schedule('0 0 * * *', () => {
@@ -614,12 +828,180 @@ cron.schedule('0 0 * * *', () => {
     });
   });
 
+  // 4️⃣ ELIMINAR OFERTAS TEMPORALES SIN CUPONES DISPONIBLES
+  console.log('🗑️ Iniciando limpieza de ofertas temporales...');
+  const eliminarOfertasQuery = `
+    DELETE FROM ofertas 
+    WHERE Tipo_Cupon = 'temporal' 
+    AND Cupones_Disponibles = 0
+  `;
+
+  db.run(eliminarOfertasQuery, function (err) {
+    if (err) {
+      console.error('❌ Error al eliminar ofertas temporales:', err.message);
+    } else {
+      console.log(`✅ Ofertas temporales eliminadas: ${this.changes}`);
+    }
+  });
+
   console.log('=== Cron Job Finalizado: Evaluación completa ===\n');
 });
+cron.schedule('0 2 * * *', () => {
+  console.log('⏳ Ejecutando cierre automático de turnos a las 02:00 AM');
 
+  const updateQuery = `
+      UPDATE timeRecord
+      SET hora_fin = (
+          SELECT TIME(hora_fin, '+' || (ABS(RANDOM()) % 5) || ' minutes')
+          FROM timeRecord t
+          WHERE t.id_registro = timeRecord.id_registro
+            AND strftime('%s', 'now') - strftime('%s', hora_fin) >= 1800
+            AND hora_fin IS NOT NULL
+      ),
+      status = 'salida'
+      WHERE status = 'entrada'
+      AND hora_fin IS NULL
+      AND strftime('%s', 'now') - strftime('%s', hora_inicio) >= 1800;
+  `;
 
+  db.run(updateQuery, function (err) {
+      if (err) {
+          console.error('❌ Error al cerrar turnos automáticamente:', err);
+      } else {
+          console.log(`✅ Cierre automático completado. Registros afectados: ${this.changes}`);
+      }
+  });
+});
 
 // the get zone
+app.get("/api/employees/:id_empleado/current_status", (req, res) => {
+  const { id_empleado } = req.params;
+
+  // 1) (Opcional) Cerrar turnos vencidos si usas esa lógica
+  autoCloseExpiredShifts(id_empleado, (err) => {
+    if (err) {
+      console.error("❌ Error en autoCloseExpiredShifts:", err);
+      return res.status(500).json({ success: false, error: "Error en el servidor." });
+    }
+
+    // 2) Revisar si ya hay una entrada activa
+    checkActiveEntry(id_empleado, (err2, hasActiveEntry, lastStatus) => {
+      if (err2) {
+        console.error("❌ Error en checkActiveEntry:", err2);
+        return res.status(500).json({ success: false, error: "Error en el servidor." });
+      }
+
+      // 3) Obtener turno para HOY
+      getShiftForToday(id_empleado, (err3, shiftInfo) => {
+        if (err3) {
+          console.error("❌ Error en getShiftForToday:", err3);
+          return res.status(500).json({ success: false, error: "Error en el servidor." });
+        }
+
+        // Determinar status => "turno_vigente", "turno_finalizado" o "sin_turno"
+        let turnStatus = "sin_turno";
+        if (shiftInfo) {
+          const now = new Date();
+          const currentMins = now.getHours() * 60 + now.getMinutes();
+
+          const [startHour, startMin] = shiftInfo.hora_inicio.split(":").map(Number);
+          const [endHour, endMin] = shiftInfo.hora_fin.split(":").map(Number);
+          const startTime = startHour * 60 + startMin;
+          const endTime = (endHour === 0 ? 24 : endHour) * 60 + endMin;
+
+          // Si el último registro es "salida" o ya pasó la hora de fin => finalizado
+          if (lastStatus === "salida" || currentMins > endTime) {
+            turnStatus = "turno_finalizado";
+        } else if (currentMins >= startTime && currentMins <= endTime) {
+            turnStatus = "turno_vigente";
+        } else {
+            turnStatus = "sin_turno";
+        }
+        }
+
+        // 4) Buscar el siguiente turno
+        findNextShift(id_empleado, (err4, nextShift) => {
+          if (err4) {
+            console.error("❌ Error en findNextShift:", err4);
+            return res.status(500).json({ success: false, error: "Error en el servidor." });
+          }
+
+          // 5) Respuesta final: combinamos todo
+          return res.json({
+            success: true,
+            turnStatus,       // "turno_vigente" | "turno_finalizado" | "sin_turno"
+            shiftInfo,        // null o { day, hora_inicio, hora_fin, ... }
+            hasActiveEntry,   // true/false
+            nextShift         // null o { day, hora_inicio, hora_fin, ... }
+          });
+        });
+      });
+    });
+  });
+});
+app.get("/horarioPersonal/empleado/:id", (req, res) => {
+  const { id } = req.params;
+  const query = `SELECT * FROM horarioPersonal WHERE id_empleado = ?`;
+
+  db.all(query, [id], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.get("/horarioPersonal/:id", (req, res) => {
+  const { id } = req.params;
+  const query = `
+    SELECT hp.*, e.nombre, e.apellido, u.ciudad, u.codigo_postal 
+    FROM horarioPersonal hp
+    JOIN empleados e ON hp.id_empleado = e.id_empleado
+    JOIN ubicaciones u ON hp.ubicacion = u.id_cliente
+    WHERE hp.id_horario = ?`;
+
+  db.get(query, [id], (err, row) => {
+    if (err) {
+      console.error("Error al obtener horario:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Horario no encontrado" });
+    }
+    res.json(row);
+  });
+});
+app.get("/horarioPersonal", (req, res) => {
+  const query = `
+    SELECT h.*, e.nombre, e.apellido
+    FROM horarioPersonal h
+    JOIN empleados e ON h.id_empleado = e.id_empleado
+  `;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);
+  });
+});
+app.get("/api/empleados", (req, res) => {
+  db.all("SELECT * FROM empleados", [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(rows);
+  });
+});
+app.get("/api/empleados/:id", (req, res) => {
+  const { id } = req.params;
+  db.get("SELECT * FROM empleados WHERE id_empleado = ?", [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Empleado no encontrado" });
+    }
+    res.json(row);
+  });
+});
 app.get("/api/ingredientes-uso", (req, res) => {
   const query = `
     WITH base_ingredients AS (
@@ -680,7 +1062,7 @@ app.get("/api/ingredientes-uso", (req, res) => {
       return res.status(500).json({ error: "Error en la consulta SQL" });
     }
 
-    console.log("📊 Datos obtenidos en el backend:", rows);
+    // console.log("📊 Datos obtenidos en el backend:", rows);
 
     if (!rows || rows.length === 0) {
       console.warn("⚠️ No se encontraron resultados en la consulta.");
@@ -688,17 +1070,6 @@ app.get("/api/ingredientes-uso", (req, res) => {
     }
 
     res.json(rows);
-  });
-});
-app.get('/ranking_ingredientes', (req, res) => {
-  const query = 'SELECT * FROM ranking_ingredientes';
-  db.all(query, [], (err, rows) => {
-    if (err) {
-      console.error('Error al obtener los datos de ranking_ingredientes:', err.message);
-      res.status(500).json({ error: 'Error al obtener los datos' });
-    } else {
-      res.status(200).json(rows);
-    }
   });
 });
 app.get('/registro_ventas/by_fecha_ASC', (req, res) => {
@@ -2016,6 +2387,198 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post("/auto_close_shift", (req, res) => {
+  const { id_empleado } = req.body;
+
+  const currentTime = new Date();
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+
+  const query = `
+      SELECT *, 
+      (CAST(SUBSTR(hora_fin, 1, 2) AS INTEGER) * 60 + CAST(SUBSTR(hora_fin, 4, 2) AS INTEGER)) AS hora_fin_min
+      FROM timeRecord
+      WHERE id_empleado = ? 
+      AND status = 'entrada'  -- Solo turnos donde aún no se ha marcado salida
+      AND hora_fin_min + 30 <= ?  -- Verifica si pasaron 30 min después de la hora_fin
+      ORDER BY hora_fin_min DESC 
+      LIMIT 1;
+  `;
+
+  db.get(query, [id_empleado, currentTotalMinutes], (err, turno) => {
+      if (err) {
+          console.error("❌ Error al verificar turno vencido:", err);
+          return res.status(500).json({ error: "Error en el servidor" });
+      }
+
+      if (!turno) {
+          console.log("✅ No hay turnos vencidos sin salida marcada.");
+          return res.json({ success: false, message: "No hay turnos vencidos sin salida" });
+      }
+
+      // Marcar salida automática
+      const updateQuery = `
+          UPDATE timeRecord 
+          SET status = 'salida', hora_fin = ?
+          WHERE id_registro = ?
+      `;
+
+      db.run(updateQuery, [turno.hora_fin, turno.id_registro], function (err) {
+          if (err) {
+              console.error("❌ Error al cerrar turno automáticamente:", err);
+              return res.status(500).json({ error: "Error al cerrar turno" });
+          }
+
+          console.log(`✅ Turno cerrado automáticamente: ${turno.id_registro}`);
+          res.json({ success: true, message: "Turno cerrado automáticamente", turno });
+      });
+  });
+});
+app.post("/mark_exit", (req, res) => {
+  const { id_empleado } = req.body;
+  
+  // Ajuste de la hora local
+  const now = new Date();
+  now.setHours(now.getHours() + 1); // Ajuste manual si el servidor está en UTC
+  
+  // Formatear la fecha correctamente en el formato esperado por la base de datos
+  const horaFin = now.toISOString().slice(0, 19).replace("T", " ");
+
+  console.log(`🔹 Registrando SALIDA para ID Empleado: ${id_empleado} a las ${horaFin}`);
+
+  const query = `
+    UPDATE timeRecord 
+    SET hora_fin = ?, status = 'salida' 
+    WHERE id_registro = (SELECT MAX(id_registro) FROM timeRecord WHERE id_empleado = ? AND status = 'entrada' AND hora_fin IS NULL)
+  `;
+
+  db.run(query, [horaFin, id_empleado], function (err) {
+    if (err) {
+      console.error("❌ Error al registrar salida:", err);
+      return res.status(500).json({ error: "Error al registrar salida." });
+    }
+
+    console.log("✅ Salida registrada con éxito");
+    res.json({ success: true });
+  });
+});
+app.post("/mark_entry", (req, res) => {
+  const { id_empleado, day, hora_inicio, shift, id_horario } = req.body;
+  
+  // 🔥 AQUI HACEMOS EL CAMBIO: reemplazamos esta línea
+  // const horaInicio = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  // Opción corregida
+  const now = new Date();
+  now.setHours(now.getHours() - now.getTimezoneOffset() / 60);
+  const horaInicio = now.toISOString().slice(0, 19).replace("T", " ");
+
+  console.log(`🔹 Registrando ENTRADA en timeRecord para ID Empleado: ${id_empleado} a las ${horaInicio}`);
+
+  const query = `
+    INSERT INTO timeRecord (id_empleado, day, hora_inicio, shift, id_horario, status) 
+    VALUES (?, ?, ?, ?, ?, 'entrada')
+  `;
+
+  db.run(query, [id_empleado, day, horaInicio, shift, id_horario], function (err) {
+    if (err) {
+      console.error("❌ Error al registrar entrada:", err);
+      return res.status(500).json({ error: "Error al registrar entrada." });
+    }
+
+    console.log("✅ Entrada registrada con éxito");
+    res.json({ success: true, id_registro: this.lastID });
+  });
+});
+app.post("/authenticate", (req, res) => {
+  const { pin } = req.body;
+
+  console.log(`🔍 Autenticando PIN: ${pin}`);
+
+  const query = "SELECT id_empleado, nombre, apellido FROM empleados WHERE pin = ?";
+  
+  db.get(query, [pin], (err, row) => {
+    if (err) {
+      console.error("❌ Error en la autenticación:", err);
+      return res.status(500).json({ error: "Error en el servidor." });
+    }
+
+    if (!row) {
+      console.log("⚠ PIN incorrecto.");
+      return res.status(401).json({ success: false, message: "PIN incorrecto." });
+    }
+
+    console.log(`✅ Autenticación exitosa para ID Empleado: ${row.id_empleado}`);
+
+    res.json({
+      success: true,
+      id_empleado: row.id_empleado,
+      nombre: row.nombre,
+      apellido: row.apellido,
+    });
+  });
+});
+app.post("/api/horarioPersonal", (req, res) => {
+  const { id_empleado, ubicacion, day, shift, hora_inicio, hora_fin } = req.body;
+
+  console.log("Recibiendo datos para crear horario:", req.body); // LOG de depuración
+
+  if (!id_empleado || !ubicacion || !day || !shift || !hora_inicio || !hora_fin) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+  }
+
+  // Verificar si ya existe un turno con el mismo id_empleado, day y shift
+  const checkQuery = `SELECT COUNT(*) as count FROM horarioPersonal WHERE id_empleado = ? AND day = ? AND shift = ?`;
+
+  db.get(checkQuery, [id_empleado, day, shift], (err, row) => {
+    if (err) {
+      console.error("Error al verificar horario existente:", err.message);
+      return res.status(500).json({ error: "Error al verificar horario existente" });
+    }
+
+    if (row.count > 0) {
+      console.log("⛔ Ya existe un turno asignado para este empleado en este día y turno.");
+      return res.status(400).json({ error: "El empleado ya tiene un turno asignado para este día y turno." });
+    }
+
+    // Si no existe, proceder con la inserción
+    const insertQuery = `INSERT INTO horarioPersonal (id_empleado, ubicacion, day, shift, hora_inicio, hora_fin) 
+                         VALUES (?, ?, ?, ?, ?, ?)`;
+
+    db.run(insertQuery, [id_empleado, ubicacion, day, shift, hora_inicio, hora_fin], function (err) {
+      if (err) {
+        console.error("Error al insertar horario:", err.message);
+        return res.status(500).json({ error: err.message });
+      }
+      console.log(`✅ Horario insertado con ID: ${this.lastID}`);
+      res.status(201).json({ message: "Horario creado", id: this.lastID });
+    });
+  });
+});
+app.post("/api/empleados", (req, res) => {
+  const { nombre, apellido, email, telefono, bday } = req.body;
+  const generatePIN = () => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    return Array.from({ length: 5 }, () => letters[Math.floor(Math.random() * letters.length)]).join("");
+  };
+  const pin = generatePIN();
+  db.get("SELECT * FROM empleados WHERE email = ?", [email], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: "Error en la base de datos" });
+    }
+    if (row) {
+      return res.status(400).json({ error: "El email ya está registrado" });
+    }
+    const query = `INSERT INTO empleados (nombre, apellido, email, telefono, bday, pin) VALUES (?, ?, ?, ?, ?, ?)`;
+    db.run(query, [nombre, apellido, email, telefono, bday, pin], function (err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.status(201).json({ message: "Empleado registrado", id: this.lastID });
+    });
+  });
+});
 app.post('/registro_ventas/bulk', async (req, res) => {
   const ventas = req.body; // Array de ventas recibidas
   console.log('Ventas recibidas para simulación:', ventas);
@@ -2698,7 +3261,6 @@ app.post('/api/daily-challenge/:id/participate', (req, res) => {
   });
 });
 app.post('/api/info-empresa', upload.single('logo_url'), (req, res) => {
-  // Extraer los datos del cuerpo de la solicitud
   const { 
     pais, 
     region, 
@@ -2711,40 +3273,47 @@ app.post('/api/info-empresa', upload.single('logo_url'), (req, res) => {
     ciudad_longitud, 
     nombre_empresa, 
     correo_contacto, 
-    telefono_contacto 
+    telefono_contacto, 
+    redes_sociales 
   } = req.body;
+
   const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-  // Agregar logs para verificar los datos recibidos
+  // Log para verificar los datos recibidos
   console.log('Datos recibidos del formulario:', {
-    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, telefono_contacto, logo_url
+    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, 
+    ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, 
+    telefono_contacto, logo_url, redes_sociales
   });
 
-  // Verificar si los datos son válidos antes de guardar
+  // Validar datos requeridos
   if (!pais || !region || !codigo_postal || !direccion || !nombre_empresa || !correo_contacto || !telefono_contacto) {
     return res.status(400).json({ error: 'Faltan datos para completar la operación' });
   }
 
-  // Insertar los datos en la base de datos
+  // 🔥 Verificar si `redes_sociales` es un objeto y convertirlo correctamente
+  let redesJson = null;
+
+  try {
+    if (redes_sociales) {
+      redesJson = typeof redes_sociales === 'string' ? redes_sociales : JSON.stringify(redes_sociales);
+    }
+  } catch (error) {
+    console.error("Error al convertir redes_sociales a JSON:", error);
+    return res.status(400).json({ error: "Formato inválido en redes_sociales" });
+  }
+
+  // Query para insertar en la base de datos
   const query = `
-    INSERT INTO InfoEmpresa (pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, ciudad_latitud, ciudad_longitud, logo_url, nombre_empresa, correo_contacto, telefono_contacto)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO InfoEmpresa 
+    (pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, ciudad_latitud, ciudad_longitud, 
+    logo_url, nombre_empresa, correo_contacto, telefono_contacto, redes_sociales)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.run(query, [
-    pais, 
-    region, 
-    codigo_postal, 
-    direccion, 
-    coordenadas_latitud, 
-    coordenadas_longitud, 
-    ciudad, 
-    ciudad_latitud, 
-    ciudad_longitud, 
-    logo_url, 
-    nombre_empresa, 
-    correo_contacto, 
-    telefono_contacto
+    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, 
+    ciudad_latitud, ciudad_longitud, logo_url, nombre_empresa, correo_contacto, telefono_contacto, redesJson
   ], function(err) {
     if (err) {
       return res.status(500).json({ error: 'Error al guardar la información de la empresa' });
@@ -3651,134 +4220,320 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+app.patch("/horarioPersonal/:id", (req, res) => {
+  const { id } = req.params;
+  const { id_empleado, ubicacion, day, shift, hora_inicio, hora_fin } = req.body;
+
+  // 🛑 Agregar log para ver qué llega en req.body
+  console.log("Datos recibidos para actualizar:", req.body);
+
+  if (!id_empleado || !ubicacion || !day || !shift || !hora_inicio || !hora_fin) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+  }
+
+  const query = `UPDATE horarioPersonal SET id_empleado = ?, ubicacion = ?, day = ?, shift = ?, hora_inicio = ?, hora_fin = ? WHERE id_horario = ?`;
+
+  db.run(query, [id_empleado, ubicacion, day, shift, hora_inicio, hora_fin, id], function (err) {
+    if (err) {
+      console.error("Error en la actualización:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Horario actualizado" });
+  });
+});
+app.patch("/api/empleados/:id", (req, res) => {
+  const { id } = req.params;
+  const { nombre, apellido, email, telefono, bday } = req.body;
+
+  const query = `UPDATE empleados SET nombre = ?, apellido = ?, email = ?, telefono = ?, bday = ? WHERE id_empleado = ?`;
+  db.run(query, [nombre, apellido, email, telefono, bday, id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Empleado actualizado correctamente" });
+  });
+});
 app.patch('/inventario/descontar', async (req, res) => {
   try {
-      console.log("🔄 Recibida solicitud en /inventario/descontar con datos:", req.body);  
+    console.log("🔄 Recibida solicitud en /inventario/descontar con datos:", req.body);
 
-      const { id_venta } = req.body;
+    const { id_venta } = req.body;
+    if (!id_venta) {
+      console.error("❌ Error: No se recibió un id_venta.");
+      return res.status(400).json({ error: "Se requiere un id_venta para descontar ingredientes." });
+    }
 
-      if (!id_venta) {
-          console.error("❌ Error: No se recibió un id_venta.");
-          return res.status(400).json({ error: "Se requiere un id_venta para descontar ingredientes." });
-      }
+    // 1️⃣ Obtener los productos de la venta específica desde `registro_ventas`
+    const venta = await new Promise((resolve, reject) => {
+      db.get("SELECT productos FROM registro_ventas WHERE id_venta = ?", [id_venta], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
 
-      // 1️⃣ Obtener los productos de la venta específica desde `registro_ventas`
-      const venta = await new Promise((resolve, reject) => {
-          db.get("SELECT productos FROM registro_ventas WHERE id_venta = ?", [id_venta], (err, row) => { 
+    if (!venta || !venta.productos) {
+      console.error(`❌ Venta con id_venta ${id_venta} no encontrada o sin productos.`);
+      return res.status(404).json({ error: "Venta no encontrada o sin productos." });
+    }
+
+    console.log("✅ Productos encontrados:", venta.productos);
+    const productos = JSON.parse(venta.productos); // Convertir string JSON a objeto
+
+    for (const producto of productos) {
+      console.log(`🔍 Procesando pizza ID: ${producto.id_pizza}`);
+
+      // Aquí construiremos la lista final de ingredientes que se deben descontar
+      let ingredientesFinales = [];
+
+      // ----------------------------------------------------------------
+      // CASO 1: Pizzas “completas” (ID ≠ 101, 102, 103)
+      // ----------------------------------------------------------------
+      if (producto.id_pizza !== 101 && producto.id_pizza !== 102 && producto.id_pizza !== 103) {
+        // 1A) Obtener la receta base desde `menu_pizzas`
+        const pizzaBase = await new Promise((resolve, reject) => {
+          db.get(
+            "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
+            [producto.id_pizza],
+            (err, row) => {
               if (err) reject(err);
               else resolve(row);
-          });
-      });
+            }
+          );
+        });
 
-      if (!venta || !venta.productos) {
-          console.error(`❌ Venta con id_venta ${id_venta} no encontrada o sin productos.`);
-          return res.status(404).json({ error: "Venta no encontrada o sin productos." });
-      }
+        if (!pizzaBase) {
+          console.error(`❌ No se encontraron ingredientes para la pizza ID: ${producto.id_pizza}`);
+          continue; // Pasar a la siguiente pizza
+        }
 
-      console.log("✅ Productos encontrados:", venta.productos);
+        // 1B) Combinar receta base + extraIngredients
+        ingredientesFinales = JSON.parse(pizzaBase.ingredientes) || [];
+        if (producto.extraIngredients && Array.isArray(producto.extraIngredients)) {
+          ingredientesFinales = ingredientesFinales.concat(producto.extraIngredients);
+        }
 
-      const productos = JSON.parse(venta.productos);  // Convertir string JSON a objeto
+        console.log(`✅ (ID normal) Ingredientes combinados:`, ingredientesFinales);
 
-      for (const producto of productos) {
-          console.log(`🔍 Procesando pizza ID: ${producto.id_pizza}`);
+        // ----------------------------------------------------------------
+        // CASO 2: Pizza 101 o 103 (personalizada “completa”)
+        // ----------------------------------------------------------------
+      } else if (producto.id_pizza === 101 || producto.id_pizza === 103) {
+        console.log(`🛑 Pizza personalizada ID ${producto.id_pizza}. Usando solo extraIngredients.`);
+        // Estos IDs no tienen receta en `menu_pizzas`, solo se basan en el array extraIngredients
+        ingredientesFinales = producto.extraIngredients || [];
 
-          let ingredientes = [];
+        console.log(`✅ (ID personalizado 101/103) Ingredientes extra:`, ingredientesFinales);
 
-          // ✅ Si es una pizza personalizada (ID 101 o 103), usar `extraIngredients` directamente
-          if (producto.id_pizza === 101 || producto.id_pizza === 103) {
-              console.log(`🛑 Bypass activado para pizza ID ${producto.id_pizza}. Usando ingredientes extra.`);
-              ingredientes = producto.extraIngredients || [];
-          } else {
-              // 2️⃣ Obtener ingredientes de la pizza desde `menu_pizzas`
-              const pizza = await new Promise((resolve, reject) => {
-                  db.get("SELECT ingredientes FROM menu_pizzas WHERE id = ?", [producto.id_pizza], (err, row) => {
-                      if (err) reject(err);
-                      else resolve(row);
-                  });
-              });
+        // ----------------------------------------------------------------
+        // CASO 3: Pizza 102 (mitad y mitad)
+        // ----------------------------------------------------------------
+      } else if (producto.id_pizza === 102) {
+        console.log("🛑 Pizza mitad y mitad (ID 102). Desglosando sus dos mitades...");
 
-              if (!pizza) {
-                  console.error(`❌ No se encontraron ingredientes para la pizza ID: ${producto.id_pizza}`);
-                  continue;
-              }
+        // 3A) Revisa si existe la propiedad halfAndHalf con izquierda y derecha
+        if (!producto.halfAndHalf || !producto.halfAndHalf.izquierda || !producto.halfAndHalf.derecha) {
+          console.warn(`⚠️ No se encontró halfAndHalf completo en la pizza 102. Se usarán extraIngredients si existen.`);
+          // En caso de que no haya halfAndHalf, solo tomamos los extras
+          ingredientesFinales = producto.extraIngredients || [];
+        } else {
+          // Obtenemos el id de cada mitad
+          const leftID = producto.halfAndHalf.izquierda.id;
+          const rightID = producto.halfAndHalf.derecha.id;
 
-              ingredientes = JSON.parse(pizza.ingredientes);
-          }
-
-          console.log(`✅ Ingredientes obtenidos para pizza ID: ${producto.id_pizza}`, ingredientes);
-
-          // 3️⃣ Validar disponibilidad en inventario antes de descontar
-          ingredientes = await Promise.all(ingredientes.map(async (ing) => {
-              const lotes = await new Promise((resolve, reject) => {
-                  db.all(
-                      "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
-                      [ing.IDI],
-                      (err, rows) => {
-                          if (err) reject(err);
-                          else resolve(rows);
-                      }
-                  );
-              });
-
-              const cantidadDisponible = lotes.reduce((acc, lote) => acc + lote.disponible, 0);
-              const cantidadNecesaria = ((ing.cantBySize?.[producto.size] || ing.cantBySize) || 0) * producto.cantidad;
-
-              if (cantidadDisponible < cantidadNecesaria) {
-                  console.warn(`⚠️ No hay suficiente stock para ${ing.nombre} (IDI: ${ing.IDI}). Necesita ${cantidadNecesaria}, disponible ${cantidadDisponible}. Eliminando del procesamiento.`);
-                  return null;
-              }
-              return ing;
-          }));
-
-          ingredientes = ingredientes.filter(Boolean); // Eliminar ingredientes nulos
-
-          for (const ing of ingredientes) {
-            console.log(`🔄 Procesando ingrediente: ${ing.nombre} (IDI: ${ing.IDI})`);
-          
-            // Buscar lotes disponibles
-            const lotes = await new Promise((resolve, reject) => {
-              db.all(
-                "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
-                [ing.IDI],
-                (err, rows) => {
+          // 3B) Obtener la receta de la mitad izquierda
+          let leftIngredientes = [];
+          if (leftID) {
+            const leftPizzaRow = await new Promise((resolve, reject) => {
+              db.get(
+                "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
+                [leftID],
+                (err, row) => {
                   if (err) reject(err);
-                  else resolve(rows);
+                  else resolve(row);
                 }
               );
             });
-          
-            let cantidadRestante = ((ing.cantBySize?.[producto.size] || ing.cantBySize) || 0) * producto.cantidad;
-          
-            for (let lote of lotes) {
-              if (cantidadRestante <= 0) break;
-          
-              let cantidadADescontar = Math.min(cantidadRestante, lote.disponible);
-              cantidadRestante -= cantidadADescontar;
-          
-              console.log(`➖ Descontando ${cantidadADescontar} de lote IDR ${lote.IDR}`);
-          
-              await new Promise((resolve, reject) => {
-                db.run(
-                  "UPDATE inventario SET disponible = ? WHERE IDR = ?",
-                  [lote.disponible - cantidadADescontar, lote.IDR],
-                  (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                  }
-                );
-              });
+            if (leftPizzaRow) {
+              leftIngredientes = JSON.parse(leftPizzaRow.ingredientes) || [];
             }
-          
-            if (cantidadRestante > 0) {
-              console.warn(`⚠️ No se pudo cubrir completamente el ingrediente ${ing.nombre} (${ing.IDI}). Faltan ${cantidadRestante} unidades.`);
+          }
+
+          // 3C) Obtener la receta de la mitad derecha
+          let rightIngredientes = [];
+          if (rightID) {
+            const rightPizzaRow = await new Promise((resolve, reject) => {
+              db.get(
+                "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
+                [rightID],
+                (err, row) => {
+                  if (err) reject(err);
+                  else resolve(row);
+                }
+              );
+            });
+            if (rightPizzaRow) {
+              rightIngredientes = JSON.parse(rightPizzaRow.ingredientes) || [];
             }
-          }          
+          }
+
+          console.log("👈 Ingredientes (mitad izquierda):", leftIngredientes);
+          console.log("👉 Ingredientes (mitad derecha):", rightIngredientes);
+
+          // 3D) Ajustar cada ingrediente multiplicando por 0.5
+          //    y luego por `producto.cantidad` (si piden más de 1 pizza)
+          const ingredientesIzq = leftIngredientes.map((ing) => {
+            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
+            return {
+              ...ing,
+              // Multiplicamos la porción base x 0.5 x cantidad
+              cantBySize: baseCant * 0.5 * producto.cantidad
+            };
+          });
+
+          const ingredientesDer = rightIngredientes.map((ing) => {
+            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
+            return {
+              ...ing,
+              cantBySize: baseCant * 0.5 * producto.cantidad
+            };
+          });
+
+          // 3E) Unir ambas mitades
+          //    (Opcional: podrías agrupar por IDI si quisieras sumar duplicados)
+          let combined = [...ingredientesIzq, ...ingredientesDer];
+
+          // 3F) Incorporar extraIngredients si existiera
+          if (producto.extraIngredients && Array.isArray(producto.extraIngredients)) {
+            // En el caso de la mitad y mitad, estos extras se aplican a la pizza entera
+            // (asumiendo que el user decidió agregarlos encima)
+            // Por lo tanto, no van a la mitad, sino al total completo
+            combined = combined.concat(
+              producto.extraIngredients.map((extraIng) => {
+                // Igual que con las mitades, calculamos la cantidad * product.cantidad
+                const baseCant = extraIng.cantBySize?.[producto.size] || extraIng.cantBySize || 0;
+                return {
+                  ...extraIng,
+                  cantBySize: baseCant * producto.cantidad
+                };
+              })
+            );
+          }
+
+          ingredientesFinales = combined;
+        }
+
+        console.log("✅ (ID 102) Ingredientes finales a descontar:", ingredientesFinales);
       }
 
-      res.json({ message: "✅ Ingredientes descontados correctamente." });
+      // ----------------------------------------------------------------
+      // A partir de aquí: validación de stock y descuento
+      // ----------------------------------------------------------------
+      // Nota: en los casos 101/103 (y 102 si no encontró halfAndHalf),
+      // `ingredientesFinales` podría provenir directamente de extraIngredients,
+      // que ya traen la propiedad `cantBySize`.
+
+      // 3️⃣ Validar disponibilidad en inventario antes de descontar
+      //    Ajustamos el map para usar la *nueva* lógica: cada ingrediente
+      //    ahora guarda la cantidad necesaria en la propiedad `cantBySize`.
+      //    (Cuando la receta venía de la DB, era un objeto { S: 40, M: 60... }).
+      //    En el caso 102, ya lo hemos convertido a un número multiplicado por 0.5.
+
+      const ingredientesProcesables = await Promise.all(
+        ingredientesFinales.map(async (ing) => {
+          const lotes = await new Promise((resolve, reject) => {
+            db.all(
+              "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
+              [ing.IDI],
+              (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+              }
+            );
+          });
+
+          const cantidadDisponible = lotes.reduce((acc, lote) => acc + lote.disponible, 0);
+
+          // Si `ing.cantBySize` es un número, lo tomamos directamente.
+          // Si aún fuera un objeto (caso de pizzas normales ID≠102) interpretamos la sintaxis original.
+          // Este fallback evita romper la lógica si vienen objetos {S,M,L}.
+          let cantidadNecesaria = 0;
+          if (typeof ing.cantBySize === "number") {
+            // CASO: 102 (o la parte 101/103) ya convirtió a número
+            cantidadNecesaria = ing.cantBySize;
+          } else {
+            // CASO: Pizzas normales, donde `cantBySize` sigue siendo {S: X, M: Y, L: Z}
+            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
+            cantidadNecesaria = baseCant * (producto.cantidad || 1);
+          }
+
+          if (cantidadDisponible < cantidadNecesaria) {
+            console.warn(
+              `⚠️ Stock insuficiente para ${ing.nombre} (IDI: ${ing.IDI}). ` +
+              `Se usará lo que queda (${cantidadDisponible}) y se marcará como agotado.`
+            );
+            cantidadNecesaria = cantidadDisponible; // 🔹 Ajustamos la cantidad a lo que hay
+          }
+          // Retornamos la info del ingrediente, pero además incluimos la cantidadNecesaria calculada
+          return {
+            ...ing,
+            _cantidadNecesaria: cantidadNecesaria
+          };
+        })
+      );
+
+      // Filtrar out nulos
+      const ingredientesFiltrados = ingredientesProcesables.filter(Boolean);
+
+      // 4️⃣ Descontar del inventario cada ingrediente
+      for (const ing of ingredientesFiltrados) {
+        console.log(`🔄 Procesando ingrediente: $(IDI: ${ing.IDI})`);
+
+        const lotes = await new Promise((resolve, reject) => {
+          db.all(
+            "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
+            [ing.IDI],
+            (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            }
+          );
+        });
+
+        let cantidadRestante = ing._cantidadNecesaria;
+
+        for (let lote of lotes) {
+          if (cantidadRestante <= 0) break;
+
+          const cantidadADescontar = Math.min(cantidadRestante, lote.disponible);
+          cantidadRestante -= cantidadADescontar;
+
+          console.log(`➖ Descontando ${cantidadADescontar} de lote IDR ${lote.IDR}`);
+
+          await new Promise((resolve, reject) => {
+            db.run(
+              "UPDATE inventario SET disponible = ? WHERE IDR = ?",
+              [lote.disponible - cantidadADescontar, lote.IDR],
+              (err) => {
+                if (err) reject(err);
+                else resolve();
+              }
+            );
+          });
+        }
+
+        if (cantidadRestante > 0) {
+          console.warn(
+            `⚠️ No se pudo cubrir completamente el ingrediente ${ing.nombre} (${ing.IDI}). ` +
+            `Faltan ${cantidadRestante} unidades.`
+          );
+        }
+      }
+    }
+
+    res.json({ message: "✅ Ingredientes descontados correctamente." });
   } catch (error) {
-      console.error("❌ Error interno al descontar ingredientes:", error);
-      res.status(500).json({ error: "Error interno al descontar ingredientes." });
+    console.error("❌ Error interno al descontar ingredientes:", error);
+    res.status(500).json({ error: "Error interno al descontar ingredientes." });
   }
 });
 app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
@@ -4476,47 +5231,52 @@ app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
     ciudad_longitud, 
     nombre_empresa, 
     correo_contacto, 
-    telefono_contacto 
+    telefono_contacto, 
+    redes_sociales 
   } = req.body;
+
   const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
 
-  // Verificar si el id es válido antes de proceder
   if (!id) {
     console.error('Error: El ID no es válido');
     return res.status(400).json({ error: 'El ID no es válido' });
   }
 
-  // Log de los datos recibidos para asegurarnos que llegan correctamente
+  // Log de los datos recibidos para debug
   console.log('Datos recibidos para actualizar:', {
-    id, pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, telefono_contacto, logo_url
+    id, pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, 
+    ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, 
+    telefono_contacto, logo_url, redes_sociales
   });
 
-  // Comprobar si se recibió un logo o no, y actualizar el logo solo si es necesario
+  // 🔥 Asegurar que `redes_sociales` se guarde correctamente en SQLite
+  let redesJson = null;
+
+  try {
+    if (redes_sociales) {
+      redesJson = typeof redes_sociales === 'string' ? redes_sociales : JSON.stringify(redes_sociales);
+    }
+  } catch (error) {
+    console.error("Error al convertir redes_sociales a JSON:", error);
+    return res.status(400).json({ error: "Formato inválido en redes_sociales" });
+  }
+
+  // Query de actualización
   const query = `
     UPDATE InfoEmpresa
     SET pais = ?, region = ?, codigo_postal = ?, direccion = ?, 
         coordenadas_latitud = ?, coordenadas_longitud = ?, 
-        ciudad = ?, ciudad_latitud = ?, ciudad_longitud = ?,
+        ciudad = ?, ciudad_latitud = ?, ciudad_longitud = ?, 
         nombre_empresa = ?, correo_contacto = ?, telefono_contacto = ?, 
+        redes_sociales = COALESCE(?, redes_sociales), 
         logo_url = COALESCE(?, logo_url)
     WHERE id = ?
   `;
 
   db.run(query, [
-    pais, 
-    region, 
-    codigo_postal, 
-    direccion, 
-    coordenadas_latitud, 
-    coordenadas_longitud, 
-    ciudad, 
-    ciudad_latitud, 
-    ciudad_longitud, 
-    nombre_empresa, 
-    correo_contacto, 
-    telefono_contacto, 
-    logo_url, 
-    id
+    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, 
+    ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, telefono_contacto, redesJson, 
+    logo_url, id
   ], function(err) {
     if (err) {
       console.error('Error al actualizar la información de la empresa:', err);
@@ -4616,23 +5376,56 @@ app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
 });
 app.patch('/inventario/:IDR', (req, res) => {
   console.log(`Body recibido para IDR ${req.params.IDR}:`, req.body);
+
   const { IDR } = req.params;
-  const { disponible, limite, fechaCaducidad, ultimaModificacion, estadoForzado } = req.body;
+  let { disponible, limite, fechaCaducidad, ultimaModificacion, estadoForzado } = req.body;
 
-
-  if (fechaCaducidad && !esFechaValida(fechaCaducidad)) {
-    return res.status(400).json({ error: 'Fecha de caducidad no es válida.' });
+  // ✅ Restauramos la función convertirFecha
+  function convertirFecha(fecha) {
+    if (typeof fecha === "string" && fecha.includes("/")) {
+      const partes = fecha.split("/");
+      if (partes.length === 3) {
+        return `${partes[2]}-${partes[1]}-${partes[0]}`; // Convertir a YYYY-MM-DD
+      }
+    }
+    return fecha; // Si ya está en un formato válido, devolver tal cual
   }
 
-  if (ultimaModificacion && !esFechaValida(ultimaModificacion)) {
-    return res.status(400).json({ error: 'Última modificación no es una fecha válida.' });
+  // 🔥 Convertir fechas si es necesario antes de la validación
+  if (fechaCaducidad) fechaCaducidad = convertirFecha(fechaCaducidad);
+  if (ultimaModificacion) ultimaModificacion = convertirFecha(ultimaModificacion);
+
+  // 🔥 Asegurar que la fecha de caducidad sea válida antes de guardarla
+  if (fechaCaducidad) {
+    try {
+      const fechaObj = new Date(fechaCaducidad);
+      if (isNaN(fechaObj.getTime())) {
+        return res.status(400).json({ error: 'Fecha de caducidad no es válida.' });
+      }
+      fechaCaducidad = fechaObj.toISOString();  // 🔥 Convertir a formato ISO antes de guardar
+    } catch (error) {
+      return res.status(400).json({ error: 'Error procesando la fecha de caducidad.' });
+    }
+  }
+
+  // 🔥 Validación de ultimaModificacion
+  if (ultimaModificacion) {
+    try {
+      const fechaObj = new Date(ultimaModificacion);
+      if (isNaN(fechaObj.getTime())) {
+        return res.status(400).json({ error: 'Última modificación no es una fecha válida.' });
+      }
+      ultimaModificacion = fechaObj.toISOString();
+    } catch (error) {
+      return res.status(400).json({ error: 'Error procesando la última modificación.' });
+    }
   }
 
   let sql = 'UPDATE inventario SET ';
   let changes = [];
   let parameters = [];
 
-  // Agregar campos a la consulta SQL y los parámetros según se proporcionen
+  // Agregar campos a la consulta SQL
   if (disponible !== undefined) {
     changes.push('disponible = ?');
     parameters.push(disponible);
@@ -4641,37 +5434,29 @@ app.patch('/inventario/:IDR', (req, res) => {
     changes.push('limite = ?');
     parameters.push(limite);
   }
-
   if (fechaCaducidad !== undefined) {
-    if (isNaN(new Date(fechaCaducidad).getTime())) {
-      return res.status(400).json({ error: 'Fecha de caducidad no es válida.' });
-    }
     changes.push('fechaCaducidad = ?');
     parameters.push(fechaCaducidad);
   }
   if (ultimaModificacion !== undefined) {
-    if (isNaN(new Date(ultimaModificacion).getTime())) {
-      return res.status(400).json({ error: 'Última modificación no es una fecha válida.' });
-    }
     changes.push('ultimaModificacion = ?');
     parameters.push(ultimaModificacion);
   }
+  if (estadoForzado !== undefined) {
+    changes.push('estadoForzado = ?');
+    parameters.push(estadoForzado ? 1 : 0);
+  }
+
   // Verificar si hay cambios para actualizar
   if (changes.length === 0) {
     return res.status(400).json({ error: 'No se proporcionaron campos para actualizar.' });
   }
 
-  if (estadoForzado !== undefined) {
-    changes.push('estadoForzado = ?');
-    parameters.push(estadoForzado ? 1 : 0); // Asumiendo que 'estadoForzado' es un campo booleano
-  }
-
-  // Finalizar la construcción de la consulta SQL
+  // Construir la consulta SQL
   sql += changes.join(', ');
   sql += ' WHERE IDR = ?';
   parameters.push(IDR);
 
-  
   console.log('SQL to execute:', sql);
   console.log('With parameters:', parameters);
 
@@ -4682,7 +5467,7 @@ app.patch('/inventario/:IDR', (req, res) => {
       return res.status(500).json({ error: err.message });
     }
     if (this.changes > 0) {
-      console.log(`Ingrediente con ID: ${IDR} ha sido actualizado. Número de filas afectadas: ${this.changes}`);
+      console.log(`Ingrediente con ID: ${IDR} ha sido actualizado. Filas afectadas: ${this.changes}`);
       res.json({ message: 'Actualización exitosa', IDR: IDR });
     } else {
       console.log('No se encontró el ingrediente o no se necesitaba actualizar.');
@@ -4820,6 +5605,24 @@ app.patch('/limites/:IDI', (req, res) => {
 });
 
 // the drop zone //
+app.delete("/horarioPersonal/:id", (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM horarioPersonal WHERE id_horario = ?", [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Horario eliminado correctamente" });
+  });
+});
+app.delete("/api/empleados/:id", (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM empleados WHERE id_empleado = ?", [id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: "Empleado eliminado correctamente" });
+  });
+});
 app.delete('/inventario/eliminar/:IDR', (req, res) => {
   const { IDR } = req.params;
   const query = 'DELETE FROM inventario WHERE IDR = ?';

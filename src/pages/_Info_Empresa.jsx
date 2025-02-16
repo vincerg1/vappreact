@@ -27,7 +27,10 @@ const InfoEmpresa = () => {
   const [editMode, setEditMode] = useState(false);
   const [showForm, setShowForm] = useState(false); // Estado para controlar la visibilidad del formulario
   const [currentEditId, setCurrentEditId] = useState(null); // Estado para almacenar el ID de la tienda que se está editando
-
+  const [socials, setSocials] = useState([]);        // Almacena la lista completa de redes
+  const [selectedSocial, setSelectedSocial] = useState(""); 
+  const [socialUrl, setSocialUrl] = useState("");
+  const socialOptions = ["Facebook", "Instagram", "Whatsapp", "TikTok", "LinkedIn"];
   // Cargar países
   useEffect(() => {
     axios.get('http://api.geonames.org/countryInfoJSON?username=vincerg1')
@@ -38,7 +41,6 @@ const InfoEmpresa = () => {
         console.error('Error al cargar la lista de países:', error);
       });
   }, []);
-
   // Cargar regiones al seleccionar país
   useEffect(() => {
     if (selectedCountry) {
@@ -51,7 +53,6 @@ const InfoEmpresa = () => {
         });
     }
   }, [selectedCountry]);
-
   // Cargar códigos ZIP al seleccionar región
   useEffect(() => {
     if (selectedRegion) {
@@ -64,7 +65,6 @@ const InfoEmpresa = () => {
         });
     }
   }, [selectedRegion]);
-
   // Cargar información de las tiendas
   useEffect(() => {
     axios.get('http://localhost:3001/api/info-empresa')
@@ -92,7 +92,8 @@ const InfoEmpresa = () => {
     formData.append('nombre_empresa', companyName);
     formData.append('correo_contacto', email);
     formData.append('telefono_contacto', phone);
-
+    formData.append('redes_sociales', JSON.stringify(socials));
+    
     const method = editMode ? 'patch' : 'post';
     const url = editMode ? `http://localhost:3001/api/info-empresa/${currentEditId}` : 'http://localhost:3001/api/info-empresa';
 
@@ -128,7 +129,6 @@ const InfoEmpresa = () => {
         console.error('Error al guardar la información de la empresa:', error);
       });
   };
-
   const handleEdit = (company) => {
     setEditMode(true);
     setShowForm(true);
@@ -146,7 +146,6 @@ const InfoEmpresa = () => {
     setEmail(company.correo_contacto);
     setPhone(company.telefono_contacto);
   };
-
   const handleDelete = (companyId) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar la información de la empresa?')) {
       axios.delete(`http://localhost:3001/api/info-empresa/${companyId}`)
@@ -159,8 +158,22 @@ const InfoEmpresa = () => {
         });
     }
   };
-
-  return (
+  const handleAddSocial = () => {
+    if (selectedSocial && socialUrl) {
+      const newSocials = [
+        ...socials,
+        { nombre: selectedSocial, url: socialUrl }
+      ];
+      setSocials(newSocials);
+      // Limpiar los inputs
+      setSelectedSocial("");
+      setSocialUrl("");
+    }
+  };
+  const handleRemoveSocial = (index) => {
+    setSocials(socials.filter((_, i) => i !== index));
+  };
+ return (
     <div>
       <h1 className="PDCRL">Panel de Control / Información de la Empresa</h1>
       <button onClick={() => { setEditMode(false); setShowForm(!showForm); }}>{showForm ? 'Cerrar Formulario' : 'Agregar Nueva Tienda'}</button>
@@ -194,7 +207,7 @@ const InfoEmpresa = () => {
         </div>
       )}
 
-      <Modal isOpen={showForm} onRequestClose={() => setShowForm(false)} contentLabel="Formulario de Tienda" className="modal" overlayClassName="modal-overlay">
+      <Modal isOpen={showForm} onRequestClose={() => setShowForm(false)} contentLabel="Formulario de Tienda" overlayClassName="modal-overlay">
         <button className="close-modal-button" onClick={() => setShowForm(false)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', fontSize: '1.5em', cursor: 'pointer' }}>❌</button>
         <form className='FINF_EMP'>
           <h2>{editMode ? 'Edita la Información de la Empresa' : 'Agregar Nueva Tienda'}</h2>
@@ -253,7 +266,49 @@ const InfoEmpresa = () => {
 
           <label>Teléfono de Contacto:</label>
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <label>Redes Sociales:</label>
+          <div className="socials-block">
+            <div className="add-social">
+              <select
+                value={selectedSocial}
+                onChange={(e) => setSelectedSocial(e.target.value)}
+              >
+                <option value="">Selecciona una red social</option>
+                {socialOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
 
+              <input
+                type="text"
+                placeholder="URL del perfil (https://...)"
+                value={socialUrl}
+                onChange={(e) => setSocialUrl(e.target.value)}
+              />
+
+              <button type="button" onClick={handleAddSocial}>
+                Agregar
+              </button>
+            </div>
+
+            {/* Mostrar la lista de redes agregadas */}
+            <ul>
+              {socials.map((social, index) => (
+                <li key={index}>
+                  <strong>{social.nombre}:</strong>{" "}
+                  <a href={social.url} target="_blank" rel="noopener noreferrer">
+                    {social.url}
+                  </a>
+                  {" "}
+                  <button type="button" onClick={() => handleRemoveSocial(index)} style={{ marginLeft: '10px', color: 'red', cursor: 'pointer' }}>
+                    ❌
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
           <div>
             <button type="button" onClick={handleGuardarCambios}>Guardar Cambios</button>
           </div>

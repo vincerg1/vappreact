@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';  
-import axios from 'axios';
 import { _PizzaContext } from './_PizzaContext';
+import axios from 'axios';
+import TimeAttendanceModal from "./TimeAttendanceModal";
 import '../styles/PizzariaDashboard.css';
 import moment from 'moment-timezone';  
 
@@ -17,6 +18,8 @@ const PizzariaDashboard = () => {
   const [nuevasRutasDisponibles, setNuevasRutasDisponibles] = useState(false);
   const [cantidadRutas, setCantidadRutas] = useState(0);
   const { isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
+  const [showTimeAttendanceModal, setShowTimeAttendanceModal] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();  
 
   useEffect(() => {
@@ -231,6 +234,16 @@ const PizzariaDashboard = () => {
 
     return closestShift;
   };
+  const handleOpenTimeAttendanceModal = () => {
+    setShowTimeAttendanceModal(true);
+  };
+  const handleCloseTimeAttendanceModal = () => {
+    setShowTimeAttendanceModal(false);
+  };
+  const handleAuthentication = () => {
+    setAuthenticated(true);
+    setShowTimeAttendanceModal(false);
+  };
 
   useEffect(() => {
     loadSuspensionState();
@@ -243,24 +256,39 @@ const PizzariaDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <div className={`overlay ${isServiceSuspended ? 'active' : ''}`} /> {/* Añadido overlay */}
+      <div className={`overlay ${isServiceSuspended ? 'active' : ''}`} />
+  
+      {/* Barra superior con iconos, fecha y botón de marcaje */}
       <div className="top-bar">
         <div className="icon-group">
-          <div className="icon weather-icon">🌤️</div>
-          <div className="icon warning-icon">⚠️</div>
-          <div className="icon calendar-icon">📅</div>
+          <div className="icon weather-icon" title="Clima">🌤️</div>
+          <div className="icon warning-icon" title="Advertencias">⚠️</div>
+          <div className="icon calendar-icon" title="Calendario">📅</div>
+          <div className="icon location-icon" title="Location">🏠</div>
+          {/* Icono de marcaje de horario con tooltip */}
+          <div 
+            className="icon time-attendance-icon" 
+            title="Marcaje de Horario"
+            onClick={handleOpenTimeAttendanceModal}
+          >
+            🔃
+          </div>
         </div>
-        <div className="current-date">
-          <p>{currentDate.format('dddd, MMMM Do YYYY, HH:mm:ss')}</p>
-        </div>
+
+    
       </div>
-      
+  
+      {/* Notificación si el servicio está suspendido */}
       {isServiceSuspended && (
         <div className="suspension-notice">
           <p>Servicio suspendido. {remainingTime}</p>
         </div>
       )}
+  
+      <div className="current-date">
       <h1>Pizzeria Dashboard</h1>
+          <p>{currentDate.format('dddd, MMMM Do YYYY, HH:mm:ss')}</p>
+      </div>
       <div className="dashboard-buttons">
         <div className="button-row">
           <button 
@@ -270,16 +298,22 @@ const PizzariaDashboard = () => {
           >
             View orders {pendingOrders > 0 && `(${pendingOrders})`}
           </button>
-          <button className="dashboard-button ingredientes" onClick={irAListaIngredientes} disabled={isServiceSuspended}>
+          <button 
+            className="dashboard-button ingredientes" 
+            onClick={irAListaIngredientes} 
+            disabled={isServiceSuspended}
+          >
             Ingredient Management
           </button>
         </div>
         <div className="button-row">
-        <button 
-        onClick={() => navigate('/dashboard/drvco')} 
-        className="dashboard-button datos-servicio">Daily Reports
-        </button>
-
+          <button 
+            onClick={() => navigate('/dashboard/drvco')} 
+            className="dashboard-button datos-servicio"
+          >
+            Daily Reports
+          </button>
+  
           <button
             className={`dashboard-button route-setter ${nuevasRutasDisponibles ? 'blinking active-route' : ''}`}
             onClick={() => {
@@ -295,21 +329,37 @@ const PizzariaDashboard = () => {
           >
             {nuevasRutasDisponibles ? `🚴 Rutas (${cantidadRutas})` : 'Route Setter'}
           </button>
-
-
-
         </div>
+  
         <div className="suspender-servicio">
           {!isServiceSuspended ? (
-            <button className="dashboard-button suspender" onClick={handleSuspendService}>Suspend Service</button>
+            <button className="dashboard-button suspender" onClick={handleSuspendService}>
+              Suspend Service
+            </button>
           ) : (
             <button className="dashboard-button resume" onClick={() => {
               setSuspensionState(false, null);
               reanudarServicio();
-            }}>Resume Service</button>
+            }}>
+              Resume Service
+            </button>
           )}
         </div>
       </div>
+  
+      {/* Modal de Marcaje de Horario */}
+      {showTimeAttendanceModal && (
+        <div className="modal-overlay">
+          <div className="modal-content time-attendance-modal">
+          <TimeAttendanceModal 
+          onClose={handleCloseTimeAttendanceModal} 
+          onAuthenticate={handleAuthentication} 
+        />
+          </div>
+        </div>
+      )}
+  
+      {/* Confirmación de suspensión */}
       {isSuspending && (
         <div className="suspension-confirmation">
           <p>¿Estás seguro de que quieres suspender el servicio?</p>
@@ -326,6 +376,7 @@ const PizzariaDashboard = () => {
       )}
     </div>
   );
+  
 };
 
 export default PizzariaDashboard;

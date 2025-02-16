@@ -1,0 +1,39 @@
+/* EmpleadosLista.css */
+.empleados-lista-container {
+  display: flex;
+  flex-direction: column;  /* 📌 Apila elementos en columna (h2 arriba, tabla abajo) */
+  align-items: center;  /* 📌 Centra horizontalmente */
+  padding: 20px;
+  text-align: center;
+}
+
+h2 {
+  margin-bottom: 10px; /* 📌 Agrega espacio entre el título y la tabla */
+  font-size: 24px;
+  font-weight: bold;
+}
+.empleados-table {
+  width: 50%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+.empleados-table th, .empleados-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+.empleados-table th {
+  background-color: #4CAF50;
+  color: white;
+}
+.delete-btn {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+.delete-btn:hover {
+  background-color: #c0392b;
+}

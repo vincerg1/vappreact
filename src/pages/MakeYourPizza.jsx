@@ -31,7 +31,7 @@ const MakeYourPizza = () => {
   const [ofertas, setOfertas] = useState([]);
   const [menuPizzas, setMenuPizzas] = useState([]); 
   const [inventario, setInventario] = useState([]);
- const [compra, setCompra] = useState({
+  const [compra, setCompra] = useState({
     observaciones: '',
     id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -256,19 +256,17 @@ const MakeYourPizza = () => {
     );
 
     setIngredientesDisponibles(uniqueIngredientes);
-    console.log("✅ Ingredientes disponibles después del filtro:", uniqueIngredientes);
+    // console.log("✅ Ingredientes disponibles después del filtro:", uniqueIngredientes);
   }, [sizeSeleccionado, menuPizzas, inventario]);
-
-  
   
   const ofertaRandom = ofertas.find(oferta => oferta.Tipo_Oferta === "Random Pizza");
-  console.log("Oferta Random encontrada:", ofertaRandom);
+  // console.log("Oferta Random encontrada:", ofertaRandom);
   const cuponesDisponibles = ofertaRandom?.Cupones_Disponibles  > 0;
   const estadoActivo = ofertaRandom?.Estado === "Activa";
-  console.log("Cupones disponibles:", cuponesDisponibles);
-  console.log("Estado Activo:", estadoActivo);
+  // console.log("Cupones disponibles:", cuponesDisponibles);
+  // console.log("Estado Activo:", estadoActivo);
   const botonDeshabilitado = !(cuponesDisponibles && estadoActivo);
-  console.log("Botón deshabilitado:", botonDeshabilitado);
+  // console.log("Botón deshabilitado:", botonDeshabilitado);
 
   const calcularPrecioIngrediente = (size) => {
     return ingredientesExtraPrecios[size] || 0;

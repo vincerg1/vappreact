@@ -69,6 +69,7 @@
 .FINF_EMP {
   background-color: blanchedalmond ;
     margin-top: -2.5rem;
+    width: auto;
 }
 .botones_info_emp{
   background-color: aqua;

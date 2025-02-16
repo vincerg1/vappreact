@@ -43,6 +43,8 @@ export const Inicio = () => {
   const handleClientesClick = () => navigate('/clientes');
   const handleSeguimientoClick = () => navigate('/seguimiento');
   const handleRouteSetterClick = () => navigate('/RouteSetterAdmin');
+  const handleControlHorarioIndexSetterClick = () => navigate('/control-horario');
+
 
   return (
     <div className="login-container">
@@ -113,6 +115,9 @@ export const Inicio = () => {
             </button>
             <button className="background_icon_button routesetter" onClick={handleRouteSetterClick}>
               <span>RouteSetter</span>
+            </button>
+            <button className="background_icon_button ControlHorarioIndex" onClick={handleControlHorarioIndexSetterClick}>
+              <span>Control Horario</span>
             </button>
           </section>
         </>

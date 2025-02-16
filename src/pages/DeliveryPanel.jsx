@@ -353,24 +353,29 @@ const DeliveryPanel = () => {
     if (!loggedIn) {
         return (
             <div>
-                <h1>Inicio de Sesión Repartidor</h1>
+                <div className='login-container3'>
+                    <h2 className="login-title" >Inicio de Sesión Repartidor</h2>
                 <form onSubmit={handleLogin}>
+                   <label htmlFor="correo">Correo:</label>
                     <input
                         type="text"
-                        placeholder="username"
+                        placeholder="ejemplo@correo.com"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
                     />
+                     <label htmlFor="contrasena">Contraseña:</label>
                     <input
                         type="password"
-                        placeholder="password"
+                        placeholder="********"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
-                    <button type="submit">Iniciar Sesión</button>
-                </form>
+                    <button type="submit" className="login-button" >Iniciar Sesión</button>
+                </form> 
+                </div>
+
             </div>
         );
     }
@@ -851,7 +856,7 @@ const DeliveryPanel = () => {
     
     return (
         <div>
-            <h2>Bienvenido, {repartidor?.nombre || 'Invitado'}</h2>
+          
           <div className="buttons-container">
             <button onClick={handleLogout}>Cerrar Sesión</button>
             <button onClick={toggleWallet}>
@@ -979,154 +984,168 @@ const DeliveryPanel = () => {
           )}
       
           {/* Tabla de Pedidos Pendientes */}
-          <h3>Pedidos Pendientes</h3>
+          {/* <h3 className='tituloDEL'>Pedidos Pendientes</h3> */}
+            {/* Si no hay pedidos ni rutas, mostrar solo el mensaje */}
+            {pedidos.length === 0 && rutas.length === 0 ? (
+                
+                <div style={{ 
+                    textAlign: 'center', 
+                    fontWeight: 'bold', 
+                    padding: '20px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                }}>
+                    <h2>Hola, {repartidor?.nombre || 'Invitado'}</h2> 
+                    <span style={{ fontSize: '80px' }}>🙇‍♂️</span>
+                    <p style={{ fontSize: '18px', marginTop: '10px' }}>EN ESPERA DE NUEVOS PEDIDOS...</p>
+                </div>
+            ) : (
+                // Mostrar la tabla solo si hay pedidos o rutas
+                <table className='tablaPedidosPendientes'>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Tipo</th>
+                            <th>ID Pedido</th>
+                            <th>Dirección</th>
+                            <th>Tiempo Restante</th>
+                            <th>Costo Delivery</th>
+                            <th>Distancia (km)</th>
+                            <th>Tienda de Salida</th>
+                            <th>Estado</th>
+                            <th>Repartidor Asignado</th>
+                            <th>Ver Ruta</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {/* Pedidos Individuales */}
+                        {pedidos.map((pedido, index) => {
+                            const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
+                            const routeLink = generateSingleLink(deliveryInfo);
 
-          <table>
-            <thead>
-                <tr>
-                <th>#</th>
-                <th>Tipo</th>
-                <th>ID Pedido</th>
-                <th>Dirección</th>
-                <th>Tiempo Restante</th>
-                <th>Costo Delivery</th>
-                <th>Distancia (km)</th>
-                <th>Tienda de Salida</th>
-                <th>Estado</th>
-                <th>Repartidor Asignado</th>
-                <th>Ver Ruta</th>
-                <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-{/* Pedidos Individuales */}
-{pedidos.map((pedido, index) => {
-    const deliveryInfo = JSON.parse(pedido.metodo_entrega || "{}")?.Delivery;
-    const routeLink = generateSingleLink(deliveryInfo);
-    
+                            return (
+                                <tr key={pedido.id_order}>
+                                    <td>{index + 1}</td>
+                                    <td>Single</td>
+                                    <td>{pedido.id_order}</td>
+                                    <td>{deliveryInfo?.address || "Sin dirección"}</td>
+                                    <td>{pedido.tiempoRestante || "Calculando..."}</td>
+                                    <td>{deliveryInfo?.costoReal ? `${deliveryInfo.costoReal.toFixed(2)} €` : "N/A"}</td>
+                                    <td>{deliveryInfo?.costoReal ? `${(deliveryInfo.costoReal / precioDelivery).toFixed(2)} km` : "N/A"}</td>
+                                    <td>{deliveryInfo?.tiendaSalida?.nombre_empresa || "Desconocida"}</td>
+                                    <td>{pedido.estado_entrega}</td>
+                                    <td>
+                                        {pedido.id_repartidor
+                                            ? pedido.id_repartidor === repartidor?.id_repartidor
+                                                ? "Tú"
+                                                : `Repartidor ${pedido.id_repartidor}`
+                                            : "No asignado"}
+                                    </td>
+                                    <td>
+                                        <a href={routeLink} target="_blank" rel="noopener noreferrer">
+                                            Ver Ruta
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {pedido.estado_entrega === "Pendiente" && (
+                                            <button
+                                                onClick={() => handleTakePedido(pedido.id_order)}
+                                                disabled={estado !== "Activo"}
+                                            >
+                                                Tomar Pedido
+                                            </button>
+                                        )}
+                                        {pedido.estado_entrega === "Asignado" && (
+                                            <button
+                                                onClick={() => handleCompletePedido(pedido.id_order)}
+                                                disabled={estado !== "Activo"}
+                                            >
+                                                Confirmar Entrega
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
 
-    return (
-        <tr key={pedido.id_order}>
-            <td>{index + 1}</td>
-            <td>Single</td>
-            <td>{pedido.id_order}</td>
-            <td>{deliveryInfo?.address || "Sin dirección"}</td>
-            <td>{pedido.tiempoRestante || "Calculando..."}</td>
-            <td>{deliveryInfo?.costoReal ? `${deliveryInfo.costoReal.toFixed(2)} €` : "N/A"}</td>
-            <td>{deliveryInfo?.costoReal ? `${(deliveryInfo.costoReal / precioDelivery).toFixed(2)} km` : "N/A"}</td>
-            <td>
-                {deliveryInfo?.tiendaSalida?.nombre_empresa || "Desconocida"}
-            </td>
-            <td>{pedido.estado_entrega}</td>
-            <td>
-                {pedido.id_repartidor
-                    ? pedido.id_repartidor === repartidor?.id_repartidor
-                        ? "Tú"
-                        : `Repartidor ${pedido.id_repartidor}`
-                    : "No asignado"}
-            </td>
-            <td>
-                <a href={routeLink} target="_blank" rel="noopener noreferrer">
-                    Ver Ruta
-                </a>
-            </td>
-            <td>
-                {pedido.estado_entrega === "Pendiente" && (
-                    <button
-                        onClick={() => handleTakePedido(pedido.id_order)}
-                        disabled={estado !== "Activo"}
-                    >
-                        Tomar Pedido
-                    </button>
-                )}
-                {pedido.estado_entrega === "Asignado" && (
-                    <button
-                        onClick={() => handleCompletePedido(pedido.id_order)}
-                        disabled={estado !== "Activo"}
-                    >
-                        Confirmar Entrega
-                    </button>
-                )}
-            </td>
-        </tr>
-    );
-})}
+                        {/* Rutas */}
+                        {rutas.map((ruta, index) => {
+                            const routeLink = generateRouteLink(ruta);
 
-{/* Rutas */}
-{rutas.map((ruta, index) => {
-    const routeLink = generateRouteLink(ruta);
+                            return (
+                                <tr key={ruta.id_ruta}>
+                                    <td>{index + 1}</td>
+                                    <td>Route</td>
+                                    <td>
+                                        {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
+                                            ? ruta.id_pedidos.join(", ")
+                                            : "Sin pedidos"}
+                                    </td>
+                                    <td>
+                                        {ruta.direcciones.map((direccion, idx) => (
+                                            <li key={idx}>{direccion.address || "Sin dirección"}</li>
+                                        ))}
+                                    </td>
+                                    <td>
+                                        {fetchPedidosEnRuta?.id_ruta === ruta.idRuta
+                                            ? fetchPedidosEnRuta.tiempoPromedioGeneral || "Calculando..."
+                                            : "N/A"}
+                                    </td>
+                                    <td>{(ruta.costo_total || 0).toFixed(2)} €</td>
+                                    <td>
+                                        {ruta.distancia_total
+                                            ? `${ruta.distancia_total.toFixed(2)} km`
+                                            : "Calculando..."}
+                                    </td>
+                                    <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocida"}</td>
+                                    <td>
+                                        <strong>{ruta.estadoRuta}</strong>
+                                    </td>
+                                    <td>
+                                        {ruta.idRepartidorAsignado
+                                            ? ruta.idRepartidorAsignado === repartidor?.id_repartidor
+                                                ? "Tú"
+                                                : `Repartidor ${ruta.idRepartidorAsignado}`
+                                            : "No asignado"}
+                                    </td>
+                                    <td>
+                                        <a href={routeLink} target="_blank" rel="noopener noreferrer">
+                                            Ver Ruta
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {ruta.id_pedidos && ruta.id_pedidos.length > 0 ? (
+                                            ruta.estadoRuta === "Asignado" ? (
+                                                <button
+                                                    onClick={() => handleCompleteRuta(ruta.id_ruta)}
+                                                    disabled={estado !== "Activo"}
+                                                >
+                                                    Confirmar Entrega
+                                                </button>
+                                            ) : ruta.estadoRuta === "Pendiente" ? (
+                                                <button
+                                                    onClick={() => handleTakeRuta(ruta.id_ruta)}
+                                                    disabled={estado !== "Activo"}
+                                                >
+                                                    Tomar Ruta
+                                                </button>
+                                            ) : (
+                                                "Acción no disponible"
+                                            )
+                                        ) : (
+                                            "Sin Pedidos"
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            )}
 
-
-
-    return (
-        <tr key={ruta.id_ruta}>
-            <td>{index + 1}</td>
-            <td>Route</td>
-            <td>
-                {Array.isArray(ruta.id_pedidos) && ruta.id_pedidos.length > 0
-                    ? ruta.id_pedidos.join(", ")
-                    : "Sin pedidos"}
-            </td>
-            <td>
-                {ruta.direcciones.map((direccion, idx) => (
-                    <li key={idx}>{direccion.address || "Sin dirección"}</li>
-                ))}
-            </td>
-            <td>
-                {fetchPedidosEnRuta?.id_ruta === ruta.idRuta
-                    ? fetchPedidosEnRuta.tiempoPromedioGeneral || "Calculando..."
-                    : "N/A"}
-            </td>
-            <td>{(ruta.costo_total || 0).toFixed(2)} €</td>
-            <td>
-                {ruta.distancia_total
-                    ? `${ruta.distancia_total.toFixed(2)} km`
-                    : "Calculando..."}
-            </td>
-            <td>{ruta.tiendaSalida?.nombre_empresa || "Desconocida"}</td>
-            <td>
-                <strong>{ruta.estadoRuta}</strong>
-            </td>
-            <td>
-                {ruta.idRepartidorAsignado
-                    ? ruta.idRepartidorAsignado === repartidor?.id_repartidor
-                        ? "Tú"
-                        : `Repartidor ${ruta.idRepartidorAsignado}`
-                    : "No asignado"}
-            </td>
-            <td>
-                <a href={routeLink} target="_blank" rel="noopener noreferrer">
-                    Ver Ruta
-                </a>
-            </td>
-            <td>
-                {ruta.id_pedidos && ruta.id_pedidos.length > 0 ? (
-                    ruta.estadoRuta === "Asignado" ? (
-                        <button
-                            onClick={() => handleCompleteRuta(ruta.id_ruta)}
-                            disabled={estado !== "Activo"}
-                        >
-                            Confirmar Entrega
-                        </button>
-                    ) : ruta.estadoRuta === "Pendiente" ? (
-                        <button
-                            onClick={() => handleTakeRuta(ruta.id_ruta)}
-                            disabled={estado !== "Activo"}
-                        >
-                            Tomar Ruta
-                        </button>
-                    ) : (
-                        "Acción no disponible"
-                    )
-                ) : (
-                    "Sin Pedidos"
-                )}
-            </td>
-        </tr>
-    );
-})}
-            </tbody>
-          </table>
         </div>
       );
 };
