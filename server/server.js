@@ -846,22 +846,25 @@ cron.schedule('0 0 * * *', () => {
 
   console.log('=== Cron Job Finalizado: Evaluación completa ===\n');
 });
-cron.schedule('0 2 * * *', () => {
-  console.log('⏳ Ejecutando cierre automático de turnos a las 02:00 AM');
+cron.schedule('* * * * *', () => {  // Ejecuta cada minuto para pruebas
+  console.log('⏳ Ejecutando cierre automático de turnos...');
 
   const updateQuery = `
       UPDATE timeRecord
-      SET hora_fin = (
-          SELECT TIME(hora_fin, '+' || (ABS(RANDOM()) % 5) || ' minutes')
-          FROM timeRecord t
-          WHERE t.id_registro = timeRecord.id_registro
-            AND strftime('%s', 'now') - strftime('%s', hora_fin) >= 1800
-            AND hora_fin IS NOT NULL
-      ),
-      status = 'salida'
+      SET 
+        hora_fin = (
+          SELECT TIME(hp.hora_fin, '+' || (ABS(RANDOM()) % 6) || ' minutes') 
+          FROM horarioPersonal hp 
+          WHERE hp.id_horario = timeRecord.id_horario
+        ),
+        status = 'salida'
       WHERE status = 'entrada'
-      AND hora_fin IS NULL
-      AND strftime('%s', 'now') - strftime('%s', hora_inicio) >= 1800;
+      AND (
+        SELECT strftime('%s', 'now') - strftime('%s', hp.hora_fin)
+        FROM horarioPersonal hp 
+        WHERE hp.id_horario = timeRecord.id_horario
+      ) >= 1800
+      AND hora_fin IS NULL;
   `;
 
   db.run(updateQuery, function (err) {
@@ -873,7 +876,28 @@ cron.schedule('0 2 * * *', () => {
   });
 });
 
+
+
 // the get zone
+app.get('/api/info-empresa/:id/estado', (req, res) => {
+  const { id } = req.params;
+
+  const sql = `SELECT estado FROM InfoEmpresa WHERE id = ?`;
+  
+  db.get(sql, [id], (err, row) => {
+    if (err) {
+      console.error('❌ Error al obtener el estado:', err);
+      return res.status(500).json({ error: 'Error al obtener el estado de la empresa' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'No se encontró la empresa con el ID proporcionado' });
+    }
+
+    console.log("📌 Estado enviado desde el servidor:", row);
+    res.json({ estado: row.estado });  // 🔥 Asegurar que la respuesta siempre tenga `{ estado }`
+  });
+});
 app.get("/api/employees/:id_empleado/current_status", (req, res) => {
   const { id_empleado } = req.params;
 
@@ -951,19 +975,19 @@ app.get("/horarioPersonal/empleado/:id", (req, res) => {
 app.get("/horarioPersonal/:id", (req, res) => {
   const { id } = req.params;
   const query = `
-    SELECT hp.*, e.nombre, e.apellido, u.ciudad, u.codigo_postal 
+    SELECT hp.*, e.nombre, e.apellido, ie.ciudad, ie.codigo_postal, ie.direccion
     FROM horarioPersonal hp
     JOIN empleados e ON hp.id_empleado = e.id_empleado
-    JOIN ubicaciones u ON hp.ubicacion = u.id_cliente
+    JOIN InfoEmpresa ie ON hp.ubicacion = ie.id
     WHERE hp.id_horario = ?`;
 
   db.get(query, [id], (err, row) => {
     if (err) {
-      console.error("Error al obtener horario:", err);
+      console.error("❌ Error al obtener horario:", err);
       return res.status(500).json({ error: err.message });
     }
     if (!row) {
-      return res.status(404).json({ error: "Horario no encontrado" });
+      return res.status(404).json({ error: "⛔ Horario no encontrado" });
     }
     res.json(row);
   });
@@ -1764,7 +1788,6 @@ app.get('/api/info-empresa', (req, res) => {
 app.get('/api/info-empresa/:id', (req, res) => {
   const id = req.params.id;
 
-  // Consulta para obtener la información de la tienda desde la base de datos
   const sql = "SELECT * FROM InfoEmpresa WHERE id = ?";
   const params = [id];
 
@@ -1774,7 +1797,7 @@ app.get('/api/info-empresa/:id', (req, res) => {
       return;
     }
     if (!row) {
-      res.status(404).json({ "message": "No se encontró la tienda con el ID proporcionado." });
+      res.status(404).json({ "message": "No se encontró la empresa con el ID proporcionado." });
       return;
     }
     res.json({
@@ -2387,6 +2410,23 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post('/api/verificar-admin', (req, res) => {
+  const { password } = req.body;
+
+  const query = `SELECT * FROM administrador WHERE contrasena = ?`;
+  db.get(query, [password], (err, row) => {
+      if (err) {
+          console.error("❌ Error al verificar contraseña:", err);
+          return res.status(500).json({ error: "Error en el servidor" });
+      }
+
+      if (!row) {
+          return res.status(401).json({ error: "Contraseña incorrecta" });
+      }
+
+      res.json({ success: true });
+  });
+});
 app.post("/auto_close_shift", (req, res) => {
   const { id_empleado } = req.body;
 
@@ -4220,6 +4260,29 @@ app.post('/limites', async (req, res) => {
 });
 
 // the patch zone //
+app.patch('/api/info-empresa/:id/estado', (req, res) => {
+  const { id } = req.params;
+  const { estado } = req.body;
+
+  if (!estado || (estado !== 'activo' && estado !== 'inactivo')) {
+    return res.status(400).json({ error: 'El estado debe ser "activo" o "inactivo"' });
+  }
+
+  const sql = `UPDATE InfoEmpresa SET estado = ? WHERE id = ?`;
+
+  db.run(sql, [estado, id], function (err) {
+    if (err) {
+      console.error('❌ Error al actualizar el estado:', err);
+      return res.status(500).json({ error: 'Error al actualizar el estado de la empresa' });
+    }
+
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'No se encontró la empresa para actualizar' });
+    }
+
+    res.json({ success: true, message: `Estado de la empresa ${id} actualizado a ${estado}` });
+  });
+});
 app.patch("/horarioPersonal/:id", (req, res) => {
   const { id } = req.params;
   const { id_empleado, ubicacion, day, shift, hora_inicio, hora_fin } = req.body;
@@ -4655,7 +4718,6 @@ app.patch('/api/update-pedidos-en-cola', (req, res) => {
     const updatePromises = [];
 
     if (rows.length > 0) {
-      // Actualizar ubicaciones con pedidos pendientes
       rows.forEach(row => {
         const updateQuery = `
           INSERT INTO PedidosEnCola (id_ubicacion, pedidos_en_cola)
@@ -4673,19 +4735,14 @@ app.patch('/api/update-pedidos-en-cola', (req, res) => {
         );
       });
     }
-
-    // Manejar ubicaciones sin pedidos pendientes (actualizar a 0)
     const allUbicacionesQuery = `SELECT id_ubicacion FROM PedidosEnCola`;
     db.all(allUbicacionesQuery, [], (allErr, ubicaciones) => {
       if (allErr) {
         console.error('Error al obtener todas las ubicaciones:', allErr);
         return res.status(500).json({ error: 'Error al obtener todas las ubicaciones' });
       }
-
-      // Crear un Set con ubicaciones con pedidos
       const ubicacionesConPedidos = new Set(rows.map(row => row.id_ubicacion));
 
-      // Actualizar las ubicaciones existentes a 0 si no tienen pedidos
       ubicaciones.forEach(ubicacion => {
         if (!ubicacionesConPedidos.has(ubicacion.id_ubicacion)) {
           const resetQuery = `
@@ -5232,7 +5289,8 @@ app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
     nombre_empresa, 
     correo_contacto, 
     telefono_contacto, 
-    redes_sociales 
+    redes_sociales,
+    estado  // ➜ Agregado para actualizar el estado si se envía en la petición
   } = req.body;
 
   const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
@@ -5242,11 +5300,11 @@ app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
     return res.status(400).json({ error: 'El ID no es válido' });
   }
 
-  // Log de los datos recibidos para debug
+  // Log de los datos recibidos para depuración
   console.log('Datos recibidos para actualizar:', {
     id, pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, 
     ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, 
-    telefono_contacto, logo_url, redes_sociales
+    telefono_contacto, logo_url, redes_sociales, estado
   });
 
   // 🔥 Asegurar que `redes_sociales` se guarde correctamente en SQLite
@@ -5261,23 +5319,39 @@ app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
     return res.status(400).json({ error: "Formato inválido en redes_sociales" });
   }
 
-  // Query de actualización
-  const query = `
-    UPDATE InfoEmpresa
-    SET pais = ?, region = ?, codigo_postal = ?, direccion = ?, 
-        coordenadas_latitud = ?, coordenadas_longitud = ?, 
-        ciudad = ?, ciudad_latitud = ?, ciudad_longitud = ?, 
-        nombre_empresa = ?, correo_contacto = ?, telefono_contacto = ?, 
-        redes_sociales = COALESCE(?, redes_sociales), 
-        logo_url = COALESCE(?, logo_url)
-    WHERE id = ?
-  `;
+  // Validar que el estado sea solo "activo" o "inactivo" si se envía en la petición
+  if (estado && estado !== 'activo' && estado !== 'inactivo') {
+    return res.status(400).json({ error: 'El estado debe ser "activo" o "inactivo"' });
+  }
 
-  db.run(query, [
-    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, 
-    ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, telefono_contacto, redesJson, 
-    logo_url, id
-  ], function(err) {
+  // Generar dinámicamente los campos a actualizar para evitar sobrescribir valores no enviados
+  let updateFields = [];
+  let params = [];
+
+  if (pais) { updateFields.push("pais = ?"); params.push(pais); }
+  if (region) { updateFields.push("region = ?"); params.push(region); }
+  if (codigo_postal) { updateFields.push("codigo_postal = ?"); params.push(codigo_postal); }
+  if (direccion) { updateFields.push("direccion = ?"); params.push(direccion); }
+  if (coordenadas_latitud) { updateFields.push("coordenadas_latitud = ?"); params.push(coordenadas_latitud); }
+  if (coordenadas_longitud) { updateFields.push("coordenadas_longitud = ?"); params.push(coordenadas_longitud); }
+  if (ciudad) { updateFields.push("ciudad = ?"); params.push(ciudad); }
+  if (ciudad_latitud) { updateFields.push("ciudad_latitud = ?"); params.push(ciudad_latitud); }
+  if (ciudad_longitud) { updateFields.push("ciudad_longitud = ?"); params.push(ciudad_longitud); }
+  if (nombre_empresa) { updateFields.push("nombre_empresa = ?"); params.push(nombre_empresa); }
+  if (correo_contacto) { updateFields.push("correo_contacto = ?"); params.push(correo_contacto); }
+  if (telefono_contacto) { updateFields.push("telefono_contacto = ?"); params.push(telefono_contacto); }
+  if (redesJson !== null) { updateFields.push("redes_sociales = ?"); params.push(redesJson); }
+  if (logo_url) { updateFields.push("logo_url = ?"); params.push(logo_url); }
+  if (estado) { updateFields.push("estado = ?"); params.push(estado); } // ➜ Solo se actualiza si se envía
+
+  if (updateFields.length === 0) {
+    return res.status(400).json({ error: "No se proporcionaron datos para actualizar" });
+  }
+
+  params.push(id);
+  const query = `UPDATE InfoEmpresa SET ${updateFields.join(", ")} WHERE id = ?`;
+
+  db.run(query, params, function(err) {
     if (err) {
       console.error('Error al actualizar la información de la empresa:', err);
       return res.status(500).json({ error: 'Error al actualizar la información de la empresa' });
@@ -5287,7 +5361,7 @@ app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
       return res.status(404).json({ error: 'No se encontró la empresa para actualizar' });
     }
 
-    res.json({ success: true });
+    res.json({ success: true, message: `Empresa ${id} actualizada correctamente` });
   });
 });
 app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {

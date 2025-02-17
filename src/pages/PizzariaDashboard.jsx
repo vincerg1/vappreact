@@ -20,6 +20,13 @@ const PizzariaDashboard = () => {
   const { isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
   const [showTimeAttendanceModal, setShowTimeAttendanceModal] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [ubicaciones, setUbicaciones] = useState([]);
+  const [selectedUbicacion, setSelectedUbicacion] = useState(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [estado, setEstado] = useState(false); 
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(null);
   const navigate = useNavigate();  
 
   useEffect(() => {
@@ -77,6 +84,34 @@ const PizzariaDashboard = () => {
 
     return () => clearInterval(interval); // Limpia el intervalo al desmontar el componente
   }, []);
+  useEffect(() => {
+    if (showLocationModal) {
+      console.log("⏳ Cargando empresas...");
+      fetch('http://localhost:3001/api/info-empresa')
+        .then(resp => resp.json())
+        .then(data => {
+          console.log("🏢 Empresas recibidas:", data);
+          setUbicaciones(data);
+  
+          // 🔥 SOLO cambiar si no hay una selección previa
+          if (!selectedUbicacion && data.length > 0) {
+            const primeraUbicacion = data[0];
+  
+            setSelectedUbicacion(primeraUbicacion.id);
+            setEstado(primeraUbicacion.estado === 'activo'); 
+          }
+        })
+        .catch(err => console.error("❌ Error al obtener las empresas:", err));
+    }
+  }, [showLocationModal]);
+  useEffect(() => {
+    loadSuspensionState();
+    loadHorarios();
+    loadPendingOrders(); 
+    const interval = setInterval(loadPendingOrders, 5000); // Polling cada 5 segundos
+
+    return () => clearInterval(interval); // Limpiar el intervalo cuando se desmonta el componente
+  }, []);  
 
 
   const irAListaIngredientes = () => {
@@ -244,28 +279,96 @@ const PizzariaDashboard = () => {
     setAuthenticated(true);
     setShowTimeAttendanceModal(false);
   };
+  const handleSelectUbicacion = (event) => {
+    const idSeleccionado = event.target.value;
+    setSelectedUbicacion(idSeleccionado);
+  
+    console.log("📌 ID seleccionado:", idSeleccionado);
+  
+    fetch(`http://localhost:3001/api/info-empresa/${idSeleccionado}/estado`)
+      .then(resp => {
+        if (!resp.ok) {
+          throw new Error(`HTTP error! Status: ${resp.status}`);
+        }
+        return resp.json();
+      })
+      .then(data => {
+        if (!data || !data.estado) {
+          console.error("❌ Error: La respuesta del servidor no contiene `estado`", data);
+          return;
+        }
+  
+        console.log("📌 Estado en DB:", data.estado);
+        setEstado(data.estado === 'activo');
+      })
+      .catch(err => console.error("❌ Error al obtener la empresa:", err));
+  };
+  const handleSaveLocation = () => {
+    if (!selectedUbicacion) {
+      console.error("❌ Error: ID de ubicación no válido:", selectedUbicacion);
+      return;
+    }
+  
+    fetch(`http://localhost:3001/api/info-empresa/${selectedUbicacion}/estado`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: estado ? 'activo' : 'inactivo' })  // ✅ Solo enviamos el estado
+    })
+    .then(resp => {
+      if (!resp.ok) {
+        throw new Error(`HTTP error! Status: ${resp.status}`);
+      }
+      return resp.json();
+    })
+    .then(responseData => {
+      if (responseData.error) {
+        console.error("❌ Error al actualizar la ubicación:", responseData.error);
+        return;
+      }
+      console.log("✅ Ubicación actualizada:", responseData);
+      setShowLocationModal(false);
+    })
+    .catch(err => console.error("❌ Error al actualizar la ubicación:", err));
+  };
+  const handleToggleEstado = () => {
+    setEstado((prevEstado) => !prevEstado);
+  };
+  const handleVerifyPassword = async () => {
+    try {
+        const response = await fetch("http://localhost:3001/api/verificar-admin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: adminPassword })
+        });
 
-  useEffect(() => {
-    loadSuspensionState();
-    loadHorarios();
-    loadPendingOrders(); 
-    const interval = setInterval(loadPendingOrders, 5000); // Polling cada 5 segundos
+        const data = await response.json();
 
-    return () => clearInterval(interval); // Limpiar el intervalo cuando se desmonta el componente
-  }, []);  
+        if (data.success) {
+            setShowPasswordModal(false);
+            handleSuspendService();  // 🔥 Se ejecuta la suspensión si la contraseña es correcta
+        } else {
+            setPasswordError("Contraseña incorrecta");
+        }
+    } catch (error) {
+        console.error("❌ Error en la autenticación:", error);
+        setPasswordError("Error al verificar la contraseña");
+    }
+};
+
 
   return (
     <div className="dashboard-container">
       <div className={`overlay ${isServiceSuspended ? 'active' : ''}`} />
-  
-      {/* Barra superior con iconos, fecha y botón de marcaje */}
       <div className="top-bar">
         <div className="icon-group">
           <div className="icon weather-icon" title="Clima">🌤️</div>
-          <div className="icon warning-icon" title="Advertencias">⚠️</div>
           <div className="icon calendar-icon" title="Calendario">📅</div>
-          <div className="icon location-icon" title="Location">🏠</div>
-          {/* Icono de marcaje de horario con tooltip */}
+          <div className="icon warning-icon" title="Advertencias">⚠️</div>
+          <div className="icon location-icon" 
+            title="Location" 
+            onClick={() => setShowLocationModal(true)}>
+            🏠
+          </div>
           <div 
             className="icon time-attendance-icon" 
             title="Marcaje de Horario"
@@ -277,8 +380,6 @@ const PizzariaDashboard = () => {
 
     
       </div>
-  
-      {/* Notificación si el servicio está suspendido */}
       {isServiceSuspended && (
         <div className="suspension-notice">
           <p>Servicio suspendido. {remainingTime}</p>
@@ -317,37 +418,53 @@ const PizzariaDashboard = () => {
           <button
             className={`dashboard-button route-setter ${nuevasRutasDisponibles ? 'blinking active-route' : ''}`}
             onClick={() => {
-              if (nuevasRutasDisponibles) {
-                console.log(`Navegando a RouteSetter con ${cantidadRutas} rutas disponibles.`);
-                navigate('/RouteSetter');
-              } else {
-                console.log('No hay rutas nuevas disponibles para revisar.');
-              }
+              console.log(`Navegando a RouteSetter. Rutas disponibles: ${cantidadRutas}`);
+              navigate('/RouteSetter');
             }}
-            disabled={isServiceSuspended}
-            title={nuevasRutasDisponibles ? `Hay ${cantidadRutas} rutas nuevas por revisar` : 'No hay rutas nuevas disponibles'}
+            disabled={isServiceSuspended} // 🔥 AHORA SOLO SE BLOQUEA SI EL SERVICIO ESTÁ SUSPENDIDO
+            title={nuevasRutasDisponibles ? `Hay ${cantidadRutas} rutas nuevas por revisar` : 'Accede para gestionar repartidores'}
           >
-            {nuevasRutasDisponibles ? `🚴 Rutas (${cantidadRutas})` : 'Route Setter'}
+            Route Setter
           </button>
         </div>
   
         <div className="suspender-servicio">
           {!isServiceSuspended ? (
-            <button className="dashboard-button suspender" onClick={handleSuspendService}>
-              Suspend Service
-            </button>
+              <button className="dashboard-button suspender" onClick={() => setShowPasswordModal(true)}>
+                  Suspend Service
+              </button>
           ) : (
-            <button className="dashboard-button resume" onClick={() => {
-              setSuspensionState(false, null);
-              reanudarServicio();
-            }}>
-              Resume Service
-            </button>
+              <button className="dashboard-button resume" onClick={() => {
+                  setSuspensionState(false, null);
+                  reanudarServicio();
+              }}>
+                  Resume Service
+              </button>
           )}
+      </div>
+      {showPasswordModal && (
+    <div className="modal-overlay">
+        <div className="modal-content">
+            <h2>🔒 Autenticación Requerida</h2>
+            <p>Ingrese la contraseña del administrador para suspender el servicio.</p>
+
+            <input
+                type="password"
+                placeholder="Contraseña"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+            />
+            {passwordError && <p className="error-text">{passwordError}</p>}
+
+            <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowPasswordModal(false)}>Cancelar</button>
+                <button className="btn-primary" onClick={handleVerifyPassword}>Confirmar</button>
+            </div>
         </div>
+    </div>
+       )}
       </div>
   
-      {/* Modal de Marcaje de Horario */}
       {showTimeAttendanceModal && (
         <div className="modal-overlay">
           <div className="modal-content time-attendance-modal">
@@ -358,8 +475,6 @@ const PizzariaDashboard = () => {
           </div>
         </div>
       )}
-  
-      {/* Confirmación de suspensión */}
       {isSuspending && (
         <div className="suspension-confirmation">
           <p>¿Estás seguro de que quieres suspender el servicio?</p>
@@ -372,6 +487,42 @@ const PizzariaDashboard = () => {
           </select>
           <button onClick={confirmSuspension}>Confirmar</button>
           <button onClick={() => setIsSuspending(false)}>Cancelar</button>
+        </div>
+      )}
+      {showLocationModal && (
+        <div className="modal-overlay">
+          <div className="modal-content location-modal">
+            <div className="modal-header">
+              <h2>Seleccionar Ubicación Operativa</h2>
+              <button className="close-button-ch" onClick={() => setShowLocationModal(false)}>Salir</button>
+            </div>
+            <div className="modal-body">
+              <label htmlFor="ubicacionSelect">Elige la ubicación:</label>
+              <select 
+                id="ubicacionSelect" 
+                value={selectedUbicacion || ''} 
+                onChange={handleSelectUbicacion}
+              >
+                {ubicaciones.map((ubic) => (
+                  <option key={ubic.id} value={ubic.id}>
+                    {ubic.direccion} ({ubic.codigo_postal})
+                  </option>
+                ))}
+              </select>
+              <hr />
+              <label className="switch-label">Estado:</label>
+              <button
+                className={`estado-button ${estado ? 'activo' : 'inactivo'}`}
+                onClick={() => setEstado((prevEstado) => !prevEstado)} 
+              >
+                {estado ? 'Activo' : 'Inactivo'}
+              </button>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowLocationModal(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleSaveLocation}>Guardar</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -46,19 +46,6 @@ const DeliveryForm = ({ setCompra, compra }) => {
 
 
   useEffect(() => {
-    const fetchStoreLocation = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/info-empresa');
-        const { coordenadas_latitud, coordenadas_longitud, ciudad_latitud, ciudad_longitud } = response.data;
-        setStoreLocation({ lat: coordenadas_latitud, lng: coordenadas_longitud });
-        setCityLocation({ lat: ciudad_latitud, lng: ciudad_longitud });
-      } catch (error) {
-        console.error('Error al obtener la ubicación de la tienda:', error);
-      }
-    };
-    fetchStoreLocation();
-  }, []);
-  useEffect(() => {
     const loadPreviousInfo = async () => {
       try {
         const idCliente = sessionData?.id_cliente;
@@ -108,22 +95,38 @@ const DeliveryForm = ({ setCompra, compra }) => {
     const fetchStoreLocations = async () => {
       try {
         const response = await axios.get('http://localhost:3001/api/info-empresa');
-        const locations = Array.isArray(response.data)
-          ? response.data.map(store => ({
-              id: store.id,
-              lat: store.coordenadas_latitud,
-              lng: store.coordenadas_longitud,
-              ciudad: store.ciudad,
-              direccion: store.direccion,
-              nombre_empresa: store.nombre_empresa,
-            }))
-          : [];
+  
+        // 🔥 Filtramos solo las tiendas activas
+        const activeStores = response.data.filter(store => store.estado === 'activo');
+  
+        if (activeStores.length === 0) {
+          console.warn("⚠️ No hay tiendas activas disponibles.");
+        }
+  
+        // 🏪 Seleccionamos la primera tienda activa como tienda principal
+        if (activeStores.length > 0) {
+          const mainStore = activeStores[0];
+          setStoreLocation({ lat: mainStore.coordenadas_latitud, lng: mainStore.coordenadas_longitud });
+          setCityLocation({ lat: mainStore.ciudad_latitud, lng: mainStore.ciudad_longitud });
+        }
+  
+        // 📍 Guardamos todas las ubicaciones activas en el estado
+        const locations = activeStores.map(store => ({
+          id: store.id,
+          lat: store.coordenadas_latitud,
+          lng: store.coordenadas_longitud,
+          ciudad: store.ciudad,
+          direccion: store.direccion,
+          nombre_empresa: store.nombre_empresa,
+        }));
+  
         setStoreLocations(locations);
-        console.log('Ubicaciones de las tiendas obtenidas:', locations);
+        console.log('✅ Ubicaciones activas obtenidas:', locations);
       } catch (error) {
-        console.error('Error al obtener las ubicaciones de las tiendas:', error);
+        console.error('❌ Error al obtener las ubicaciones de las tiendas:', error);
       }
     };
+  
     fetchStoreLocations();
   }, []);
   useEffect(() => {

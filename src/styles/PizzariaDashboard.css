@@ -162,3 +162,32 @@ font-weight: bold;
 }
 
 
+/*modal ubicaciones*/
+
+.estado-button {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: 0.3s;
+}
+
+.estado-button.activo {
+  background-color: #49b11c; /* Verde */
+  color: white;
+}
+
+.estado-button.inactivo {
+  background-color: #dc3545; /* Rojo */
+  color: white;
+}
+.modal-footer button {
+  color: #f6f3f3;
+  background-color: #000;
+  margin-top:  2rem;
+
+  align-items: center;
+}

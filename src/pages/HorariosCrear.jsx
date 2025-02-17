@@ -19,7 +19,7 @@ function HorariosCrear() {
     axios.get("http://localhost:3001/api/empleados").then((res) => setEmpleados(res.data));
   }, []);
   useEffect(() => {
-    axios.get("http://localhost:3001/ubicaciones")
+    axios.get("http://localhost:3001/api/info-empresa")
       .then((res) => {
         console.log("Ubicaciones recibidas en el frontend:", res.data); // LOG de depuración
         setUbicaciones(res.data);
@@ -60,8 +60,8 @@ function HorariosCrear() {
         <select name="ubicacion" value={formData.ubicacion} onChange={handleChange} required>
             <option value="">Seleccionar Ubicación</option>
             {ubicaciones.map((ubicacion) => (
-                <option key={ubicacion.id_cliente} value={ubicacion.id_cliente}>
-                {ubicacion.ciudad} - {ubicacion.codigo_postal}
+                <option key={ubicacion.id} value={ubicacion.id}>
+                {ubicacion.direccion} - {ubicacion.codigo_postal}
                 </option>
             ))}
             </select>
