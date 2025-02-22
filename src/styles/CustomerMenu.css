@@ -5,7 +5,6 @@
     gap: 20px;
     padding: 20px;
   }
-  
   .menu-item-cm {
     background-color: #ffffff;
     border: 1px solid #ddd;
@@ -16,35 +15,29 @@
     padding: 10px;
     transition: transform 0.2s ease-in-out;
   }
-  
   .menu-item-cm:hover {
     transform: scale(1.05);
   }
-  
   .menu-image-cm {
     width: 100%;
     height: 200px;
     overflow: hidden;
     border-radius: 10px;
   }
-  
   .menu-image-cm img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  
   .menu-details {
     padding: 10px;
   }
-  
   .menu-details h3 {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 10px;
     color: #333;
   }
-  
   .botonSeleccionarMenu {
     background-color: #FFA500;
     border: none;
@@ -58,7 +51,6 @@
     cursor: pointer;
     border-radius: 5px;
   }
-  
   .botonSeleccionarMenu:hover {
     background-color: #FF8C00;
   }
@@ -188,22 +180,8 @@ body {
   padding: 0;
 }
 
-h1 {
-  text-align: center;
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 20px;
-}
 
-/* Contenedor del formulario */
-.form_crearpizza {
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-}
+
 
 /* Inputs y select */
 input[type="text"],
@@ -254,7 +232,7 @@ select {
   width: 80%;
   max-width: 50px;
   padding: 5px;
-  font-size: 14px;
+  font-size: 10px;
   text-align: center;
   border-radius: 4px;
   border: 1px solid #ccc;
@@ -352,13 +330,71 @@ button:hover {
   }
 }
 .form_crearpizza {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  max-height: 700px; 
+  overflow-y: auto; 
+  overflow-x: hidden;
+}
+.form_crearpizza-container {
+  position: relative;
   max-width: 800px;
   margin: 20px auto;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  max-height: 600px; /* Altura máxima antes de mostrar scroll */
-  overflow-y: auto; /* Permite scroll vertical cuando se llena */
-  overflow-x: hidden; /* Evita desplazamiento horizontal */
+}
+.IrMenuOver {
+  position: absolute;
+  top: 20px;
+  right: 500px;
+}
+.IrMenuOver button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.IrMenuOver button:hover {
+  background: #218838;
+}
+
+/* 📌 Mantener el diseño responsivo */
+@media (max-width: 768px) {
+  .IrMenuOver {
+    position: static;
+    text-align: right;
+    margin-bottom: 10px;
+  }
+}
+
+
+.updatePizza{
+  margin-top: 2rem;
+  width: 100%;
+}
+
+h1 {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  margin-top: 5rem;
+}
+
+.TituloFormCP{
+  margin: 0;
+  font-size: 1.8rem;
+  text-align: left;
+  margin-bottom: 20px;
 }

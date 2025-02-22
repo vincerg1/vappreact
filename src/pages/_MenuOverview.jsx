@@ -35,64 +35,6 @@ const MenuOverview = () => {
   
 
 
-
-  // useEffect(() => {
-  //   console.log('Pizzas con estado actualizado en MenuOverview:', pizzasConEstadoActualizado);
-  // }, [pizzasConEstadoActualizado]);
-
-// useEffect(() => {
-//     const fetchPizzas = async () => {
-//       try {
-//         const response = await axios.get('http://localhost:3001/menu_pizzas');
-//         // Suponiendo que la respuesta tiene un campo `data` que es un objeto que contiene un arreglo de pizzas
-//         const pizzasData = response.data.data; // Ajusta esto según la estructura real de tu respuesta
-        
-//         if (Array.isArray(pizzasData)) { // Verifica si pizzasData es realmente un arreglo
-//           // Procesa las pizzas aquí...
-//         } else {
-//           throw new Error("La respuesta no contiene un arreglo de pizzas.");
-//         }
-//       } catch (error) {
-//         console.error('Error al obtener las pizzas:', error);
-//       }
-//     };
-  
-//     fetchPizzas();
-// }, []);
-
-// useEffect(() => {
-//     const fetchPizzas = async () => {
-//       try {
-//         const response = await axios.get('http://localhost:3001/menu_pizzas');
-//         if (response.data && Array.isArray(response.data.data)) {
-//           const pizzasData = response.data.data; // Obtiene el arreglo de pizzas
-          
-//           const menusActualizados = pizzasData.map(pizza => {
-//             let ingredientesPizza;
-//             try {
-//               ingredientesPizza = typeof pizza.ingredientes === 'string' ? JSON.parse(pizza.ingredientes) : pizza.ingredientes;
-//             } catch (e) {
-//               ingredientesPizza = [];
-//             }
-
-//             const descripcion = generarDescripcion(ingredientesPizza); // Genera una descripción basada en los ingredientes
-//             return { ...pizza, descripcion }; // Retorna la pizza con su descripción añadida
-//           });
-
-//           setMenus(menusActualizados); // Actualiza el estado local con las pizzas procesadas
-//           setActivePizzas(menusActualizados); 
-//           // console.log(menusActualizados)// Actualiza el estado en el contexto si es necesario
-//         } else {
-//           throw new Error("La respuesta no contiene un arreglo de pizzas.");
-//         }
-//       } catch (error) {
-//         console.error('Error al obtener las pizzas:', error);
-//       }
-//     };
-
-//     fetchPizzas();
-// }, [setActivePizzas]);
-
 useEffect(() => {
   const fetchPizzas = async () => {
     try {
@@ -121,10 +63,6 @@ useEffect(() => {
 
   fetchPizzas();
 }, []);
-
-
-
-
 useEffect(() => {
     const cargarPartners = async () => {
       try {
@@ -138,76 +76,6 @@ useEffect(() => {
 
     cargarPartners();
 }, []);
-
-// useEffect(() => {
-//   const cargarPizzasConEstado = async () => {
-//     try {
-//       const responsePizzas = await axios.get('http://localhost:3001/menu_pizzas');
-//       if (responsePizzas.data && Array.isArray(responsePizzas.data.data)) {
-//         // Extracción de los IDIs de los ingredientes inactivos
-//         const IDIsInactivos = ingredientesInactivos.map(ing => ing.IDI);
-      
-//         // Actualización del estado de las pizzas
-//         const pizzasConEstado = responsePizzas.data.data.map(pizza => {
-//           // Parseo de la propiedad ingredientes si es una cadena JSON
-//           const ingredientesPizza = Array.isArray(pizza.ingredientes) 
-//             ? pizza.ingredientes 
-//             : JSON.parse(pizza.ingredientes);
-
-//           // Verificación de si todos los ingredientes de la pizza están activos
-//           const esActiva = ingredientesPizza.every(ing => 
-//             !IDIsInactivos.includes(ing.IDI)
-//           );
-
-//           return {
-//             ...pizza,
-//             estado: esActiva ? 'Activa' : 'Inactiva',
-//             descripcion: generarDescripcion(ingredientesPizza)
-//           };
-//         });
-
-//         console.log('Pizzas con estado actualizado:', pizzasConEstado);
-//         setActivePizzas(pizzasConEstado.filter(p => p.estado === 'Activa'));
-//       } else {
-//         throw new Error('La respuesta no contiene un array de pizzas.');
-//       }
-//     } catch (error) {
-//       console.error('Error al cargar las pizzas con estado:', error);
-//     }
-//   };
-
-//   // Solo ejecutar si hay ingredientes inactivos
-//   if (ingredientesInactivos && ingredientesInactivos.length > 0) {
-//     cargarPizzasConEstado();
-//   }
-// }, [ingredientesInactivos]);
-
-
-// En tu componente MenuOverview
-
-
-
-
-// console.log("ingredientes inactivos", ingredientesInactivos)
-
-// useEffect(() => {
-//   const fetchPizzas = async () => {
-//     try {
-//       const response = await axios.get('http://localhost:3001/menu_pizzas');
-//       if (response.status === 200 && response.data && Array.isArray(response.data.data)) {
-//         // Suponemos que la respuesta es un objeto que contiene un array bajo la propiedad 'data'
-//         setMenus(response.data.data); // Aquí actualizas el estado de tu componente con las pizzas
-//       } else {
-//         throw new Error('Respuesta no válida del servidor');
-//       }
-//     } catch (error) {
-//       console.error('Error al cargar las pizzas:', error);
-//     }
-//   };
-
-//   fetchPizzas();
-// }, []); 
-
 useEffect(() => {
   const actualizarEstadoPizzas = () => {
     if (pizzasConEstadoActualizado.length > 0) {
@@ -264,72 +132,68 @@ const handleDeletePartner = async (id) => {
   }
 };
 
-
-
-  return (
-    <div>
-    {/* <h1 className="PDCRL">Panel de Control / Menú</h1> */}
-    <h1 className="h1m">Menú Overview</h1>
-    <button onClick={handleCreatePizza}>Crear una Nueva Pizza</button>
-    <div className="menu-container">
-
-    <>
-    {pizzasConEstadoActualizado && pizzasConEstadoActualizado.length > 0 ? (
-          pizzasConEstadoActualizado.map((menu, index) =>  (
-      <div className="menu-item" key={index}>
-        <div className="menu-image">
-          <img src={`http://localhost:3001/${menu.imagen}`} alt={menu.nombre} />
-        </div>
-        <div className="menu-details">
-          <h3>{menu.nombre}</h3>
-          <p>Categoría: {menu.categoria}</p>
-          <p>Tipo de cocción: {menu.metodoCoccion}</p>
-          <p>Precio por tamaño:</p>
-          <ul>
-            {menu.PriceBySize
-              ? Object.entries(JSON.parse(menu.PriceBySize)).map(([size, price]) => (
-                  <li key={size}>{size.toUpperCase()}: EUR {price}</li>
-                ))
-              : <li>No hay precios disponibles</li>
-            }
-          </ul>
-          <p className='Descripcion'>
-            Descripción: {menu.descripcion}
-          </p>
-          <p>Estado: {menu.estado}</p>
-        </div>
-        <div className="menu-buttons">
-          <button onClick={() => handleEdit(menu)}>Editar</button>
-          <button onClick={() => handleDelete(menu.id)}>Eliminar</button>
-        </div>
-      </div>
-    ))
-  ) : (
-    <p>No hay pizzas disponibles.</p>
-  )}
-</>
-
-
-      <div className="menu-container">
-      {partners.map(partner => (
-        <div className="menu-item" key={partner.id}>
-          <h6 className="labelPartnerbox">Acompañates</h6>
-          <div className="menu-image">
-            <img src={`http://localhost:3001/${partner.imagen}`} alt={partner.producto} />
-          </div>
-          <div className="menu-details">
-            <h3>{partner.producto}</h3>
-            <p>Precio: EUR {partner.precio}</p> {/* Asegúrate de que el precio esté disponible en el objeto partner */}
+return (
+<>
+  <h1>Menu Overview</h1>  
+  <div className="menu-container">
+ 
+    <div className="menu-items">
+      {/* Renderiza Pizzas */}
+      {pizzasConEstadoActualizado && pizzasConEstadoActualizado.length > 0 ? (
+        pizzasConEstadoActualizado.map((menu, index) => (
+          <div className="menu-item" key={index}>
+            <div className="menu-image">
+              <img src={`http://localhost:3001/${menu.imagen}`} alt={menu.nombre} />
+            </div>
+            <div className="menu-details">
+              <h3>{menu.nombre}</h3>
+              <p>Categoría: {menu.categoria}</p>
+              <p>Tipo de cocción: {menu.metodoCoccion}</p>
+              <p>Precio por tamaño:</p>
+              <ul>
+                {menu.PriceBySize
+                  ? Object.entries(JSON.parse(menu.PriceBySize)).map(([size, price]) => (
+                      <li key={size}>{size.toUpperCase()}: EUR {price}</li>
+                    ))
+                  : <li>No hay precios disponibles</li>
+                }
+              </ul>
+              <p className='descripcion'>
+                Descripción: {menu.descripcion}
+              </p>
+              <p>Estado: {menu.estado}</p>
+            </div>
             <div className="menu-buttons">
-              <button onClick={() => handleEditPartner(partner)}>Editar</button>
-              <button onClick={() => handleDeletePartner(partner.id)}>Eliminar</button>
+              <button onClick={() => handleEdit(menu)}>Editar</button>
+              <button onClick={() => handleDelete(menu.id)}>Eliminar</button>
             </div>
           </div>
+        ))
+      ) : (
+        <p>No hay pizzas disponibles.</p>
+      )}
+
+      {/* Renderiza Partners con la label dentro del espacio de descripción */}
+      {partners.map(partner => (
+        <div className="menu-item">
+        <div className="menu-image">
+          <img src={`http://localhost:3001/${partner.imagen}`} alt={partner.producto} />
         </div>
+        <div className="menu-details">
+          <h3>{partner.producto}</h3>
+          <p className="partner-price">Precio: EUR {partner.precio}</p> 
+          <div className="partner-label">PARTNER</div> 
+        </div>
+        <div className="menu-buttons">
+          <button onClick={() => handleEditPartner(partner)}>Editar</button>
+          <button onClick={() => handleDeletePartner(partner.id)}>Eliminar</button>
+        </div>
+      </div>
       ))}
-    </div>
+
     </div>
   </div>
+</>
 );
 };
   export default MenuOverview;

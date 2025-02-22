@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import Modal from 'react-modal';
-import '../styles/formularios.css';
+import '../styles/infoEmpresa.css'; 
 
 const InfoEmpresa = () => {
   const navigate = useNavigate();
@@ -23,15 +23,15 @@ const InfoEmpresa = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [showButtons, setShowButtons] = useState(false);
-  const [companyInfo, setCompanyInfo] = useState([]); // Cambiado a array para manejar múltiples tiendas
+  const [companyInfo, setCompanyInfo] = useState([]); 
   const [editMode, setEditMode] = useState(false);
-  const [showForm, setShowForm] = useState(false); // Estado para controlar la visibilidad del formulario
-  const [currentEditId, setCurrentEditId] = useState(null); // Estado para almacenar el ID de la tienda que se está editando
-  const [socials, setSocials] = useState([]);        // Almacena la lista completa de redes
+  const [showForm, setShowForm] = useState(false); 
+  const [currentEditId, setCurrentEditId] = useState(null); 
+  const [socials, setSocials] = useState([]);        
   const [selectedSocial, setSelectedSocial] = useState(""); 
   const [socialUrl, setSocialUrl] = useState("");
   const socialOptions = ["Facebook", "Instagram", "Whatsapp", "TikTok", "LinkedIn"];
-  // Cargar países
+
   useEffect(() => {
     axios.get('http://api.geonames.org/countryInfoJSON?username=vincerg1')
       .then((response) => {
@@ -41,7 +41,6 @@ const InfoEmpresa = () => {
         console.error('Error al cargar la lista de países:', error);
       });
   }, []);
-  // Cargar regiones al seleccionar país
   useEffect(() => {
     if (selectedCountry) {
       axios.get(`http://api.geonames.org/childrenJSON?geonameId=${selectedCountry}&username=vincerg1`)
@@ -53,7 +52,6 @@ const InfoEmpresa = () => {
         });
     }
   }, [selectedCountry]);
-  // Cargar códigos ZIP al seleccionar región
   useEffect(() => {
     if (selectedRegion) {
       axios.get(`http://api.geonames.org/childrenJSON?geonameId=${selectedRegion}&username=vincerg1`)
@@ -65,7 +63,6 @@ const InfoEmpresa = () => {
         });
     }
   }, [selectedRegion]);
-  // Cargar información de las tiendas
   useEffect(() => {
     axios.get('http://localhost:3001/api/info-empresa')
       .then((response) => {
@@ -174,14 +171,13 @@ const InfoEmpresa = () => {
     setSocials(socials.filter((_, i) => i !== index));
   };
  return (
-    <div>
-      <h1 className="PDCRL">Panel de Control / Información de la Empresa</h1>
+    <div className='infoEmpresaContenedor'>
       <button onClick={() => { setEditMode(false); setShowForm(!showForm); }}>{showForm ? 'Cerrar Formulario' : 'Agregar Nueva Tienda'}</button>
 
       {companyInfo.length > 0 && (
-        <div>
+        <div className='infoEmpresaContenedorInfo'>
           <h2>Información Guardada</h2>
-          <table>
+          <table className='infoEmpresaContenedorTable'>
             <thead>
               <tr>
                 <th>Nombre de la Empresa</th>

@@ -351,7 +351,7 @@ form textarea  {
 .info_rest_gral {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 25px; /* Esto establece el espacio entre las columnas */
+    gap: 25px; 
     margin: 2rem;
 }
 .f1_info_rest {
@@ -366,9 +366,6 @@ form textarea  {
     font-size: 40px;
     text-align: left;
     margin-top: -1rem;
-}
-.form_crearpizza{
-    width:35%;
 }
 .TamañosSeleccionados {
     width: 40px; /* Ancho deseado */

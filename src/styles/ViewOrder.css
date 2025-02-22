@@ -1,9 +1,24 @@
 /* styles/ViewOrder.css */
 .table-container {
+  width: 95%;
   max-height: 800px; /* Ajusta la altura máxima según tus necesidades */
   overflow-y: auto;  /* Activa el scroll vertical */
   scrollbar-width: thin; /* Estilo fino para el scrollbar en Firefox */
+  margin: 0 auto;
 }
+
+.table-container thead th {
+  color: #adacac ;
+  background-color: rgb(0, 0, 0);
+}
+.table-container-button button {
+  color: rgb(255, 255, 255);
+  background-color: rgb(0, 0, 0);
+  }
+  .table-container-button button :hover{
+    color: rgb(255, 255, 255);
+    background-color: rgb(130, 127, 127);
+    }
 
 .table-container::-webkit-scrollbar {
   width: 8px;  /* Ancho del scrollbar */
@@ -81,7 +96,7 @@ button {
   margin: 2px; /* Espacio entre botones */
   border: none; /* Sin borde */
   border-radius: 4px; /* Bordes redondeados */
-  background-color: #4CAF50; /* Color de fondo */
+  background-color: #000000; /* Color de fondo */
   color: white; /* Color del texto */
   cursor: pointer; /* Cambiar el cursor al pasar el ratón */
   font-size: 14px; /* Tamaño de fuente */
@@ -89,5 +104,17 @@ button {
 }
 
 button:hover {
-  background-color: #45a049; /* Cambiar color en hover */
+  background-color: #7c7f7c; /* Cambiar color en hover */
+}
+.filter-container2{
+  width: 95%;
+  background-color: #e3e2e2;
+  border-radius: 10px;
+  margin: 0 auto;
+  margin-top: 50px;
+}
+
+
+.filter-container2 select{
+  background-color: #eeecec;
 }

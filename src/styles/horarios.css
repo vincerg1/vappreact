@@ -1,62 +1,151 @@
-/* Ajustes generales */
+/* 📌 Contenedor Principal */
 .horarios-container {
-    display: flex;
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 📌 Scroll del Formulario */
+.form-scroll-container {
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* 📌 Estilo del Formulario */
+.f1_info_rest {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 📌 Título */
+.h1_Form_info_ir {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+/* 📌 Lista de Días */
+.f1_info_rest ul {
+  list-style: none;
+  padding: 0;
+}
+
+/* 📌 Estilo de los Días */
+.f1_info_rest li {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+/* 📌 Checkboxes */
+.f1_info_rest input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+/* 📌 Formulario de Horarios */
+.work-hours-form {
+  background: #eef6ff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+/* 📌 Tablas */
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.schedule-table th, 
+.schedule-table td {
+  padding: 8px;
+  text-align: center;
+  border: 1px solid #ddd;
+}
+
+.schedule-table th {
+  background: #808e9e;
+  color: white;
+}
+
+/* 📌 Selectores de Hora y Turno */
+.time-selectors {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.time-selector,
+.shift-selector {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.shift-selector {
+  min-width: 100px;
+}
+
+/* 📌 Botones */
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.add-shift-button {
+  background: #090a0a;
+  color: white;
+  width: 100%;
+}
+
+.add-shift-button:hover {
+  background: #218838;
+}
+
+button {
+  background: #007bff;
+  color: white;
+}
+
+button :hover {
+  background: #0056b3;
+}
+
+
+/* 📌 Responsivo */
+@media (max-width: 768px) {
+  .horarios-container {
+    max-width: 100%;
+    padding: 15px;
+  }
+
+  .time-selectors {
     flex-direction: column;
-    align-items: center;
-    padding: 20px;
+  }
+
+  .time-selector, .shift-selector {
     width: 100%;
   }
-  
-  .form-scroll-container {
-    max-height: 900px; 
-    width: 50%;
-    overflow-y: auto;  /* Habilitar scroll vertical */
-    padding-right: 15px; /* Añadir espacio a la derecha para que no se corte el contenido */
+
+  button {
+    width: 100%;
   }
-  
-  .work-hours-form {
-    margin-top: 10px;
-  }
-  
-  /* Mejora del tamaño de los selectores de tiempo */
-  .time-selectors label {
-    margin-right: 10px;
-  }
-  
-  .time-selector, .shift-selector {
-    padding: 10px;
-    font-size: 1rem;
-    margin-right: 15px;
-    width: 140px;
-  }
-  
-  /* Botones de acción */
-  .action-buttons button {
-    margin-right: 10px;
-    padding: 8px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .action-buttons button:hover {
-    background-color: #0056b3;
-  }
-  
-  /* Botón para agregar otro turno */
-  .add-shift-button {
-    margin-top: 10px;
-    background-color: #28a745;
-    color: white;
-    padding: 8px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  .add-shift-button:hover {
-    background-color: #218838;
-  }
-  
+}

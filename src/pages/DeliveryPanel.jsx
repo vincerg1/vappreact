@@ -862,125 +862,122 @@ const DeliveryPanel = () => {
             <button onClick={toggleWallet}>
                 {showWallet ? 'Ocultar Wallet' : 'Ver Wallet'}
             </button>
-
-            {/* Botón/Interruptor con apariencia unificada */}
             <div
-            className={`delivery-button ${estado === 'Activo' ? 'activo' : 'inactivo'}`}
-            onClick={puedeActivar ? toggleEstado : null}
-            role="button"
-            style={{ cursor: puedeActivar ? 'pointer' : 'not-allowed', opacity: puedeActivar ? 1 : 0.5 }}
-                >
-                    {estado}
-                </div>
-                <p>{!puedeActivar && mensajeHorario}</p>
-                </div>
+                className={`delivery-button ${estado === 'Activo' ? 'activo' : 'inactivo'}`}
+                onClick={puedeActivar ? toggleEstado : null}
+                role="button"
+                style={{ cursor: puedeActivar ? 'pointer' : 'not-allowed', opacity: puedeActivar ? 1 : 0.5 }}
+            >
+                {estado}
+            </div>
+          </div>
 
+        {/* 🔥 Ahora el <p> está FUERA del contenedor de botones */}
+        <p className="status-text">{!puedeActivar && mensajeHorario} "" </p>
       
           {/* Wallet Modal */}
           {showWallet && (
-            <div className="wallet-modal">
-        {showWallet && (
-            <div className="wallet-modal">
-              <div className="wallet-columns">
-                {/* Columna 1: Pedidos Completados */}
-                <div className="wallet-column">
-                  <h3>Pedidos Completados</h3>
-                  <select value={filtro} onChange={(e) => handleFiltroChange(e.target.value)}>
-                    <option value="diario">Diario</option>
-                    <option value="mensual">Mensual</option>
-                    <option value="historico">Histórico</option>
-                  </select>
-                  <div className="pedidos-completados-scroll">
-                    <table style={{ width: '100%' }}>
-                      <thead>
-                        <tr>
-                          <th>ID Pedido</th>
-                          <th>Fecha</th>
-                          <th>Monto (Delivery)</th>
-                          <th>Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {wallet
-                          .sort((a, b) => new Date(b.fecha_consolidacion) - new Date(a.fecha_consolidacion))
-                          .map((walletItem) => (
-                            <tr key={walletItem.id_order}>
-                              <td>{walletItem.id_order}</td>
-                              <td>{moment(walletItem.fecha_consolidacion).format("YYYY-MM-DD HH:mm")}</td>
-                              <td>
-                                {walletItem.estado === "Pagado"
-                                  ? walletItem.monto_pagado?.toFixed(2)
-                                  : walletItem.monto_por_cobrar?.toFixed(2)}{' '}
-                                €
-                              </td>
-                              <td>{walletItem.estado}</td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-      
-                {/* Columna 2: Gráfico de Pedidos */}
-                <div className="wallet-column">
-                  <div className="chart-container">
-                    <Bar
-                      data={{
-                        labels: graficaData.labels,
-                        datasets: [
-                          {
-                            label: "Pedidos Diarios",
-                            data: graficaData.data,
-                            backgroundColor: "rgba(75, 192, 192, 0.6)",
-                          },
-                        ],
-                      }}
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                          x: {
-                            ticks: { autoSkip: false },
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                  <button
-                    className="wallet-column2-button"
-                    onClick={async () => {
-                      if (estadoBoton === "Consolidar") {
-                        await handleConsolidar();
-                        setEstadoBoton("Confirmar Pago");
-                      } else if (estadoBoton === "Confirmar Pago") {
-                        await handlePagoConfirmado();
-                        setEstadoBoton("Pagado");
-                      }
-                    }}
-                    disabled={estadoBoton === "Pagado"}
-                  >
-                    {estadoBoton}
-                  </button>
-                </div>
-      
-                {/* Columna 3: Resumen Financiero */}
-                <div className="wallet-column">
-                  <div className="financial-container">
-                    <div className="financial-item">
-                      <h3>Por Cobrar</h3>
-                      <p>{montoPorCobrar.toFixed(2)} €</p>
-                    </div>
-                    <div className="financial-item">
-                      <h3>Pagado</h3>
-                      <p>{montoPagado.toFixed(2)} €</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      <div className="wallet-modal">
+      <div className="wallet-columns">
+        
+        {/* 🟢 Columna 1: Pedidos Completados */}
+        <div className="wallet-column">
+          <h3>Pedidos Completados</h3>
+          <select value={filtro} onChange={(e) => handleFiltroChange(e.target.value)}>
+            <option value="diario">Diario</option>
+            <option value="mensual">Mensual</option>
+            <option value="historico">Histórico</option>
+          </select>
+          <div className="pedidos-completados-scroll">
+            <table className="tabla-pedidos">
+              <thead>
+                <tr>
+                  <th>ID Pedido</th>
+                  <th>Fecha</th>
+                  <th>Monto (Delivery)</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wallet
+                  .sort((a, b) => new Date(b.fecha_consolidacion) - new Date(a.fecha_consolidacion))
+                  .map((walletItem) => (
+                    <tr key={walletItem.id_order}>
+                      <td>{walletItem.id_order}</td>
+                      <td>{moment(walletItem.fecha_consolidacion).format("YYYY-MM-DD HH:mm")}</td>
+                      <td>
+                        {walletItem.estado === "Pagado"
+                          ? walletItem.monto_pagado?.toFixed(2)
+                          : walletItem.monto_por_cobrar?.toFixed(2)}{' '}
+                        €
+                      </td>
+                      <td>{walletItem.estado}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        {/* 🟢 Columna 2: Gráfico de Pedidos */}
+        <div className="wallet-column">
+          <div className="chart-container">
+            <Bar
+              data={{
+                labels: graficaData.labels,
+                datasets: [
+                  {
+                    label: "Pedidos Diarios",
+                    data: graficaData.data,
+                    backgroundColor: "rgba(75, 192, 192, 0.6)",
+                  },
+                ],
+              }}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    ticks: { autoSkip: false },
+                  },
+                },
+              }}
+            />
+          </div>
+          <button
+            className="wallet-column2-button"
+            onClick={async () => {
+              if (estadoBoton === "Consolidar") {
+                await handleConsolidar();
+                setEstadoBoton("Confirmar Pago");
+              } else if (estadoBoton === "Confirmar Pago") {
+                await handlePagoConfirmado();
+                setEstadoBoton("Pagado");
+              }
+            }}
+            disabled={estadoBoton === "Pagado"}
+          >
+            {estadoBoton}
+          </button>
+        </div>
+        
+        {/* 🟢 Columna 3: Resumen Financiero */}
+        <div className="wallet-column">
+          <div className="financial-container">
+            <div className="financial-item">
+              <h3>Por Cobrar</h3>
+              <p>{montoPorCobrar.toFixed(2)} €</p>
             </div>
-          )}
-      
+            <div className="financial-item">
+              <h3>Pagado</h3>
+              <p>{montoPagado.toFixed(2)} €</p>
             </div>
+          </div>
+        </div>
+    
+      </div>
+    </div>
+
           )}
       
           {/* Tabla de Pedidos Pendientes */}
@@ -989,6 +986,7 @@ const DeliveryPanel = () => {
             {pedidos.length === 0 && rutas.length === 0 ? (
                 
                 <div style={{ 
+                    marginTop:'10rem', 
                     textAlign: 'center', 
                     fontWeight: 'bold', 
                     padding: '20px', 
@@ -997,7 +995,7 @@ const DeliveryPanel = () => {
                     alignItems: 'center', 
                     justifyContent: 'center' 
                 }}>
-                    <h2>Hola, {repartidor?.nombre || 'Invitado'}</h2> 
+                    <h2>Hola, {repartidor?.nombre?.split(" ")[0] || 'Invitado'}</h2>
                     <span style={{ fontSize: '80px' }}>🙇‍♂️</span>
                     <p style={{ fontSize: '18px', marginTop: '10px' }}>EN ESPERA DE NUEVOS PEDIDOS...</p>
                 </div>

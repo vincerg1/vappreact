@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { _PizzaContext } from './_PizzaContext';
 import axios from 'axios';
 import TimeAttendanceModal from "./TimeAttendanceModal";
+import WarningModal from './WarningModal';
 import '../styles/PizzariaDashboard.css';
 import moment from 'moment-timezone';  
 
@@ -27,7 +28,12 @@ const PizzariaDashboard = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [passwordError, setPasswordError] = useState(null);
+  const [warningActive, setWarningActive] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningsDashboard, setWarningsDashboard] = useState([]);
   const navigate = useNavigate();  
+
+  
 
   useEffect(() => {
     const fetchOrdersAndCalculateRoutes = async () => {
@@ -112,8 +118,91 @@ const PizzariaDashboard = () => {
 
     return () => clearInterval(interval); // Limpiar el intervalo cuando se desmonta el componente
   }, []);  
+  useEffect(() => {
+    const fetchWarningsInBackground = async () => {
+      console.log("🟡 [LOG] Consultando advertencias en segundo plano...");
+  
+      try {
+        // 🚀 Consultamos los datos de inventario, reviews y advertencias descartadas
+        const [inventoryRes, reviewsRes, dismissedWarningsRes] = await Promise.all([
+          axios.get("http://localhost:3001/inventario"),
+          axios.get("http://localhost:3001/api/reviews"),
+          axios.get("http://localhost:3001/api/dismissed-warnings") // Nueva consulta a la BD
+        ]);
+  
+        console.log("✅ [LOG] Respuesta completa de inventario:", inventoryRes.data);
+        console.log("✅ [LOG] Respuesta completa de reviews:", reviewsRes.data);
+        console.log("📂 [LOG] Advertencias previamente descartadas desde BD:", dismissedWarningsRes.data);
+  
+        if (!inventoryRes.data || !inventoryRes.data.data) {
+          console.error("❌ [ERROR] Datos de inventario mal estructurados:", inventoryRes.data);
+          return;
+        }
+  
+        if (!reviewsRes.data) {
+          console.error("❌ [ERROR] Datos de reviews mal estructurados:", reviewsRes.data);
+          return;
+        }
+  
+        // 🛠 Filtrar ingredientes inactivos
+        console.log("🟡 [LOG] Ingredientes antes de filtrar:", inventoryRes.data.data);
+        const ingredientesInactivos = inventoryRes.data.data
+          .filter(ing => ing.estadoGEN === 1)
+          .map(ing => ({
+            id: `i-${ing.IDR}`,
+            message: `⚠️ El producto ${ing.producto} está inactivo.`
+          }));
+  
+        console.log("🟢 [LOG] Ingredientes inactivos detectados:", ingredientesInactivos);
+  
+        // 🛠 Filtrar reviews negativas
+        console.log("🟡 [LOG] Reviews antes de filtrar:", reviewsRes.data);
+        const reviewsNegativas = reviewsRes.data
+          .filter(review => {
+            const reviewDate = new Date(review.created_at);
+            const now = new Date();
+            const diffInHours = (now - reviewDate) / (1000 * 60 * 60); // Diferencia en horas
+            return review.rating <= 2 && diffInHours <= 24;
+          })
+          .map(review => ({
+            id: `r-${review.id}`,
+            message: `⚠️ Review negativa de ${review.email} (⭐ ${review.rating})`
+          }));
+        
+        console.log("🟢 [LOG] Reviews negativas detectadas (últimas 24 horas):", reviewsNegativas);
+  
+        // 🔥 Unificar todas las advertencias detectadas
+        const allWarnings = [...ingredientesInactivos, ...reviewsNegativas];
+        console.log("🔴 [LOG] Advertencias unificadas antes de filtrar vistas:", allWarnings);
+  
+        // 🔍 Extraer advertencias descartadas desde la base de datos
+        const dismissedWarnings = dismissedWarningsRes.data
+        .filter(warning => warning.warning_id !== undefined) // Asegura que no haya valores undefined
+        .map(warning => String(warning.warning_id)); // Convertir a string por seguridad
 
-
+      console.log("📂 [LOG] Advertencias descartadas en BD (corrigido):", dismissedWarnings);
+  
+        // 🚨 Filtrar advertencias ya descartadas en BD
+        const newWarnings = allWarnings.filter(warning => 
+          !dismissedWarnings.includes(String(warning.id))
+        );
+  
+        console.log("🔎 [LOG] Advertencias nuevas (excluyendo vistas de BD):", newWarnings);
+  
+        setWarningsDashboard(newWarnings);
+        setWarningActive(newWarnings.length > 0);
+  
+      } catch (error) {
+        console.error("❌ [ERROR] al obtener advertencias en Dashboard:", error);
+      }
+    };
+  
+    fetchWarningsInBackground();
+    const interval = setInterval(fetchWarningsInBackground, 15000);
+  
+    return () => clearInterval(interval);
+  }, []);
+  
   const irAListaIngredientes = () => {
     navigate('/_Inicio/_InvIngDB/_ListaIngredientes');
   };
@@ -353,9 +442,22 @@ const PizzariaDashboard = () => {
         console.error("❌ Error en la autenticación:", error);
         setPasswordError("Error al verificar la contraseña");
     }
-};
+  };
+  const handleOpenWarningModal = () => {
+    setShowWarningModal(true);
+  };
+  const handleCloseWarningModal = () => {
+    setShowWarningModal(false);
+  };
+  const handleConfirmWarnings = () => {
+    console.log("✅ [LOG] Usuario confirmó las advertencias (sin localStorage).");
+    setWarningsDashboard([]);
+    setWarningActive(false);
+    setShowWarningModal(false);
+  };
 
-
+  
+  
   return (
     <div className="dashboard-container">
       <div className={`overlay ${isServiceSuspended ? 'active' : ''}`} />
@@ -363,7 +465,12 @@ const PizzariaDashboard = () => {
         <div className="icon-group">
           <div className="icon weather-icon" title="Clima">🌤️</div>
           <div className="icon calendar-icon" title="Calendario">📅</div>
-          <div className="icon warning-icon" title="Advertencias">⚠️</div>
+          <div
+          className={`icon warning-icon ${warningActive ? 'warning-active' : ''}`}
+          onClick={() => setShowWarningModal(true)}
+        >
+          ⚠️
+        </div>
           <div className="icon location-icon" 
             title="Location" 
             onClick={() => setShowLocationModal(true)}>
@@ -377,8 +484,6 @@ const PizzariaDashboard = () => {
             🔃
           </div>
         </div>
-
-    
       </div>
       {isServiceSuspended && (
         <div className="suspension-notice">
@@ -522,6 +627,18 @@ const PizzariaDashboard = () => {
               <button className="btn-secondary" onClick={() => setShowLocationModal(false)}>Cancelar</button>
               <button className="btn-primary" onClick={handleSaveLocation}>Guardar</button>
             </div>
+          </div>
+        </div>
+      )}
+      {showWarningModal && (
+        <div className="modal-overlay">
+          <div className="modal-content warning-modal">
+          <WarningModal
+            warnings={warningsDashboard}
+            onClose={handleCloseWarningModal}
+            setWarningsDashboard={setWarningsDashboard}
+            setWarningActive={setWarningActive}
+          />
           </div>
         </div>
       )}

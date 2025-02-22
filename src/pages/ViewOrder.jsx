@@ -120,145 +120,143 @@ const ViewOrder = () => {
       })
     : sortedOrders;
 
-  return (
-    <div>
-      <h2>Pending Orders</h2>
-
-      {/* Selector de ubicación para filtrar las órdenes */}
-      <div className="filter-container">
-        <label htmlFor="location-filter">Filtrar por ubicación: </label>
-        <select
-          id="location-filter"
-          value={selectedLocation}
-          onChange={(e) => setSelectedLocation(e.target.value)}
-        >
-          <option value="">Todas las ubicaciones</option>
-          {locations.map((location, index) => (
-            <option key={index} value={location}>
-              {location}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {filteredOrders.length === 0 ? (
-        <p>No hay órdenes pendientes para la ubicación seleccionada.</p>
-      ) : (
-        <div className="table-container"> 
-          <table>
-            <thead>
-              <tr>
-                <th>ID Orden</th>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Cliente</th>
-                <th>Productos</th>
-                <th>Total</th>
-                <th>TicketExpress</th>
-                <th>Incentivos</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => {
-                const productos = JSON.parse(order.productos); 
-                const metodoEntrega = JSON.parse(order.metodo_entrega);
-                const isPickup = metodoEntrega.PickUp; // Verificar si existe Pickup
-                const isDelivery = metodoEntrega.Delivery; // Verificar si existe Delivery
-                const isTicketExpress = isPickup ? metodoEntrega.PickUp.TicketExpress : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false); 
-                const fechaYHoraPrometida = isPickup 
-                  ? metodoEntrega.PickUp.fechaYHoraPrometida 
-                  : isDelivery 
-                  ? metodoEntrega.Delivery.fechaYHoraPrometida 
-                  : 'N/A';  // Obtén la fecha y hora prometida para Delivery también
-                const metodo = isPickup ? 'Pickup' : 'Delivery'; // Determina el método de entrega
-             
-                // Convertir la cadena de incentivos a un array
-                const incentivos = order.incentivos ? JSON.parse(order.incentivos) : [];
-
-                // Obtener los IDs de los incentivos
-                const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0 
-                  ? incentivos.map(inc => inc.id).join(', ') 
-                  : 'No'; // Mostrar "No" si no hay incentivos
-            
-                return (
-                  <tr key={order.id_venta}>
-                    <td>{order.id_venta}</td>
-                    <td>{new Date(order.fecha).toLocaleDateString('es-ES')}</td>
-                    <td>{order.hora}</td>
-                    <td>{`${order.id_cliente} - (${fechaYHoraPrometida}) - ${metodo}`}</td> {/* Mostrar id_cliente, hora de recogida y método de entrega */}
-                    <td>
-                      <ul>
-                        {productos.map((producto) => {
-                          const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
-                          const customPizzaNames = {
-                            101: 'PP1',
-                            102: 'PP2',
-                            103: 'PP3',
-                          };
-                          let nombrePizza = 'Desconocida';
-                          if (pizza) {
-                            nombrePizza = pizza.nombre;
-                          } else if (customPizzaNames[producto.id_pizza]) {
-                            nombrePizza = customPizzaNames[producto.id_pizza];
-                          }
-
-                          // Verificar si es una pizza mitad y mitad
-                          if (producto.id_pizza === 102 && producto.halfAndHalf) {
+    return (
+      <div>
+        <h2>Pending Orders</h2>
+    
+        {/* Mostrar el filtro solo si hay órdenes pendientes */}
+        {filteredOrders.length > 0 && (
+          <div className="filter-container2">
+            <select
+              id="location-filter"
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+            >
+              <option value="">Todas las ubicaciones</option>
+              {locations.map((location, index) => (
+                <option key={index} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+    
+        {filteredOrders.length === 0 ? (
+          <div style={{ textAlign: "center", marginTop: "10rem" }}>
+            <div style={{ fontSize: "80px" }}>🐒</div>
+            <p>No hay órdenes pendientes... </p>
+          </div>
+        ) : (
+          <div className="table-container"> 
+            <table>
+              <thead>
+                <tr>
+                  <th>ID Orden</th>
+                  <th>Fecha</th>
+                  <th>Hora</th>
+                  <th>Cliente</th>
+                  <th>Productos</th>
+                  <th>Total</th>
+                  <th>TicketExpress</th>
+                  <th>Incentivos</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map((order) => {
+                  const productos = JSON.parse(order.productos); 
+                  const metodoEntrega = JSON.parse(order.metodo_entrega);
+                  const isPickup = metodoEntrega.PickUp;
+                  const isDelivery = metodoEntrega.Delivery;
+                  const isTicketExpress = isPickup ? metodoEntrega.PickUp.TicketExpress : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false); 
+                  const fechaYHoraPrometida = isPickup 
+                    ? metodoEntrega.PickUp.fechaYHoraPrometida 
+                    : isDelivery 
+                    ? metodoEntrega.Delivery.fechaYHoraPrometida 
+                    : 'N/A';  
+                  const metodo = isPickup ? 'Pickup' : 'Delivery'; 
+    
+                  const incentivos = order.incentivos ? JSON.parse(order.incentivos) : [];
+                  const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0 
+                    ? incentivos.map(inc => inc.id).join(', ') 
+                    : 'No';
+    
+                  return (
+                    <tr key={order.id_venta}>
+                      <td>{order.id_venta}</td>
+                      <td>{new Date(order.fecha).toLocaleDateString('es-ES')}</td>
+                      <td>{order.hora}</td>
+                      <td>{`${order.id_cliente} - (${fechaYHoraPrometida}) - ${metodo}`}</td>
+                      <td>
+                        <ul>
+                          {productos.map((producto) => {
+                            const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
+                            const customPizzaNames = {
+                              101: 'PP1',
+                              102: 'PP2',
+                              103: 'PP3',
+                            };
+                            let nombrePizza = 'Desconocida';
+                            if (pizza) {
+                              nombrePizza = pizza.nombre;
+                            } else if (customPizzaNames[producto.id_pizza]) {
+                              nombrePizza = customPizzaNames[producto.id_pizza];
+                            }
+    
+                            if (producto.id_pizza === 102 && producto.halfAndHalf) {
+                              return (
+                                <li key={producto.id_pizza}>
+                                  Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
+                                  <ul>
+                                    <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre} </li>
+                                    <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
+                                  </ul>
+                                </li>
+                              );
+                            }
+    
                             return (
                               <li key={producto.id_pizza}>
-                                Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
-                                <ul>
-                                  <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre} </li>
-                                  <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
-                                </ul>
+                                Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza} 
+                                {producto.extraIngredients && producto.extraIngredients.length > 0 && (
+                                  <ul>
+                                    {producto.extraIngredients.map((extra, idx) => (
+                                      <li key={idx}>+IE: {extra.nombre} ({extra.precio.toFixed(2)}€)</li>
+                                    ))}
+                                  </ul>
+                                )}
                               </li>
                             );
-                          }
-
-                          // Caso general para otras pizzas
-                          return (
-                            <li key={producto.id_pizza}>
-                              Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza} 
-                              {producto.extraIngredients && producto.extraIngredients.length > 0 && (
-                                <ul>
-                                  {producto.extraIngredients.map((extra, idx) => (
-                                    <li key={idx}>+IE: {extra.nombre} ({extra.precio.toFixed(2)}€)</li>
-                                  ))}
-                                </ul>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </td>
-                    <td>{parseFloat(order.total_con_descuentos).toFixed(2)}€</td>
-                    <td>{isTicketExpress ? 'Sí' : 'No'}</td> 
-                    <td>{incentivosIds}</td> {/* Muestra los ID de incentivos si existen */}
-                    <td>
-                      <button onClick={() => markOrderAsProcessed(order.id_venta)}>Ready</button>
-                      <button onClick={() => showTicketModal(order)}>Print</button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Modal para visualizar el ticket */}
-      {showModal && selectedOrder && (
-        <div className="modal">
-          <div className="modal-content">
-            <Ticket order={selectedOrder} />
-            <button onClick={() => window.print()}>Imprimir</button>
-            <button onClick={closeModal}>Cerrar</button>
+                          })}
+                        </ul>
+                      </td>
+                      <td>{parseFloat(order.total_con_descuentos).toFixed(2)}€</td>
+                      <td>{isTicketExpress ? 'Sí' : 'No'}</td> 
+                      <td>{incentivosIds}</td>
+                      <td className='table-container-button'>
+                        <button onClick={() => markOrderAsProcessed(order.id_venta)}>Ready</button>
+                        <button onClick={() => showTicketModal(order)}>Print</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+    
+        {showModal && selectedOrder && (
+          <div className="modal">
+            <div className="modal-content">
+              <Ticket order={selectedOrder} />
+              <button onClick={() => window.print()}>Imprimir</button>
+              <button onClick={closeModal}>Cerrar</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );    
 };
 
 export default ViewOrder;

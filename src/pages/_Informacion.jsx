@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../styles/InfoModule.css'; // Agregar un archivo de estilos para estandarización
+import '../styles/InfoModule.css'; 
 
 function App() {
   const navigate = useNavigate();

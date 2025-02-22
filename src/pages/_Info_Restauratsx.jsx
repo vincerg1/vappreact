@@ -26,8 +26,6 @@ const _Info_Restauratsx = () => {
 
   const [addingShift, setAddingShift] = useState({});
   const [editingShiftIndex, setEditingShiftIndex] = useState(null); // Guardar el índice de edición
-
-  // Obtener los horarios del día seleccionado
   const handleDaySelection = async (day) => {
     if (selectedDays.includes(day)) {
       setSelectedDays(selectedDays.filter((d) => d !== day));
@@ -49,7 +47,6 @@ const _Info_Restauratsx = () => {
       }
     }
   };
-
   const handleWorkHoursChange = (day, index, field, value) => {
     // Asegurarse de que el índice existe antes de acceder a él
     if (!workHours[day][index]) {
@@ -82,8 +79,6 @@ const _Info_Restauratsx = () => {
   
     console.log("Nuevo estado de workHours para", day, workHours[day]);
   };
-
-
   const handleAddShift = (day) => {
     console.log(`Agregando un nuevo turno para ${day}`);
     setWorkHours((prevWorkHours) => ({
@@ -97,8 +92,6 @@ const _Info_Restauratsx = () => {
     }));
     setEditingShiftIndex(null); // Limpiar modo edición
   };
-
-
   const handleUndoShift = (day) => {
     console.log(`Deshaciendo último turno para ${day}`);
     const updatedShifts = workHours[day].slice(0, -1); // Remover el último turno agregado
@@ -112,8 +105,6 @@ const _Info_Restauratsx = () => {
       [day]: false,
     }));
   };
-
-
   const handleAddNewShift = async (day, index) => {
     const shift = workHours[day][index];
 
@@ -163,8 +154,6 @@ const _Info_Restauratsx = () => {
       console.error('Error al hacer el POST o PATCH:', error);
     }
   };
-
-
   const handleDeleteShift = async (day, index) => {
     console.log(`Intentando eliminar el turno en el índice ${index} para ${day}`);
     const scheduleToDelete = existingSchedules[day][index];
@@ -189,8 +178,6 @@ const _Info_Restauratsx = () => {
       console.error('Error al eliminar el horario:', error);
     }
   };
-
-  // Editar un turno, cargando los datos en el formulario
   const handleEditShift = (day, schedule, index) => {
     // Verificar si el turno ya existe o si necesitamos inicializarlo
     const existingShift = workHours[day][index] || {
@@ -228,7 +215,6 @@ const _Info_Restauratsx = () => {
 
   return (
     <div className="horarios-container">
-      <h1 className="PDCRL">Configuración de Horarios</h1>
       <div className='form-scroll-container'>
         <form className='f1_info_rest'>
           <h1 className="h1_Form_info_ir">Selecciona los Días de Trabajo:</h1>

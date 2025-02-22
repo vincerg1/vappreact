@@ -161,10 +161,39 @@ const handleFileChange = (e) => {
 const handleImageChange = (e) => {
   if (e.target.files.length > 0) {
     const file = e.target.files[0];
+
     if (file && file instanceof File) {
-      setImageFile(file);
+      // Validar formato de imagen
+      const validFormats = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!validFormats.includes(file.type)) {
+        alert('❌ Formato no válido. Solo se permiten imágenes JPG, PNG y WEBP.');
+        return;
+      }
+
+      // Validar tamaño del archivo (máx. 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB en bytes
+      if (file.size > maxSize) {
+        alert('⚠️ El archivo es demasiado grande. Máximo permitido: 2MB.');
+        return;
+      }
+
+      // Crear una URL temporal para verificar dimensiones
+      const imgPreview = URL.createObjectURL(file);
+      const img = new Image();
+      img.src = imgPreview;
+
+      img.onload = () => {
+        if (img.width < 250 || img.height < 250) {
+          alert('⚠️ La imagen debe tener al menos 250x250 píxeles.');
+          setImageFile(null);
+          return;
+        }
+
+        // Si pasa todas las validaciones, guardar la imagen
+        setImageFile(file);
+      };
     } else {
-      console.error('El archivo seleccionado no es válido');
+      console.error('❌ El archivo seleccionado no es válido.');
     }
   }
 };
@@ -283,11 +312,12 @@ const handleFormSubmit = async (e) => {
 };
 
   return (
-    <div>
-      {/* <h1 className="PDCRL">{pizzaId ? 'Editar Menu' : 'Crear Menu'}</h1> */}
-      <h1>{pizzaId ? 'Editar Pizza' : 'Crear Una Pizza'}</h1>
+    
+    <div className="form_crearpizza-container">
+     <button onClick={handleNavigate} className='IrMenuOver'>Ir al Menú Overview</button>
       <form ref={formRef} className="form_crearpizza" onSubmit={handleFormSubmit}>
         <div>
+        <h1 className='TituloFormCP'>{pizzaId ? 'Editar Pizza' : 'Crear Una Pizza'}</h1>
           <label htmlFor="Nombre">Nombre de la Pizza:</label>
           <input
             type="text"
@@ -306,7 +336,7 @@ const handleFormSubmit = async (e) => {
             onChange={handleChange}
           >
             <option value="">Seleccione una categoría</option>
-            {["Base Pizza", "Pizza Tradicional", "Pizza Frita", "Pizza Sin Gluten", "Pizza Dulce", "Pizza Frutal", "Calzone"].map((categoria) => (
+            {["Base Pizza", "Pizza Tradicional", "Pizza Frita", "Pizza Sin Gluten", "Pizza Dulce", "Pizza Frutal", "Calzone", "Otro"].map((categoria) => (
               <option key={categoria} value={categoria}>
                 {categoria}
               </option>
@@ -420,11 +450,12 @@ const handleFormSubmit = async (e) => {
           />
           </div>
           <button 
+          className='updatePizza'
           type="submit">
          {isEditMode ? 'Actualizar Pizza' : 'Crear Pizza'}
           </button>
       </form>
-      <button onClick={handleNavigate}>Ir al Menú Overview</button>
+  
     </div>
   );
   

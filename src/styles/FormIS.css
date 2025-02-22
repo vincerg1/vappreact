@@ -19,9 +19,6 @@
   color: #ffffff;
   background-color: #fedb88; 
 }
-
-
-
   .FormIS-form-tab {
     color: #000000;
     flex: 1;
@@ -31,7 +28,7 @@
     font-size: 16px;
     background: none;
     border: none;
-    border-bottom: 2px solid transparent;
+    border-bottom: 2px solid rgb(5, 1, 1);
     margin-bottom: 2rem;
   }
   .FormIS-hidden-input input,
@@ -41,11 +38,9 @@
   .FormIS-form-tab.active {
     border-bottom: 2px solid rgb(5, 1, 1);
     font-weight: bold;
+    background-color: #f4f4f4;
+    color: #333;
   }
-
-
-  
-
   
   .FormIS-botonAcceso {
     width: 100%;

@@ -1,0 +1,79 @@
+.partner-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* Ubica el formulario arriba */
+  min-height: 100vh;       /* Se extiende al menos hasta el alto de la pantalla */
+  padding-top: 20px;       /* Separación del borde superior */
+  background: #f6f6f6;     /* Opcional, para distinguir el fondo */
+}
+.partner-form {
+  position: relative;
+  max-width: 600px;
+  min-width: 350px;
+  background: #fff;
+  padding: 40px 20px 20px; 
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+}
+
+.partner-form-title {
+  margin: 0;
+  font-size: 1.8rem;
+  text-align: left; /* O como prefieras */
+  margin-bottom: 20px; 
+}
+
+/* Botón flotante arriba a la derecha */
+.IrMenuOver {
+  position: absolute; 
+  top: -20px;      /* Ajusta a tu gusto */
+  right: 20px;    /* Ajusta a tu gusto */
+  background-color: #198754;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.IrMenuOver:hover {
+  background-color: #146c43;
+}
+
+/* Ajuste de grupos del formulario */
+.partner-form-group {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  margin-bottom: 15px;
+}
+
+.partner-form-group label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.partner-form-group input,
+.partner-form-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.partner-form-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.partner-form-button:hover {
+  background-color: #218838;
+}

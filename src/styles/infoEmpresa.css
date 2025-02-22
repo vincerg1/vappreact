@@ -1,0 +1,85 @@
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .infoEmpresaContenedor {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+  }
+  .infoEmpresaContenedor button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s;
+  }
+  .infoEmpresaContenedor button:hover {
+    background-color: #218838;
+  }
+  .infoEmpresaContenedorInfo {
+    margin-top: 20px;
+  }
+  .infoEmpresaContenedor h2 {
+    text-align: center;
+    color: #333;
+  }
+  .infoEmpresaContenedorTable {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .infoEmpresaContenedorTable th, 
+  .infoEmpresaContenedorTable td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  .infoEmpresaContenedorTable th {
+    background-color: #1e8449;
+    color: white;
+    font-weight: bold;
+  }
+  .infoEmpresaContenedorTable tbody tr:hover {
+    background-color: #f2f2f2;
+  }
+  .infoEmpresaContenedorTable button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .infoEmpresaContenedorTable button:first-child {
+    background-color: #007bff;
+    color: white;
+  }
+  .infoEmpresaContenedorTable button:first-child:hover {
+    background-color: #0056b3;
+  }
+  .infoEmpresaContenedorTable button:last-child {
+    background-color: #dc3545;
+    color: white;
+    margin-left: 5px;
+  }
+  .infoEmpresaContenedorTable button:last-child:hover {
+    background-color: #c82333;
+  }
+  
+
+  /*Modal edicion de la empresa*/
+  
+  

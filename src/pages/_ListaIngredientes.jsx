@@ -450,8 +450,7 @@ const toggleOrdenAlfabetico = () => {
 
 return (
       <div className="contenido-principal">
-      <h2 className="PDCRL">Gestiona Lista de Ingredientes</h2>
-      <h1>Lista Ingredientes en Seguimiento</h1>
+      <h1>Lista Productos en Seguimiento</h1>
       <div>
       <div className='Filtros'>
 
@@ -508,8 +507,7 @@ return (
                           <th>TLimite</th>
                           <th>%Riesgo/cad</th>
                           <th>ZRiesgo</th>
-                          <th>Estado</th>
-                          <th>Escasez de Uso</th>
+                          <th>Estado</th>                       
                           <th>Acciones</th>
                           <th>DetallesLote</th>
                       </tr>
@@ -534,8 +532,7 @@ return (
                           <td>{limites[IDI] ?? 'No definido'}</td>
                           <td>{`${porcentajeRiesgoCaducidad.toFixed(2)}% - ${diasHastaCaducidad} días`}</td>
                           <td>{zonaRiesgoIDI}</td>
-                          <td>{estadoActual}</td>
-                          <td>{/* Consumo U7D */}</td>
+                          <td>{estadoActual}</td>             
                           <td>
                           <button onClick={() => handleEstadoIDI(IDI, !todosInactivos)}>
                             {todosInactivos ? "Restablecer" : "Desactivar"}

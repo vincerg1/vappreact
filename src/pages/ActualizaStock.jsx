@@ -126,7 +126,7 @@ const ActualizaStock = () => {
           'Ensalada Caprese', 'Ensalada César', 'Tabulé', 'Coleslaw', 
           'Ratatouille', 'Crema de Calabaza', 'Sopa Minestrone', 'Gazpacho', 
           'Carpaccio de Ternera', 'Carpaccio de Salmón', 'Brochetas de Pollo', 
-          'Brochetas de Verduras', 'Fondue de Queso', 'Tzatziki con Pan Pita'
+          'Brochetas de Verduras', 'Fondue de Queso', 'Tzatziki con Pan Pita', 'Otro Complemento'
       ],
       },
       Bebidas: {
@@ -146,13 +146,14 @@ const ActualizaStock = () => {
           'Porto', 'Shiraz', 'Zinfandel', 'Carmenere', 'Vino de Jerez', 'Marsala'
       ],
         Cerveza: [
-          'Lager', 'Pilsner', 'Helles', 'Dunkel', 'Bock', 'Doppelbock', 'Märzen', 
-          'Kölsch', 'Altbier', 'Pale Ale', 'Indian Pale Ale (IPA)', 'New England IPA (NEIPA)', 
-          'Amber Ale', 'Brown Ale', 'Porter', 'Stout', 'Oatmeal Stout', 'Imperial Stout', 
-          'Barleywine', 'Scottish Ale', 'Red Ale', 'Witbier', 'Weissbier', 'Hefeweizen', 
-          'Dunkelweizen', 'Kristallweizen', 'Tripel', 'Dubbel', 'Quadrupel', 'Saison', 
-          'Gose', 'Lambic', 'Berliner Weisse', 'Flanders Red Ale', 'Rauchbier', 
-          'Black IPA', 'Milk Stout', 'Braggot', 'Cream Ale', 'Grisette'
+        'Cerveza Lager', 'Cerveza Pilsner', 'Cerveza Helles', 'Cerveza Dunkel', 'Cerveza Bock', 'Cerveza Doppelbock', 'Cerveza Märzen', 
+        'Cerveza Kölsch', 'Cerveza Altbier', 'Cerveza Pale Ale', 'Cerveza Indian Pale Ale (IPA)', 'Cerveza New England IPA (NEIPA)', 
+        'Cerveza Amber Ale', 'Cerveza Brown Ale', 'Cerveza Porter', 'Cerveza Stout', 'Cerveza Oatmeal Stout', 'Cerveza Imperial Stout', 
+        'Cerveza Barleywine', 'Cerveza Scottish Ale', 'Cerveza Red Ale', 'Cerveza Witbier', 'Cerveza Weissbier', 'Cerveza Hefeweizen', 
+        'Cerveza Dunkelweizen', 'Cerveza Kristallweizen', 'Cerveza Tripel', 'Cerveza Dubbel', 'Cerveza Quadrupel', 'Cerveza Saison', 
+        'Cerveza Gose', 'Cerveza Lambic', 'Cerveza Berliner Weisse', 'Cerveza Flanders Red Ale', 'Cerveza Rauchbier', 
+        'Cerveza Black IPA', 'Cerveza Milk Stout', 'Cerveza Braggot', 'Cerveza Cream Ale', 'Cerveza Grisette'
+
       ],
         Refrescos: [
           'Refresco de Cola', 'Refresco de Naranja', 'Refresco de Limón', 'Refresco de Manzana', 
@@ -167,8 +168,10 @@ const ActualizaStock = () => {
       ],
       },
       Postres: {
-        Helados: ['Chocolate', 'Coco', 'Vainilla', 'Fresa', 'Dulce de Leche', 'Pistacho', 'Avellana', 
-          'Mango', 'Limón', 'Frambuesa', 'Stracciatella', 'Cookies and Cream', 'Menta con Chocolate'],
+        Helados: ['Helado de Chocolate', 'Helado de Coco', 'Helado de Vainilla', 'Helado de Fresa', 'Helado de Dulce de Leche', 
+        'Helado de Pistacho', 'Helado de Avellana', 'Helado de Mango', 'Helado de Limón', 'Helado de Frambuesa', 
+        'Helado de Stracciatella', 'Helado de Cookies and Cream', 'Helado de Menta con Chocolate'
+        ],
         Tarta: ['Tarta de Queso', 'Tarta de Manzana', 'Tarta de Chocolate', 'Tarta de Frutas', 
           'Tarta de Zanahoria', 'Tarta de Almendras', 'Tarta de Limón', 'Tarta de Fresa', 
           'Tarta de Coco', 'Tarta de Nuez', 'Tarta de Frambuesa'],

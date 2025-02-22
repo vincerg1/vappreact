@@ -20,20 +20,42 @@
 .icon-group {
   display: flex;
   align-items: center;
-  gap: 30px; 
+  gap: 30px;
   margin-top: 2rem;
 }
+
 .icon {
   font-size: 2.5rem;
   color: black;
   filter: grayscale(100%);
-  transition: filter 0.3s ease;
+  transition: filter 0.3s ease, transform 0.3s ease;
   border-radius: 10px;
 }
+
+/* Efecto al pasar el ratón (para otros íconos) */
 .icon:hover {
   filter: grayscale(0%);
   transform: scale(1.1);
 }
+
+/* El ícono de advertencias, por defecto, en gris */
+.warning-icon {
+  filter: grayscale(100%);
+}
+
+/* Cuando hay advertencias, forzamos el color a 0% y añadimos parpadeo */
+.warning-active {
+  filter: grayscale(0%) !important;
+  animation: blink-effect 1s infinite alternate;
+}
+
+/* Keyframes de parpadeo */
+@keyframes blink-effect {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
 .current-date {
   font-size: 1.2rem;
   text-align: center;
@@ -99,7 +121,6 @@ font-weight: bold;
   width: 100%;
   max-width: 1250px; 
 }
-
 .suspender {
   background-color: #8b8976;
   color: #1a1919;
@@ -112,10 +133,9 @@ font-weight: bold;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
-
 .suspender:hover {
   transform: scale(1.05);
-  background-color: #ffeb3b;
+  background-color: #fedb88;
   box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
 }
 
@@ -123,17 +143,14 @@ font-weight: bold;
 .blinking {
   animation: blink-animation 1s steps(5, start) infinite;
 }
-
 @keyframes blink-animation {
   to {
     visibility: hidden;
   }
 }
-
 .pulsating {
   animation: pulse 1.5s infinite;
 }
-
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -145,7 +162,6 @@ font-weight: bold;
     transform: scale(1);
   }
 }
-
 /* Aplicación uniforme a botones */
 .dashboard-button.route-setter {
   font-weight: bold;
@@ -174,12 +190,10 @@ font-weight: bold;
   border-radius: 5px;
   transition: 0.3s;
 }
-
 .estado-button.activo {
   background-color: #49b11c; /* Verde */
   color: white;
 }
-
 .estado-button.inactivo {
   background-color: #dc3545; /* Rojo */
   color: white;

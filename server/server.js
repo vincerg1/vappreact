@@ -846,10 +846,10 @@ cron.schedule('0 0 * * *', () => {
 
   console.log('=== Cron Job Finalizado: Evaluación completa ===\n');
 });
-cron.schedule('* * * * *', () => {  // Ejecuta cada minuto para pruebas
-  console.log('⏳ Ejecutando cierre automático de turnos...');
+cron.schedule('0 11 * * *', () => {
+  console.log("⏳ [CRON] Ejecutando cierre automático de turnos y limpieza de advertencias...");
 
-  const updateQuery = `
+  const updateTimeRecordQuery = `
       UPDATE timeRecord
       SET 
         hora_fin = (
@@ -867,18 +867,54 @@ cron.schedule('* * * * *', () => {  // Ejecuta cada minuto para pruebas
       AND hora_fin IS NULL;
   `;
 
-  db.run(updateQuery, function (err) {
-      if (err) {
-          console.error('❌ Error al cerrar turnos automáticamente:', err);
-      } else {
-          console.log(`✅ Cierre automático completado. Registros afectados: ${this.changes}`);
-      }
+  db.run(updateTimeRecordQuery, function (err) {
+    if (err) {
+      console.error("❌ [ERROR] al cerrar turnos automáticamente:", err);
+    } else {
+      console.log(`✅ [LOG] Cierre automático de turnos completado. Registros afectados: ${this.changes}`);
+    }
   });
+
+  const clearDismissedWarningsQuery = `DELETE FROM dismissed_warnings`;
+
+  db.run(clearDismissedWarningsQuery, function (err) {
+    if (err) {
+      console.error("❌ [ERROR] al limpiar la tabla dismissed_warnings:", err);
+    } else {
+      console.log("✅ [LOG] dismissed_warnings limpiado correctamente.");
+    }
+  });
+
 });
 
-
-
 // the get zone
+app.get('/inventario-partner', (req, res) => {
+  const sql = "SELECT * FROM inventario WHERE categoria = 'Partner'";
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(400).json({ "error": err.message });
+      return;
+    }
+    res.json({
+      "message": "success",
+      "data": rows
+    });
+  });
+});
+app.get('/api/dismissed-warnings', (req, res) => {
+  const query = `SELECT warning_id FROM dismissed_warnings`;
+
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      console.error("❌ [ERROR] al obtener dismissed_warnings:", err);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    }
+
+    console.log("📤 [LOG] Advertencias descartadas enviadas:", rows);  // 🔍 Verifica qué está regresando la BD
+    res.json(rows);
+  });
+});
 app.get('/api/info-empresa/:id/estado', (req, res) => {
   const { id } = req.params;
 
@@ -1746,7 +1782,7 @@ app.get('/ofertas/edit/:Oferta_Id', (req, res) => {
   });
 });
 app.get('/api/reviews', (req, res) => {
-  const query = `SELECT email, review, rating, created_at FROM reviews ORDER BY created_at DESC LIMIT 5`;
+  const query = `SELECT id, email, review, rating, created_at FROM reviews ORDER BY created_at DESC LIMIT 5`;
   
   db.all(query, [], (err, rows) => {
     if (err) {
@@ -1964,7 +2000,7 @@ app.get('/PartnerData', (req, res) => {
   
   db.all(sql, [], (err, rows) => {
     if (err) {
-      res.status(400).json({ "error": err.message });
+      res.status(500).json({ "error": err.message });
       return;
     }
     res.json({
@@ -1975,12 +2011,19 @@ app.get('/PartnerData', (req, res) => {
 });
 app.get('/PartnerData/:id', (req, res) => {
   const { id } = req.params;
+  
+  if (!id) {
+    return res.status(400).json({ "error": "ID es requerido" });
+  }
+
   const sql = "SELECT * FROM PartnerData WHERE id = ?";
-  const params = [id];
-  db.get(sql, params, (err, row) => {
+  db.get(sql, [id], (err, row) => {
     if (err) {
-      res.status(400).json({ "error": err.message });
+      res.status(500).json({ "error": err.message });
       return;
+    }
+    if (!row) {
+      return res.status(404).json({ "error": "Partner no encontrado" });
     }
     res.json({
       "message": "success",
@@ -2410,6 +2453,28 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post('/api/dismiss-warnings', (req, res) => {
+  const { warnings } = req.body;
+  console.log("📥 [LOG] Advertencias recibidas en API:", warnings);
+
+  if (!Array.isArray(warnings) || warnings.length === 0) {
+    console.error("❌ [ERROR] No hay advertencias para guardar.");
+    return res.status(400).json({ error: "Datos inválidos" });
+  }
+
+  const dismissedWarningIds = warnings.map(warning => warning); 
+  const placeholders = dismissedWarningIds.map(() => '(?)').join(',');
+  const query = `INSERT INTO dismissed_warnings (warning_id) VALUES ${placeholders}`;
+
+  db.run(query, dismissedWarningIds, function (err) {
+    if (err) {
+      console.error("❌ [ERROR] al guardar dismissed_warnings en la BD:", err);
+      return res.status(500).json({ error: "Error al guardar en la BD" });
+    }
+    console.log("✅ [LOG] Advertencias guardadas correctamente:", this.changes);
+    res.json({ success: true, inserted: this.changes });
+  });
+});
 app.post('/api/verificar-admin', (req, res) => {
   const { password } = req.body;
 
@@ -3713,27 +3778,38 @@ app.post('/menu_pizzas', upload.single('imagen'), (req, res) => {
   }
 });
 app.post('/PartnerData', upload.single('imagen'), (req, res) => {
-  const { categoria, subcategoria, producto, precio } = req.body;
-  const imagen = req.file ? req.file.path : '';
-  const sql = `INSERT INTO PartnerData (categoria, subcategoria, producto, precio, imagen) VALUES (?, ?, ?, ?, ?)`;
-  const params = [categoria, subcategoria, producto, precio, imagen];
-  
-  // Verificar que los campos requeridos estén presentes
-  if (!categoria || !producto || precio === undefined) {
-    res.status(400).json({ "error": "Faltan campos obligatorios" });
-    return;
+  console.log("🟢 Recibiendo solicitud POST en /PartnerData");
+  console.log("📌 Datos recibidos:", req.body);
+  console.log("📸 Imagen recibida:", req.file ? req.file.path : "No se subió imagen");
+
+  let { categoria, subcategoria, producto, precio } = req.body;
+  const imagen = req.file ? req.file.path : null;
+
+  // Si la categoría no se envió, la establecemos por defecto
+  if (!categoria) {
+    categoria = "Partner";
   }
 
-  // Insertar en la base de datos
+  if (!categoria || !producto || precio === undefined) {
+    console.error("❌ Error: Faltan campos obligatorios");
+    return res.status(400).json({ "error": "Faltan campos obligatorios" });
+  }
+
+  const sql = `INSERT INTO PartnerData (categoria, subcategoria, producto, precio, imagen) VALUES (?, ?, ?, ?, ?)`;
+  const params = [categoria, subcategoria, producto, precio, imagen];
+
+  console.log("🔹 Ejecutando SQL:", sql);
+  console.log("🔹 Parámetros:", params);
+
   db.run(sql, params, function (err) {
     if (err) {
-      res.status(400).json({ "error": err.message });
-      return;
+      console.error("❌ Error en la base de datos:", err.message);
+      return res.status(500).json({ "error": err.message });
     }
+    console.log("✅ Partner creado con éxito, ID:", this.lastID);
     res.json({
       "message": "success",
-      "data": req.body,
-      "id": this.lastID
+      "data": { id: this.lastID, categoria, subcategoria, producto, precio, imagen },
     });
   });
 });
@@ -5637,16 +5713,30 @@ app.patch('/menu_pizzas/:id', upload.single('imagen'), (req, res) => {
 });
 app.patch('/PartnerData/:id', upload.single('imagen'), (req, res) => {
   const { id } = req.params;
-  const { categoria, subcategoria, producto, precio } = req.body;
-  const imagen = req.file ? req.file.path : null; // Obtiene la ruta del archivo si se subió uno nuevo
+  const { subcategoria, producto, precio } = req.body;
+  const imagen = req.file ? req.file.path : null; 
 
-  const query = `UPDATE PartnerData SET categoria = ?, subcategoria = ?, producto = ?, precio = ?${imagen ? ', imagen = ?' : ''} WHERE id = ?`;
-  const params = [categoria, subcategoria, producto, precio].concat(imagen ? [imagen, id] : [id]);
-  console.log('Parameters:', params);
-  db.run(query, params, function(err) {
+  if (!id) {
+    return res.status(400).json({ "error": "ID es requerido" });
+  }
+
+  let sql = `UPDATE PartnerData SET subcategoria = ?, producto = ?, precio = ?`;
+  let params = [subcategoria, producto, precio];
+
+  if (imagen) {
+    sql += `, imagen = ?`;
+    params.push(imagen);
+  }
+
+  sql += ` WHERE id = ?`;
+  params.push(id);
+
+  db.run(sql, params, function (err) {
     if (err) {
-      res.status(400).json({ "error": err.message });
-      return;
+      return res.status(500).json({ "error": err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ "error": "Partner no encontrado o sin cambios" });
     }
     res.json({ "message": "success", data: req.body, changes: this.changes });
   });
@@ -5817,12 +5907,19 @@ app.delete('/menu_pizzas/:id', (req, res) => {
 });
 app.delete('/PartnerData/:id', (req, res) => {
   const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ "error": "ID es requerido" });
+  }
+
   db.run(`DELETE FROM PartnerData WHERE id = ?`, id, function(err) {
-      if (err) {
-          res.status(400).json({ "error": res.message });
-          return;
-      }
-      res.json({ "message": "deleted", rows: this.changes });
+    if (err) {
+      return res.status(500).json({ "error": err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ "error": "Partner no encontrado" });
+    }
+    res.json({ "message": "deleted", rows: this.changes });
   });
 });
 app.delete('/clientes/:id_cliente', (req, res) => {
