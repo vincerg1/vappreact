@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-// import '../styles/GestionarIngredientesExtras.css';
+import '../styles/GestionarIngredientesExtras.css';
 
 const GestionarIngredientesExtras = () => {
   const [ingredientes, setIngredientes] = useState([]);

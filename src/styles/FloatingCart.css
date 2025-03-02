@@ -18,54 +18,88 @@
   align-items: center;
   margin-bottom: 10px; 
 }
+.cart-header h3{
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); 
+  font-weight: bold; 
+}
 .undo-button {
   background-color: #f10000;
   border: none;
   color: white;
   font-size: 14px;
-  padding: 5px 10px;
+  padding: 6px 12px;
   cursor: pointer;
-  border-radius: 5px;
+  border-radius: 10px;
 }
 .undo-button:hover {
-  background-color: #ff4d4d;
+  background-color: #a40101;
   color: white;
+  font-weight: bold;
+  font-size: 12px;
 }
-.carrito-vacio{
-  color: #a3a2a2;
-  background-color: #e6e6e6;
-  border-radius: 10px;
-  padding: .75rem;
+.carrito-vacio {
+  background: none; 
+  color: #ff9800; 
+  font-size: 1.25rem;
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 0;
 }
+.bounce-effect {
+  animation: bounceWithPause 1.5s ease-in-out infinite;
+}
+
+@keyframes bounceWithPause {
+  0%, 20%, 50%, 80% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+  /* PAUSA incorporada */
+  0%, 100% {
+    transform: translateY(0);
+  }
+}
+
+
+
+
 .detalles-compra p {
   font-size: 14px;
   color: #f8bf05;
   text-align: left;
   font-weight: bold;
+  margin-bottom: -1rem;
+  font-style: italic;
 }
 .detalles_pedidos ul {
-  background-color: #e6e6e6;
-  border-radius: 10px;
+  background-color: #faf6ec;
+   border-radius: 5px; 
   padding: .75rem;
 }
-.detalles_pedidos_general{
-  color: #010101;
-  font-weight: bold;
-}
 .incentivo-estado {
-  color: rgb(118, 231, 165);
-  font-size: 13px;
-  background-color: rgb(204, 237, 57);
-  padding: 5px;
-  border-radius: 4px;
+  color: #fedb88;
+  background-color: rgb(239, 248, 126);
+  font-size: 14px;
+  padding: 2px;
+  width: auto;
+  border-radius: 10px;
+  align-items: center;
   text-align: center;
   margin-top: 10px;
   animation: blinkBackground 1.5s infinite;
 }
 @keyframes blinkBackground {
-  0% { background-color: rgb(204, 237, 57); }
-  50% { background-color: rgb(249, 250, 127); }
-  100% { background-color: rgb(204, 237, 57); }
+  0% { background-color: #fedb88; }
+  50% { background-color: rgb(239, 248, 126); }
+  100% { background-color: #fedb88; }
 }
 .error-border {
   border: 2px solid red;
@@ -85,31 +119,25 @@
 .next-button-container {
   display: flex;
   justify-content: center;
+  width: 100%; 
   margin-top: 20px;
 }
 .next-button {
-  background-color: #f5cf36;
+  background-color: #f8bf05;
   color: white;
+  font-size: 1rem;
+  padding: 12px; 
+  border-radius: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
   border: none;
-  padding: 10px 20px;
   cursor: pointer;
-  font-size: 16px;
-  border-radius: 5px;
-  width: 100%;
+  width: 100%; 
+  text-align: center;
 }
 .next-button:hover {
-  background-color: #0056b3;
-}
-.undo-button {
-  background-color: #f10000;
-  border: none;
-  font-size: 14px;
-  cursor: pointer;
-  color: white;
-  padding: 5px 10px;
-}
-.undo-button:hover {
-  background-color: #d40000;
+  background-color: rgb(239, 248, 126); 
+  color: #000000;
 }
 .qr-with-text {
   display: flex;
@@ -154,35 +182,36 @@
   line-height: 1.2; 
   text-align: start;
 }
-
-
-
-.additional-costs {
+.additional-costs p {
   font-style: italic;
   color: #000000;
-  padding: 10px;          
-  margin-bottom: 10px;     
-  background-color: #e6e6e6;
+  padding: 1px;        
+  margin-bottom: 1px;     
+  background-color: #ffffff;
   border-radius: 10px;  
   line-height: .75;
+  text-align: left;
+}
+.detalles_pedidos_general{
+  color: #010101;
+  font-weight: bold;
 }
 .edit-button, .delete-button {
-  background: none; /* Eliminar fondo */
-  border: none; /* Eliminar el borde */
-  cursor: pointer; /* Cambiar el cursor a mano */
-  padding: 2px; /* Añadir un pequeño margen interno */
-  margin-left: 1px; /* Reducir el espacio entre los íconos */
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  padding: 2.5px; 
+  margin-left: 1px; 
   display: inline-flex;
-  align-items: center;
+  align-items: end;
   justify-content: end;
   filter: grayscale(100%); 
 }
 .edit-button:hover, .delete-button:hover {
-  color: #575757; /* Cambiar el color al pasar el ratón */
+  color: #818181; /* Cambiar el color al pasar el ratón */
 }
 .edit-button .icon, .delete-button .icon {
-  font-size: 12px; /* Ajustar el tamaño del ícono */
-  color: gray; /* Cambiar a escala de grises */
+  color: #818181; 
 }
 .additional-costs-name p{
   font-size: 14px;
@@ -192,7 +221,6 @@
 }
 
 /* Ajustar los ingredientes extra en el FloatingCart */
-
 .extra-ingredient-item,
 .half-and-half-item {
   font-style: italic; 
@@ -213,9 +241,6 @@
   color: #ffffff;
   background-color: #828281;
 }
-
-/* Ajustar los ingredientes extra en el CM */
-
 .extra-ingredients-list {
   list-style: none; /* Eliminar viñetas */
   padding-left: 0;  /* Eliminar sangría */
@@ -225,16 +250,129 @@
   background-color: #0056b3;
 }
 
+/*seccion de complementos*/
+.modal-content h3{
+margin: 0;
+}
 
 
+.complementos-section {
+  margin-top: 1rem;
+  background-color: none;
+  display: flex;
+  justify-content: center; 
+  gap: 6px; 
+  flex-wrap: wrap; 
+  padding: 8px; 
+}
+.complemento-btn {
+  background-color: #f8bf05;
+  border: 1px solid #f8e9b6; 
+  color: #ffffff;
+  font-size: .75rem; 
+  padding: 12px 24px; 
+  border-radius: 10px; 
+  width: auto;
+  display: flex;
 
+ 
+}
+.complemento-btn:hover {
+  background-color: #ce9f06; 
+  color: #ffffff;
+  font-size: .65rem; 
+  font-weight: bold;
+}
+.complemento-item {
+  display: flex;
+  align-items: center; /* Centrar elementos verticalmente */
+  justify-content: space-between; /* Distribuir el contenido */
+  gap: 8px; /* Separación entre elementos */
+  padding: 6px;
+  border-bottom: 1px solid #ddd; /* Línea separadora opcional */
+  list-style: none; /* Elimina la viñeta */
+}
+.complemento-nombre {
+  flex-grow: 1; /* Permite que el nombre se expanda y use el espacio disponible */
+  font-size: 0.9rem; /* Ajusta tamaño de texto */
+  white-space: nowrap; /* Evita que el nombre se divida en varias líneas */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Agrega puntos suspensivos si el nombre es muy largo */
+}
+.complemento-cantidad {
+  width: 60px; /* Reduce el tamaño del dropdown */
+  padding: 4px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.agregar-complemento {
+  background-color: #00a928; 
+  border: none;
+  color: white;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
+}
+.agregar-complemento:hover {
+  background-color: #03b129;
+  font-weight: bold;
+}
+.complementos-lista{
+margin-top: -1rem;
+}
+.parpadeo {
+  animation: blink-soft 2s infinite ease-in-out;
+}
+@keyframes blink-soft {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+.modal-complementos {
+  animation: fadeInSmooth 0.3s ease-in-out;
+  opacity: 0;
+  transform: translateY(-5px);
+  animation-fill-mode: forwards;
+}
+@keyframes fadeInSmooth {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.complementos-busqueda {
+  width: 100%;
+  padding: 8px;
+  margin: 28px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+.complementos-lista {
+  max-height: 200px; 
+  overflow-y: auto; 
+  padding-right: 5px;
+}
 
+.complementos-lista::-webkit-scrollbar {
+  width: 6px;
+}
 
-
-
-
-
-
-
-
+.complementos-lista::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+.highlight {
+  background-color: #f8bf05; /* Fondo amarillo para destacar */
+  color: rgb(247, 247, 247); /* Texto en negro para mejor contraste */
+  font-weight: bold; /* Texto en negrita */
+  padding: 2px 4px; /* Pequeño espacio alrededor del texto */
+  border-radius: 4px; /* Bordes redondeados */
+}
+.no-complementos p{
+  background-color: #0056b3;
+}

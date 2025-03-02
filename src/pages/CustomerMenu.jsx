@@ -33,7 +33,8 @@ const CustomerMenu = () => {
     total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
     venta_procesada: 0,
     origen: '',
-    observaciones: ''
+    observaciones: '',
+    complementos: initialCompra.complementos || [],
   });
 
 
@@ -509,12 +510,35 @@ setTotalPrice(newTotalPrice);
     // Establecer el formulario en modo edición
     setFormVisible(true);
     setIsEditing(true); // Activar el modo edición
-};
+  };
+  const agregarComplemento = (complemento) => {
+    setCompra((prevCompra) => ({
+      ...prevCompra,
+      complementos: [...prevCompra.complementos, complemento], // Agregar el nuevo complemento
+      total_productos: prevCompra.total_productos + complemento.precio, // Actualizar total
+      total_a_pagar_con_descuentos: prevCompra.total_a_pagar_con_descuentos + complemento.precio
+    }));
+  };
+  const eliminarComplemento = (idComplemento) => {
+    setCompra((prevCompra) => {
+      const nuevosComplementos = prevCompra.complementos.filter(
+        (comp) => comp.id !== idComplemento
+      );
+      
+      const nuevoTotal = prevCompra.total_productos - prevCompra.complementos.find(comp => comp.id === idComplemento)?.precio || 0;
+  
+      return {
+        ...prevCompra,
+        complementos: nuevosComplementos,
+        total_productos: nuevoTotal,
+        total_a_pagar_con_descuentos: nuevoTotal - prevCompra.total_descuentos
+      };
+    });
+  };
+  
 
   return (
-    <>
-
-    
+    <>    
       {/* Carrito flotante */}
       <FloatingCart 
       compra={compra} 
@@ -524,13 +548,15 @@ setTotalPrice(newTotalPrice);
       handleAddAnotherPizza={handleAddAnotherPizza}
       extraIngredients={extraIngredients}
       handleRemoveExtraIngredient={handleRemoveExtraIngredient} 
+      agregarComplemento={agregarComplemento}  
+      eliminarComplemento={eliminarComplemento} 
       />
 
       {/* Menú y selección de pizza */}
       {!showDeliveryForm && (
         <>
-          <h1 className="PDCRL">Selecciona Tu Pizza del Menú</h1>
-          <div className="menu-container">
+          <h1>Selecciona tu Pizza del Menú</h1>
+          <div className="menu-containerCM">
            {activePizzas
               .filter(pizza => pizza.categoria !== "Base Pizza")
               .map(pizza => (

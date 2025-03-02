@@ -3782,24 +3782,20 @@ app.post('/PartnerData', upload.single('imagen'), (req, res) => {
   console.log("📌 Datos recibidos:", req.body);
   console.log("📸 Imagen recibida:", req.file ? req.file.path : "No se subió imagen");
 
-  let { categoria, subcategoria, producto, precio } = req.body;
+  let { categoria, subcategoria, producto, precio, IDI } = req.body;
   const imagen = req.file ? req.file.path : null;
 
-  // Si la categoría no se envió, la establecemos por defecto
   if (!categoria) {
     categoria = "Partner";
   }
 
-  if (!categoria || !producto || precio === undefined) {
+  if (!categoria || !producto || precio === undefined || !IDI) {
     console.error("❌ Error: Faltan campos obligatorios");
     return res.status(400).json({ "error": "Faltan campos obligatorios" });
   }
 
-  const sql = `INSERT INTO PartnerData (categoria, subcategoria, producto, precio, imagen) VALUES (?, ?, ?, ?, ?)`;
-  const params = [categoria, subcategoria, producto, precio, imagen];
-
-  console.log("🔹 Ejecutando SQL:", sql);
-  console.log("🔹 Parámetros:", params);
+  const sql = `INSERT INTO PartnerData (IDI, categoria, subcategoria, producto, precio, imagen) VALUES (?, ?, ?, ?, ?, ?)`;
+  const params = [IDI, categoria, subcategoria, producto, precio, imagen];
 
   db.run(sql, params, function (err) {
     if (err) {
@@ -3809,7 +3805,7 @@ app.post('/PartnerData', upload.single('imagen'), (req, res) => {
     console.log("✅ Partner creado con éxito, ID:", this.lastID);
     res.json({
       "message": "success",
-      "data": { id: this.lastID, categoria, subcategoria, producto, precio, imagen },
+      "data": { id: this.lastID, IDI, categoria, subcategoria, producto, precio, imagen },
     });
   });
 });
@@ -4309,31 +4305,28 @@ app.post('/limites', async (req, res) => {
   const { IDI, TLimite } = req.body;
   console.log(`Recibido para crear límite: ${IDI}, con TLimite: ${TLimite}`);
 
-  // Asegúrate de que TLimite es un número y no es null o undefined
-  if (typeof TLimite !== 'number' || TLimite === null) {
-    return res.status(400).send('TLimite debe ser un número válido.');
+  if (typeof TLimite !== 'number' || isNaN(TLimite)) {
+    return res.status(400).json({ error: 'TLimite debe ser un número válido.' });
   }
 
-  // Verificar primero si el IDI ya existe en la tabla SetLimite
   db.get('SELECT * FROM SetLimite WHERE IDI = ?', [IDI], async (err, row) => {
     if (err) {
-      res.status(500).send(err.message);
+      return res.status(500).json({ error: err.message });
     } else if (row) {
-      // Si el IDI ya existe, no se crea un nuevo registro
-      res.status(409).send('Un límite ya existe para este IDI.');
+      return res.status(409).json({ error: 'Un límite ya existe para este IDI.' });
     } else {
-      // Si el IDI no existe, crea el nuevo registro
       try {
         const sql = 'INSERT INTO SetLimite (IDI, TLimite) VALUES (?, ?)';
         await db.run(sql, [IDI, TLimite]);
-        res.status(201).send('Límite agregado con éxito');
+        res.status(201).json({ success: true, message: 'Límite agregado con éxito' });
       } catch (err) {
         console.error('Error al insertar el límite:', err);
-        res.status(500).send(err.message);
+        res.status(500).json({ error: err.message });
       }
     }
   });
 });
+
 
 // the patch zone //
 app.patch('/api/info-empresa/:id/estado', (req, res) => {
@@ -5789,15 +5782,54 @@ app.delete("/api/empleados/:id", (req, res) => {
 });
 app.delete('/inventario/eliminar/:IDR', (req, res) => {
   const { IDR } = req.params;
-  const query = 'DELETE FROM inventario WHERE IDR = ?';
 
-  db.run(query, IDR, function (err) {
+  // Buscar el IDI asociado al IDR antes de eliminarlo
+  db.get('SELECT IDI FROM inventario WHERE IDR = ?', [IDR], (err, row) => {
     if (err) {
-      console.error(`❌ Error al eliminar ingrediente con IDR ${IDR}:`, err.message);
-      res.status(500).json({ error: 'Error al eliminar el ingrediente' });
-    } else {
-      res.json({ message: 'Ingrediente eliminado correctamente', IDR });
+      console.error(`❌ Error al buscar IDI para IDR ${IDR}:`, err.message);
+      return res.status(500).json({ error: 'Error al buscar el ingrediente' });
     }
+
+    if (!row) {
+      console.warn(`⚠️ Advertencia: No se encontró IDI para IDR ${IDR}.`);
+      return res.status(404).json({ error: 'Ingrediente no encontrado' });
+    }
+
+    const { IDI } = row; // Extraemos el IDI encontrado
+
+    // Ahora eliminamos el IDR del inventario
+    db.run('DELETE FROM inventario WHERE IDR = ?', [IDR], function (err) {
+      if (err) {
+        console.error(`❌ Error al eliminar ingrediente con IDR ${IDR}:`, err.message);
+        return res.status(500).json({ error: 'Error al eliminar el ingrediente' });
+      }
+
+      console.log(`✅ Ingrediente eliminado con IDR ${IDR}, verificando existencia de IDI ${IDI}`);
+
+      // Verificar si hay más registros con el mismo IDI en el inventario
+      db.get('SELECT COUNT(*) AS count FROM inventario WHERE IDI = ?', [IDI], (err, result) => {
+        if (err) {
+          console.error(`❌ Error al verificar existencia de IDI ${IDI}:`, err.message);
+          return res.status(500).json({ error: 'Error al verificar existencia del ingrediente' });
+        }
+
+        if (result.count === 0) {
+          // No hay más registros con ese IDI, eliminamos de SetLimite
+          db.run('DELETE FROM SetLimite WHERE IDI = ?', [IDI], function (err) {
+            if (err) {
+              console.error(`❌ Error al eliminar límite para IDI ${IDI}:`, err.message);
+              return res.status(500).json({ error: 'Error al eliminar el límite' });
+            }
+
+            console.log(`✅ Límite eliminado para IDI ${IDI}`);
+            res.json({ success: true, message: 'Ingrediente y límite eliminados con éxito' });
+          });
+        } else {
+          // Hay más registros con ese IDI, solo eliminamos el IDR
+          res.json({ success: true, message: 'Ingrediente eliminado sin afectar el límite' });
+        }
+      });
+    });
   });
 });
 app.delete("/rutas/:id", (req, res) => {

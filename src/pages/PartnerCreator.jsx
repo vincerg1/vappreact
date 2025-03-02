@@ -4,6 +4,7 @@ import '../styles/FormPartner.css';
 
 function PartnerCreator({ partnerData, onSubmit }) {
   const [formData, setFormData] = useState({
+    IDI: '',
     categoria: '',
     subcategoria: '',
     producto: '',
@@ -21,23 +22,23 @@ function PartnerCreator({ partnerData, onSubmit }) {
       try {
         const response = await fetch('http://localhost:3001/inventario-partner');
         const result = await response.json();
-
+  
         if (result.message === 'success') {
           const partnersOrganizados = result.data.reduce((acc, item) => {
             if (!acc[item.subcategoria]) {
               acc[item.subcategoria] = [];
             }
-            acc[item.subcategoria].push(item.producto);
+            acc[item.subcategoria].push({ producto: item.producto, IDI: item.IDI }); // Incluimos el IDI
             return acc;
           }, {});
-
+  
           setPartnerOptions(partnersOrganizados);
         }
       } catch (error) {
         console.error("Error cargando los datos de Partner:", error);
       }
     };
-
+  
     fetchPartners();
   }, []);
   useEffect(() => {
@@ -61,7 +62,16 @@ function PartnerCreator({ partnerData, onSubmit }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  
+    if (name === 'producto') {
+      // Buscar el IDI del producto seleccionado
+      const selectedProduct = partnerOptions[formData.subcategoria]?.find(p => p.producto === value);
+      const IDI = selectedProduct ? selectedProduct.IDI : '';
+  
+      setFormData(prev => ({ ...prev, [name]: value, IDI })); // Guardamos el IDI junto con el producto
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
   const handleImageChange = (e) => {
     if (e.target.files.length > 0) {
@@ -105,17 +115,22 @@ function PartnerCreator({ partnerData, onSubmit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
+    if (!formData.IDI) {
+      alert("❌ Error: No se pudo encontrar el IDI del producto seleccionado.");
+      return;
+    }
+  
     const submitFormData = new FormData();
-    submitFormData.append('categoria', formData.categoria || 'Partner');  
+    submitFormData.append('IDI', formData.IDI); // Agregamos el IDI
+    submitFormData.append('categoria', formData.categoria || 'Partner');
     submitFormData.append('subcategoria', formData.subcategoria);
     submitFormData.append('producto', formData.producto);
     submitFormData.append('precio', formData.precio);
   
-    // Agregar imagen si fue cambiada
     if (imageFile) {
       submitFormData.append('imagen', imageFile, imageFile.name);
     } else if (!isEditMode) {
-      submitFormData.append('imagen', ''); // Si se está creando y no hay imagen
+      submitFormData.append('imagen', '');
     }
   
     const url = isEditMode
@@ -164,7 +179,7 @@ function PartnerCreator({ partnerData, onSubmit }) {
           <label>Producto:</label>
           <select name="producto" value={formData.producto} onChange={handleChange}>
             <option value="">Seleccione un producto</option>
-            {partnerOptions[formData.subcategoria]?.map(producto => (
+            {partnerOptions[formData.subcategoria]?.map(({ producto }) => (
               <option key={producto} value={producto}>{producto}</option>
             ))}
           </select>

@@ -61,7 +61,7 @@ export const zonaDeRiesgoToString = (zonaRiesgo) => {
   return mapeo[zonaRiesgo] || 'desconocido';
 }
 export const calcularZonaRiesgoIDI = (ingredientesPorIDI, TLimite) => {
-  //  console.log('ingredientesPorIDI:', ingredientesPorIDI);
+  //  console.log('en _lista de seguimiento ingredientesPorIDI:', ingredientesPorIDI);
   // console.log('TLimite recibido:', TLimite);
 
   if (!Array.isArray(ingredientesPorIDI) || ingredientesPorIDI.length === 0) {
@@ -213,17 +213,30 @@ useEffect(() => {
 useEffect(() => {
   axios.get('http://localhost:3001/inventario')
     .then(response => {
-      const ingredientes = response.data.data.filter(item => item.categoria === "Ingredientes");
-      const ingredientesConZRyEstado = ingredientes.map(ing => {
-        const zonaRiesgo = ing.estadoForzado ? 6 : determinarZonaRiesgo(ing.disponible, ing.limite, ing.fechaCaducidad, ing.estadoForzado);
-        const esActivo = determinarEstadoDelProducto(zonaRiesgo); // Usa la función existente para determinar si es activo
+      // Filtramos ingredientes y partners
+      const productos = response.data.data.filter(item => 
+        item.categoria === "Ingredientes" || item.categoria === "Partner"
+      );
+
+      const productosConZRyEstado = productos.map(prod => {
+        // Si es un Partner y no tiene fechaCaducidad, manejamos esto correctamente
+        const fechaCaducidad = prod.fechaCaducidad || "2100-01-01"; // Fecha futura para evitar problemas
+        
+        // Determinar zona de riesgo
+        const zonaRiesgo = prod.estadoForzado 
+          ? 6 
+          : determinarZonaRiesgo(prod.disponible, prod.limite, fechaCaducidad, prod.estadoForzado);
+
+        const esActivo = determinarEstadoDelProducto(zonaRiesgo);
+
         return {
-          ...ing,
+          ...prod,
           zonaRiesgo,
           estado: esActivo, 
         };
       });
-      setInventario(ingredientesConZRyEstado);
+
+      setInventario(productosConZRyEstado);
     })
     .catch(error => {
       console.error('Hubo un error obteniendo los datos:', error);
@@ -260,6 +273,7 @@ const fetchLimits = async () => {
       acc[limit.IDI] = limit.TLimite;
       return acc;
     }, {});
+    
 
     // Actualizar el estado con los nuevos límites
     setLimites(newLimits);
@@ -416,29 +430,28 @@ const handleGuardarClick = (IDI) => {
   }
 };
 const actualizarTLimite = async (IDI, nuevoLimite) => {
-  // console.log(`En actualizarTLimite, IDI: ${IDI}, nuevoLimite: ${nuevoLimite}`);
-  if (nuevoLimite >= 0) {
-    try {
-      const response = await axios.patch(`http://localhost:3001/limites/${IDI}`, { TLimite: nuevoLimite });
-      // console.log('Respuesta del servidor:', response.data);
-      if (response.status === 200) {
-        alert('Límite actualizado con éxito');
-        setLimites(prevLimites => ({
-          ...prevLimites,
-          [IDI]: nuevoLimite
-        }));
-        return Promise.resolve(); // Se resuelve la promesa después de una actualización exitosa
-      } else {
-        return Promise.reject(new Error('La actualización del límite no fue exitosa.'));
-      }
-    } catch (error) {
-      console.error("Error al actualizar límite:", error);
-      alert(`Error al actualizar límite: ${error}`);
-      return Promise.reject(error); // Se rechaza la promesa si hay un error
-    }
-  } else {
-    alert('El límite debe ser un número válido y mayor que cero.');
+  if (typeof nuevoLimite !== "number" || isNaN(nuevoLimite) || nuevoLimite < 0) {
+    alert('El límite debe ser un número válido y mayor o igual a cero.');
     return Promise.reject(new Error('Límite inválido'));
+  }
+
+  try {
+    const response = await axios.patch(`http://localhost:3001/limites/${IDI}`, { TLimite: nuevoLimite });
+
+    if (response.status === 200) {
+      alert('Límite actualizado con éxito');
+      setLimites(prevLimites => ({
+        ...prevLimites,
+        [IDI]: nuevoLimite
+      }));
+      return Promise.resolve();
+    } else {
+      return Promise.reject(new Error('La actualización del límite no fue exitosa.'));
+    }
+  } catch (error) {
+    console.error("Error al actualizar límite:", error);
+    alert(`Error al actualizar límite: ${error}`);
+    return Promise.reject(error);
   }
 };
 const handleSearchChange = (event) => {
@@ -521,22 +534,49 @@ return (
                     const representanteIngrediente = ingredientesPorIDI[0];
                     const nombreProducto = representanteIngrediente.producto;
                     const subcategoriaProducto = representanteIngrediente.subcategoria;
-
-                      return (
-                        <>
+                    return (
+                      <>
                         <tr key={IDI}>
                           <td>{IDI}</td>
                           <td>{nombreProducto}</td>
                           <td>{subcategoriaProducto}</td>
                           <td>{TDisponible}</td>
-                          <td>{limites[IDI] ?? 'No definido'}</td>
+                          <td>
+                            {idiExpandido === IDI ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                                <input
+                                  type="number"
+                                  value={limites[IDI] ?? 0}
+                                  onChange={(e) => handleLimiteChange(IDI, e.target.value)}
+                                  style={{ width: "60px", padding: "5px" }}
+                                />
+                                <button
+                                  onClick={() => handleGuardarClick(IDI)}
+                                  style={{
+                                    padding: "5px 8px",
+                                    fontSize: "12px",
+                                    backgroundColor: "#28a745",
+                                    color: "white",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    borderRadius: "4px",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Actualizar
+                                </button>
+                              </div>
+                            ) : (
+                              limites[IDI] ?? "No definido"
+                            )}
+                          </td>
                           <td>{`${porcentajeRiesgoCaducidad.toFixed(2)}% - ${diasHastaCaducidad} días`}</td>
                           <td>{zonaRiesgoIDI}</td>
-                          <td>{estadoActual}</td>             
+                          <td>{estadoActual}</td>
                           <td>
-                          <button onClick={() => handleEstadoIDI(IDI, !todosInactivos)}>
-                            {todosInactivos ? "Restablecer" : "Desactivar"}
-                          </button>
+                            <button onClick={() => handleEstadoIDI(IDI, !todosInactivos)}>
+                              {todosInactivos ? "Restablecer" : "Desactivar"}
+                            </button>
                           </td>
                           <td>
                             <button onClick={() => toggleExpandido(IDI)}>
@@ -544,36 +584,30 @@ return (
                             </button>
                           </td>
                         </tr>
-                        {idiExpandido === IDI && ingredientesPorIDI.map((ing, index) => (
-                          <tr key={ing.IDR} style={{ backgroundColor: '#e7f281' }}>
-                             <td colSpan="1">{"IDR: " + ing.IDR}</td>
-                            <td>{"--"}</td>
-                            <td>{"--"}</td>
-                            <td>{ing.disponible}</td>
-                            <td>
-                              <input
-                                type="number"
-                                value={limites[IDI]?.TLimite ?? 0}
-                                onChange={(e) => handleLimiteChange(IDI, e.target.value)}
-                              />
-                              <button onClick={() => handleGuardarClick(IDI)}>Actualizar Límite</button>
-                            </td>
-                            <td>{calcularTiempoUso(ing.fechaCaducidad)}</td>
-                            <td>{ing.zonaRiesgo}</td>
-                            <td>{"--"}</td>
-                            <td>{"--"}</td>
-                            <td>
-                            <button
-                              onClick={() => handleEstadoLoteClick(ing.IDR, ing.estadoForzado !== 1)}
-                            >
-                              {ing.estadoForzado === 1 ? "Restablecer Lote" : "Desactivar Lote"}
-                            </button>
-                            </td>
-                            <td>{"--"}</td>
-                          </tr>
-                        ))}
+                        {idiExpandido === IDI &&
+                          ingredientesPorIDI.map((ing, index) => (
+                            <tr key={ing.IDR} style={{ backgroundColor: "#e7f281" }}>
+                              <td colSpan="1">{"IDR: " + ing.IDR}</td>
+                              <td>{"--"}</td>
+                              <td>{"--"}</td>
+                              <td>{ing.disponible}</td>
+                              <td>{limites[IDI] ?? 0}</td>
+                              <td>{calcularTiempoUso(ing.fechaCaducidad)}</td>
+                              <td>{ing.zonaRiesgo}</td>
+                              <td>{"--"}</td>
+                              <td>{"--"}</td>
+                              <td>
+                                <button
+                                  onClick={() => handleEstadoLoteClick(ing.IDR, ing.estadoForzado !== 1)}
+                                >
+                                  {ing.estadoForzado === 1 ? "Restablecer Lote" : "Desactivar Lote"}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
                       </>
-                      );
+                    );
+                    
                     })}
                   </tbody>
               </table>

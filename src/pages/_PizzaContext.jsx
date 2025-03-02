@@ -59,6 +59,8 @@ export const _PizzaContext = createContext({
   isServiceSuspended: false, 
   suspensionEndTime: null,   
   setSuspensionState: () => {},  
+  activePartners: [], 
+  setActivePartners: () => {},  
 });
 export const PizzaProvider = ({ children }) => {
   
@@ -80,6 +82,7 @@ export const PizzaProvider = ({ children }) => {
   const [ingredientesProximosACaducar, setIngredientesProximosACaducar] = useState([]);
   const [isServiceSuspended, setIsServiceSuspended] = useState(false);
   const [suspensionEndTime, setSuspensionEndTime] = useState(null);
+  const [activePartners, setActivePartners] = useState([]);
   const [compra, setCompra] = useState({
     id_order: '',
     fecha: moment().format('YYYY-MM-DD'),
@@ -180,13 +183,16 @@ useEffect(() => {
 }, [sessionData.segmento, cargarOfertasPorSegmento]);
 useEffect(() => {
   const cargarInventario = async () => {
-      try {
-          const response = await axios.get('http://localhost:3001/inventario');
-          const inventarioCargado = response.data.data;
-          setInventario(inventarioCargado);
-      } catch (error) {
-          console.error('❌ Error obteniendo los datos del inventario:', error);
-      }
+    try {
+      const response = await axios.get('http://localhost:3001/inventario');
+      // Declaro inventarioCargado aquí
+      const inventarioCargado = response.data.data;
+      // console.log("✅ Inventario:", inventarioCargado);
+
+      setInventario(inventarioCargado);
+    } catch (error) {
+      console.error('❌ Error obteniendo los datos del inventario:', error);
+    }
   };
   cargarInventario();
 }, []);
@@ -217,7 +223,10 @@ useEffect(() => {
   if (typeof limites === 'object' && !Array.isArray(limites) && Array.isArray(ingredientes)) {
     const zonasDeRiesgoPorIDI = {};
 
-    // Agrupa los ingredientes por IDI
+    // Log para ver qué hay en "ingredientes" antes de agrupar
+    // console.log("🧩 ingredientes (con Partners incluidos?):", ingredientes);
+
+    // Agrupa los ingredientes/partners por IDI
     const ingredientesPorIDI = ingredientes.reduce((acc, ing) => {
       const { IDI } = ing;
       if (!acc[IDI]) acc[IDI] = [];
@@ -225,22 +234,26 @@ useEffect(() => {
       return acc;
     }, {});
 
+    // console.log("🧊 ingredientesPorIDI agrupados:", ingredientesPorIDI);
+
     Object.entries(ingredientesPorIDI).forEach(([IDI, ingredientesDelIDI]) => {
-      // Calcula el TDisponible y otros totales usando calcularTotalesPorIDI
       const { TDisponible } = calcularTotalesPorIDI(ingredientesDelIDI);
+      // console.log(`📦 TDisponible para ${IDI}:`, TDisponible);
       const TLimite = limites[IDI];
 
       if (TLimite !== undefined) {
-        // Calcula la zona de riesgo con todos los ingredientes del IDI y el TLimite correspondiente
-        zonasDeRiesgoPorIDI[IDI] = calcularZonaRiesgoIDI(ingredientesDelIDI, TLimite);
+        const zonaRiesgo = calcularZonaRiesgoIDI(ingredientesDelIDI, TLimite);
+        zonasDeRiesgoPorIDI[IDI] = zonaRiesgo;
       } else {
         console.error(`Error: No se encontró límite para el IDI: ${IDI}`);
         zonasDeRiesgoPorIDI[IDI] = 'Error';
       }
     });
 
+    // console.log("📊 zonasDeRiesgoPorIDI final:", zonasDeRiesgoPorIDI);
+
     setZonasDeRiesgoPorIDI(zonasDeRiesgoPorIDI);
-    // console.log("Zonas de riesgo por IDI calculadas en el contexto:", zonasDeRiesgoPorIDI);
+
   } else {
     console.error('Error: la estructura de limites o ingredientes no es la esperada.');
   }
@@ -307,9 +320,6 @@ useEffect(() => {
   }
 }, [pizzas]);
 useEffect(() => {
-  // console.log("📌 [LOG] Iniciando actualización de pizzas...");
-  // console.log("🛠️ [LOG] Lista de pizzas cargadas:", pizzas);
-  // console.log("🛠️ [LOG] Inventario actual:", inventario);
 
   if (!pizzas || !pizzas.data || !Array.isArray(pizzas.data) || pizzas.data.length === 0) {
     console.warn("⚠️ No hay pizzas en el array o la estructura es incorrecta.");
@@ -348,7 +358,7 @@ useEffect(() => {
 
       // 🔥 Nueva lógica para ingredientes extra
       const ingredientesExtrasDisponibles = ingredientesPizza.filter(ingrediente =>
-        inventario.some(inv => inv.IDI === ingrediente.IDI && inv.estadoGEN === 0)
+        inventario.some(inv => inv.IDI === ingrediente.IDI && inv.c)
       );
 
       // console.log("✅ Ingredientes extras disponibles:", ingredientesExtrasDisponibles);
@@ -410,9 +420,38 @@ useEffect(() => {
 }, [sessionData.id_cliente, fetchClientData]);
 useEffect(() => {
   if (inventario.length > 0) {
-    const ingredientesExtraidos = inventario.filter(ing => ing.categoria === 'Ingredientes');
-    setIngredientes(ingredientesExtraidos);
-    // console.log("✅ Ingredientes extraídos desde el inventario:", ingredientesExtraidos);
+    const productosIncluidos = inventario.filter(ing => 
+      ing.categoria === 'Ingredientes' || ing.categoria === 'Partner'
+    );
+    // console.log("🔎 ProductosIncluidos (Ingredientes + Partners):", productosIncluidos);
+    setIngredientes(productosIncluidos);
+  }
+}, [inventario]);
+useEffect(() => {
+  const cargarActivePartners = async () => {
+    try {
+      // 🔹 Obtener los partners de la tabla PartnerData
+      const response = await axios.get('http://localhost:3001/PartnerData');
+      if (response.data && Array.isArray(response.data.data)) {
+        const partnerData = response.data.data;
+
+        // 🔹 Filtrar los que tienen `estadoGEN === 0` en `inventario`
+        const partnersActivos = partnerData.filter(partner =>
+          inventario.some(item => item.IDI === partner.IDI && item.estadoGEN === 0)
+        );
+
+        console.log("✅ Partners activos después de filtrar:", partnersActivos);
+        setActivePartners(partnersActivos);
+      } else {
+        throw new Error("La respuesta no contiene un arreglo válido de PartnerData.");
+      }
+    } catch (error) {
+      console.error("❌ Error al cargar Active Partners:", error);
+    }
+  };
+
+  if (inventario.length > 0) {
+    cargarActivePartners();
   }
 }, [inventario]);
 
@@ -466,20 +505,21 @@ const addPizzaToOrder  = (pizza) => {
     });
 };
 const agruparInventarioPorIDI = (inventario) => {
-    const inventarioAgrupado = {};
-  
-    inventario.forEach(ingrediente => {
-      const { IDI } = ingrediente;
-      if (!inventarioAgrupado[IDI]) {
-        inventarioAgrupado[IDI] = [];
-      }
-      inventarioAgrupado[IDI].push(ingrediente);
-    });
-  
-    // Agregar console.log para ver la salida de la función
-    // console.log('Inventario agrupado por IDI en el context:', inventarioAgrupado);
-  
-    return inventarioAgrupado;
+  const inventarioAgrupado = {};
+
+  // console.log("🔎 Llamada a agruparInventarioPorIDI con:", inventario);
+
+  inventario.forEach(ingrediente => {
+    const { IDI } = ingrediente;
+    if (!inventarioAgrupado[IDI]) {
+      inventarioAgrupado[IDI] = [];
+    }
+    inventarioAgrupado[IDI].push(ingrediente);
+  });
+
+  // console.log("🔎 Resultado de agruparInventarioPorIDI:", inventarioAgrupado);
+
+  return inventarioAgrupado;
 };
 
   return (
@@ -520,6 +560,8 @@ const agruparInventarioPorIDI = (inventario) => {
       isServiceSuspended,
       suspensionEndTime,
       setSuspensionState, 
+      activePartners,
+      setActivePartners,
     }}>
       {children}
     </_PizzaContext.Provider>

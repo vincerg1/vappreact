@@ -483,8 +483,9 @@ const agregarIngrediente = async (e) => {
   const nuevoDisponible = Number(disponible);
   const ultimaModificacion = new Date().toISOString();
   const fechaValida = currentFechaCaducidad instanceof Date && !isNaN(currentFechaCaducidad)
-  ? currentFechaCaducidad.toISOString()
-  : null; // ⬅️ Si la fecha no es válida, se envía null
+    ? currentFechaCaducidad.toISOString()
+    : null;
+
   const ingredienteParaEnviar = {
     categoria,
     subcategoria,
@@ -492,12 +493,13 @@ const agregarIngrediente = async (e) => {
     disponible: nuevoDisponible,
     unidadMedida,
     estadoForzado: false,
-    fechaCaducidad: fechaValida, // ⬅️ Evita enviar valores incorrectos
+    fechaCaducidad: fechaValida,
     referencia,
     ultimaModificacion
   };
 
   try {
+    // 🔹 Enviar ingrediente al inventario
     const responseInventario = await fetch("http://localhost:3001/inventario", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -507,17 +509,25 @@ const agregarIngrediente = async (e) => {
     const dataInventario = await responseInventario.json();
     if (!responseInventario.ok) throw new Error(dataInventario.error);
 
-    if (!dataInventario.data.IDI || !dataInventario.data.IDR) {
-      throw new Error("El servidor no devolvió IDI o IDR correctamente.");
+    if (!dataInventario.data.IDI) {
+      throw new Error("El servidor no devolvió IDI correctamente.");
     }
+
+    const nuevoIDI = dataInventario.data.IDI;
+
+    // 🔹 Enviar IDI a la tabla de límites automáticamente
+    const responseLimites = await fetch("http://localhost:3001/limites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ IDI: nuevoIDI, TLimite: 0 }) // 🔥 TLimite como número
+    });
+
+    const dataLimites = await responseLimites.json();
+    if (!responseLimites.ok) throw new Error(dataLimites.error);
 
     setInventario(prevInventario => [
       ...prevInventario,
-      { 
-        ...ingredienteParaEnviar, 
-        IDR: dataInventario.data.IDR, 
-        IDI: dataInventario.data.IDI  
-      }
+      { ...ingredienteParaEnviar, IDI: nuevoIDI }
     ]);
 
     setNuevoIngrediente({
@@ -528,6 +538,7 @@ const agregarIngrediente = async (e) => {
       unidadMedida: '',
       referencia: '',
     });
+
     setMostrarFormulario(false);
     setIsDesenfocado(false);
 
@@ -602,23 +613,27 @@ const cerrarFormulario = () => {
   setMostrarFormulario(false);
   setIsDesenfocado(false);
 };
-const eliminarIngrediente = (IDR) => {
+const eliminarIngrediente = async (IDR) => {
   const esConfirmado = window.confirm("¿Estás seguro de que quieres eliminar este ingrediente?");
   if (!esConfirmado) return;
 
-  axios.delete(`http://localhost:3001/inventario/eliminar/${IDR}`)
-    .then(response => {
-      if (response.status === 200) {
-        setInventario(prev => prev.filter(ingrediente => ingrediente.IDR !== IDR));
-        console.log("✅ Ingrediente eliminado correctamente:", response.data);
-      } else {
-        console.warn("⚠️ Advertencia: No se encontró el ingrediente en el servidor.");
+  try {
+    const response = await axios.delete(`http://localhost:3001/inventario/eliminar/${IDR}`);
+
+    if (response.status === 200) {
+      setInventario(prev => prev.filter(ingrediente => ingrediente.IDR !== IDR));
+      console.log("✅ Ingrediente eliminado correctamente:", response.data);
+
+      if (response.data.message.includes('Límite eliminado')) {
+        console.log(`⚠️ También se eliminó el límite asociado al ingrediente con IDI.`);
       }
-    })
-    .catch(error => {
-      console.error("❌ Error al eliminar el ingrediente:", error);
-      alert(`Error al eliminar el ingrediente: ${error.message}`);
-    });
+    } else {
+      console.warn("⚠️ Advertencia: No se encontró el ingrediente en el servidor.");
+    }
+  } catch (error) {
+    console.error("❌ Error al eliminar el ingrediente o su límite:", error);
+    alert(`Error al eliminar el ingrediente o su límite: ${error.message}`);
+  }
 };
 const calcularConsumoU7D = () => {
   // Genera un valor aleatorio entre 1 y 1000 como consumo
@@ -857,14 +872,14 @@ return (
                     </select>
                   </label>
 
-                  {categoriaSeleccionada === 'Ingredientes' && (
+                  {(categoriaSeleccionada === 'Ingredientes' || categoriaSeleccionada === 'Partner') && (
                     <label>
                       Fecha de Caducidad:
                       <DatePicker 
-                      selected={currentFechaCaducidad} 
-                      onChange={date => setCurrentFechaCaducidad(date)} 
-                      dateFormat="dd/MM/yyyy"
-                    />
+                        selected={currentFechaCaducidad} 
+                        onChange={date => setCurrentFechaCaducidad(date)} 
+                        dateFormat="dd/MM/yyyy"
+                      />
                     </label>
                   )}
                       <label>
@@ -913,14 +928,6 @@ return (
                           onChange={(e) => setCurrentDisponible(e.target.value)}
                         />
                       </label>
-                      {/* <label>
-                          Límite:
-                          <input 
-                            type="number" 
-                            value={currentLimite}
-                            onChange={(e) => setCurrentLimite(e.target.value)}
-                          />
-                      </label> */}
                       <label>
                         Fecha de Caducidad:
                         <DatePicker 
@@ -946,7 +953,6 @@ return (
                           <th>Unidad de Medida</th>
                           <th>FechaCaducidad</th>
                           <th>Disponible</th>
-                          {/* <th>Limite</th> */}
                           <th>Acciones</th>
                           <th>Referencia</th>
                           <th>UltimaModificacion</th>
@@ -962,9 +968,8 @@ return (
                                 <td>{ing.subcategoria}</td>
                                 <td>{ing.producto}</td>
                                 <td>{ing.unidadMedida}</td>
-                                <td>{ing.categoria === 'Ingredientes' ? formatearFecha(ing.fechaCaducidad) : 'No aplica'}</td>
+                                <td>{ing.fechaCaducidad ? formatearFecha(ing.fechaCaducidad) : 'No aplica'}</td>
                                 <td>{ing.disponible}</td>
-                                {/* <td>{formatearLimite(ing.categoria, ing.limite)}</td> */}
                                 <td>
                                     <button onClick={() => showForm(ing.IDR, ing.disponible, ing.fechaCaducidad)}>Editar</button>
                                     <button onClick={() => eliminarIngrediente(ing.IDR)}>Eliminar</button>

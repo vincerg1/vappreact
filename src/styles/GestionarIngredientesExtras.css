@@ -1,0 +1,78 @@
+/* GestionarIngredientesExtras.css */
+
+/* Contenedor general */
+.gestionar-ingredientes {
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Título */
+  .gestionar-ingredientes h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  /* Contenedor de la tabla */
+  .tabla-ingredientes {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Tabla */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    text-align: left;
+  }
+  
+  /* Encabezado */
+  thead {
+    background-color: #027353;
+    color: white;
+  }
+  
+  thead th {
+    padding: 10px;
+    text-align: center;
+    font-size: 1rem;
+  }
+  
+  /* Filas de la tabla */
+  tbody tr {
+    border-bottom: 1px solid #ddd;
+  }
+  
+  tbody td {
+    padding: 8px;
+    text-align: center;
+    font-size: 0.95rem;
+  }
+  
+  /* Alternar colores en las filas */
+  tbody tr:nth-child(even) {
+    background-color: #f8f8f8;
+  }
+  
+
+  /* Botones */
+  button {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.2s ease-in-out;
+  }
+  
+  button:hover {
+    opacity: 0.8;
+  }
+  
+
+  
