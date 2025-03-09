@@ -1394,6 +1394,7 @@ const CustomerPage = (offer) => {
         {/* Columna Izquierda */}
         <div
           style={{
+            marginBottom: '-20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1450,6 +1451,7 @@ const CustomerPage = (offer) => {
                 fontSize: '2rem',
                 fontWeight: 'bold',
                 color: '#0f0f0e',
+                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.75)',
                 animation: 'msg2Anim 6s infinite',
               }}
             >
@@ -1485,21 +1487,48 @@ const CustomerPage = (offer) => {
             style={{
               flex: '0 1 70%',
               textAlign: 'right',
-              fontSize: '1.2rem',
+              fontSize: '1.25rem',
               color: '#666',
               fontWeight: 'bold',
-              marginRight: '50px'
+              marginRight: '50px',
+              marginTop: '50px',
+              fontStyle: 'italic',
             }}
           >
-            <div>
+              <div 
+                style={{ 
+                  fontSize: '1.50rem', 
+                  textTransform: 'capitalize',  
+                  fontWeight: '900',
+                  fontStyle: 'normal',
+                  display: 'flex', 
+                  justifyContent: 'right', 
+                  gap: '0.65rem'
+                }}> 
+                {[...new Date().toLocaleDateString('es-ES', { weekday: 'long' })].map((char, index) => (
+                  <span 
+                    key={index} 
+                    style={{ 
+                      background: 'linear-gradient(to top, #646464, #cdcccc)', 
+                      borderRadius: '5px',
+                      padding: '2px', 
+                      color: '#ffffff' 
+                    }}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </div>
+            <div style={{ fontSize: '1.25rem' }}>
               {new Date().toLocaleDateString('es-ES', {
-                weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
               })}
             </div>
-            <div>{new Date().toLocaleTimeString('es-ES')}</div>
+            <div style={{ fontSize: '1.25rem' }}>
+              {new Date().toLocaleTimeString('es-ES')} --- hrs
+            </div>
           </div>
 
           <style>

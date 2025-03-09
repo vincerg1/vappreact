@@ -888,6 +888,120 @@ cron.schedule('0 11 * * *', () => {
 });
 
 // the get zone
+app.get("/api/clientes-ventas/:idCliente", (req, res) => {
+  const idCliente = req.params.idCliente;
+  console.log("🔍 Consultando ventas de cliente:", idCliente);
+
+  const sql = `
+      SELECT rv.id_order, rv.id_cliente, rv.fecha, rv.hora, rv.total_con_descuentos, rv.total_productos, rv.metodo_entrega,
+             ie.id AS tienda_id, ie.nombre_empresa, ie.ciudad, ie.direccion, 
+             ie.coordenadas_latitud AS tienda_lat, ie.coordenadas_longitud AS tienda_lng
+      FROM registro_ventas rv
+      JOIN InfoEmpresa ie 
+      ON JSON_EXTRACT(rv.metodo_entrega, '$.Delivery.tiendaSalida.id') = CAST(ie.id AS TEXT)
+      WHERE rv.id_cliente = ? 
+      AND JSON_EXTRACT(rv.metodo_entrega, '$.Delivery.latitud') IS NOT NULL
+  `;
+
+  db.all(sql, [idCliente], (err, rows) => {
+      if (err) {
+          console.error("🚨 Error en la consulta SQL:", err.message);
+          res.status(500).json({ error: "Error al obtener las ventas del cliente." });
+          return;
+      }
+
+      if (rows.length === 0) {
+          return res.status(404).json({ message: "No se encontraron ventas de delivery para este cliente." });
+      }
+
+      // 🔹 Formatear la respuesta con ubicación del cliente y la tienda
+      const response = rows.map((venta) => {
+          try {
+              const metodoEntrega = JSON.parse(venta.metodo_entrega);
+
+              return {
+                  id_order: venta.id_order,
+                  id_cliente: venta.id_cliente,  // 👈 **Ahora incluimos id_cliente en la respuesta**
+                  fecha: venta.fecha,
+                  hora: venta.hora,
+                  total_con_descuentos: venta.total_con_descuentos,
+                  total_productos: venta.total_productos,
+                  metodo_entrega: {
+                      tipo: "Delivery",
+                      cliente: {
+                          lat: metodoEntrega.Delivery?.latitud || null,
+                          lng: metodoEntrega.Delivery?.longitud || null,
+                      },
+                      tiendaSalida: {
+                          id: venta.tienda_id,
+                          nombre: venta.nombre_empresa,
+                          ciudad: venta.ciudad,
+                          direccion: venta.direccion,
+                          lat: venta.tienda_lat,
+                          lng: venta.tienda_lng,
+                      }
+                  }
+              };
+          } catch (jsonError) {
+              console.error("❌ Error al parsear metodo_entrega:", venta.metodo_entrega);
+              return null;
+          }
+      }).filter(v => v !== null);
+
+      res.json(response);
+  });
+});
+app.get('/api/ventas-por-tienda', (req, res) => {
+  const sql = `
+    SELECT 
+      e.id AS tienda_id,
+      e.nombre_empresa AS tienda_nombre,
+      e.direccion,
+      e.ciudad,
+      e.coordenadas_latitud,
+      e.coordenadas_longitud,
+      COALESCE(delivery_ventas, 0) AS ventas_delivery,
+      COALESCE(pickup_ventas, 0) AS ventas_pickup,
+      COALESCE(delivery_ventas, 0) + COALESCE(pickup_ventas, 0) AS ventas_totales
+    FROM InfoEmpresa e
+    LEFT JOIN (
+      SELECT 
+        json_extract(v.metodo_entrega, '$.Delivery.tiendaSalida.id') AS tienda_id,
+        COUNT(v.id_order) AS delivery_ventas
+      FROM registro_ventas v
+      WHERE json_extract(v.metodo_entrega, '$.Delivery.tiendaSalida.id') IS NOT NULL
+      GROUP BY tienda_id
+    ) d ON e.id = d.tienda_id
+    LEFT JOIN (
+      SELECT 
+        json_extract(v.metodo_entrega, '$.PickUp.puntoRecogida.id') AS tienda_id,
+        COUNT(v.id_order) AS pickup_ventas
+      FROM registro_ventas v
+      WHERE json_extract(v.metodo_entrega, '$.PickUp.puntoRecogida.id') IS NOT NULL
+      GROUP BY tienda_id
+    ) p ON e.id = p.tienda_id
+    ORDER BY ventas_totales DESC;
+  `;
+
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error("Error obteniendo ventas por tienda:", err);
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    res.json({ message: "success", data: rows });
+  });
+});
+app.get('/api/info-empresa', (req, res) => {
+  const sql = "SELECT * FROM InfoEmpresa"; // O filtrar por estado = 'activo'
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json(rows);
+  });
+});
 app.get('/inventario-partner', (req, res) => {
   const sql = "SELECT * FROM inventario WHERE categoria = 'Partner'";
 
@@ -2172,7 +2286,8 @@ app.get('/historial_clientes', (req, res) => {
 });
 app.get('/clientes', (req, res) => {
   const sql = `
-    SELECT id_cliente, email, password, bday, suspension_status, suspension_end_date, created_at 
+    SELECT id_cliente, email, password, phone, name, address_1, latitud, longitud, bday, 
+           suspension_status, suspension_end_date, created_at 
     FROM clientes
   `;
   
@@ -2729,16 +2844,18 @@ app.post('/registro_ventas/bulk', async (req, res) => {
                       total_con_descuentos,
                       total_descuentos,
                       productos,
+                      partners,
                       metodo_entrega,
                       cupones,
                       incentivos,
                       observaciones,
                       estado_entrega,
                       id_repartidor
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
               `;
 
               const productosJson = JSON.stringify([{ id_pizza, cantidad, size, price }]); // Guardar productos en formato JSON
+              const partnersJson = JSON.stringify(venta.partners || []);
               const metodo_entrega = '{}'; // Simulación sin método de entrega
               const cupones = '[]'; // Sin cupones en simulación
               const incentivos = '[]'; // Sin incentivos en simulación
@@ -2757,6 +2874,7 @@ app.post('/registro_ventas/bulk', async (req, res) => {
                       totalPagado, // total_con_descuentos
                       0, // total_descuentos en simulación
                       productosJson,
+                      partnersJson,
                       metodo_entrega,
                       cupones,
                       incentivos,
@@ -3871,239 +3989,292 @@ app.post('/registro_ventas', (req, res) => {
   let responseSent = false; // Bandera para evitar múltiples respuestas
 
   const sendResponse = (status, message) => {
-      if (!responseSent) {
-          res.status(status).json(message);
-          responseSent = true;
-      }
+    if (!responseSent) {
+      res.status(status).json(message);
+      responseSent = true;
+    }
   };
 
   db.serialize(() => {
-      db.run('BEGIN TRANSACTION;', (beginErr) => {
-          if (beginErr) {
-              sendResponse(500, { error: beginErr.message });
-              return;
+    db.run('BEGIN TRANSACTION;', (beginErr) => {
+      if (beginErr) {
+        sendResponse(500, { error: beginErr.message });
+        return;
+      }
+
+      const {
+        id_order,
+        fecha,
+        hora,
+        id_cliente,
+        metodo_pago,
+        total_productos,
+        total_con_descuentos,
+        total_descuentos,
+        productos,
+        partners,
+        cupones,
+        incentivos,
+        metodo_entrega,
+        observaciones,
+        email,
+        is_scheduled_order
+      } = venta;
+
+      // 1. Parseamos metodo_entrega para poder modificarlo si es Delivery
+      const parsedMetodoEntrega = JSON.parse(metodo_entrega || '{}');
+      const estado_entrega = 'Pendiente';
+      const id_repartidor = parsedMetodoEntrega.PickUp ? 0 : null;
+
+      // 2. Si es Delivery, nos aseguramos de que tenga lat/long en el objeto
+      if (parsedMetodoEntrega.Delivery) {
+        // Aseguramos que existan las coordenadas del cliente en este momento;
+        // si tu lógica ya las trae en parsedMetodoEntrega, no es necesario
+        // reasignarlas, pero aquí queda la plantilla por si quisieras forzarlas
+        // desde otros campos como venta.latitud y venta.longitud.
+        parsedMetodoEntrega.Delivery.latitud =
+          parsedMetodoEntrega.Delivery.latitud || 0;
+        parsedMetodoEntrega.Delivery.longitud =
+          parsedMetodoEntrega.Delivery.longitud || 0;
+      }
+
+      // 3. Convertimos nuevamente a string (JSON) con los cambios
+      const metodoEntregaJSON = JSON.stringify(parsedMetodoEntrega);
+
+      const insertVentaSql = `
+        INSERT INTO registro_ventas (
+          id_order,
+          fecha,
+          hora,
+          id_cliente,
+          metodo_pago,
+          total_productos,
+          total_con_descuentos,
+          total_descuentos,
+          cupones,
+          metodo_entrega,
+          productos,
+          partners,
+          incentivos,
+          observaciones,
+          estado_entrega,
+          id_repartidor,
+          is_scheduled_order
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+      `;
+
+      const productosJson = JSON.stringify(productos);
+      const partnersJson = JSON.stringify(venta.partners || []);
+      const cuponesJson = JSON.stringify(cupones);
+      const incentivosJson = JSON.stringify(incentivos);
+
+      // 4. Usamos 'metodoEntregaJSON' en lugar del string crudo 'metodo_entrega' original
+      db.run(
+        insertVentaSql,
+        [
+          id_order,
+          fecha,
+          hora,
+          id_cliente,
+          metodo_pago,
+          total_productos,
+          total_con_descuentos,
+          total_descuentos,
+          cuponesJson,
+          metodoEntregaJSON, // <--- Aquí guardamos el JSON final
+          productosJson,
+          partnersJson,
+          incentivosJson,
+          observaciones,
+          estado_entrega,
+          id_repartidor,
+          is_scheduled_order ? 1 : 0
+        ],
+        function (ventaErr) {
+          if (ventaErr) {
+            db.run('ROLLBACK;', () => sendResponse(500, { error: ventaErr.message }));
+            return;
           }
 
-          const {
-              id_order,
-              fecha,
-              hora,
-              id_cliente,
-              metodo_pago,
-              total_productos,
-              total_con_descuentos,
-              total_descuentos,
-              productos,
-              cupones,
-              incentivos,
-              metodo_entrega,
-              observaciones,
-              email,
-          } = venta;
+          const id_venta = this.lastID;
+          console.log(`Venta registrada con éxito. ID de la venta: ${id_venta}`);
 
-          const parsedMetodoEntrega = JSON.parse(metodo_entrega || '{}');
-          const estado_entrega = 'Pendiente';
-          const id_repartidor = parsedMetodoEntrega.PickUp ? 0 : null;
+          // 🔹 NUEVO: Actualizar lat/long en la tabla clientes si es un pedido Delivery
+          if (
+            parsedMetodoEntrega.Delivery &&
+            parsedMetodoEntrega.Delivery.latitud &&
+            parsedMetodoEntrega.Delivery.longitud
+          ) {
+            const updateClienteSql = `
+              UPDATE clientes
+              SET latitud = ?, longitud = ?
+              WHERE id_cliente = ?;
+            `;
 
-          const insertVentaSql = `
-              INSERT INTO registro_ventas (
-                  id_order,
-                  fecha,
-                  hora,
-                  id_cliente,
-                  metodo_pago,
-                  total_productos,
-                  total_con_descuentos,
-                  total_descuentos,
-                  cupones,
-                  metodo_entrega,
-                  productos,
-                  incentivos,
-                  observaciones,
-                  estado_entrega,
-                  id_repartidor
-              )
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-          `;
-
-          const productosJson = JSON.stringify(productos);
-          const cuponesJson = JSON.stringify(cupones);
-          const incentivosJson = JSON.stringify(incentivos);
-
-          db.run(
-              insertVentaSql,
+            db.run(
+              updateClienteSql,
               [
-                  id_order,
-                  fecha,
-                  hora,
-                  id_cliente,
-                  metodo_pago,
-                  total_productos,
-                  total_con_descuentos,
-                  total_descuentos,
-                  cuponesJson,
-                  metodo_entrega,
-                  productosJson,
-                  incentivosJson,
-                  observaciones,
-                  estado_entrega,
-                  id_repartidor,
+                parsedMetodoEntrega.Delivery.latitud,
+                parsedMetodoEntrega.Delivery.longitud,
+                id_cliente
               ],
-              function (ventaErr) {
-                  if (ventaErr) {
-                      db.run('ROLLBACK;', () => sendResponse(500, { error: ventaErr.message }));
-                      return;
+              function (updateErr) {
+                if (updateErr) {
+                  console.error('Error al actualizar la ubicación del cliente:', updateErr.message);
+                } else {
+                  console.log(`Ubicación del cliente ${id_cliente} actualizada con éxito.`);
+                }
+              }
+            );
+          }
+
+          // Llamar a actualizarIndicadoresCliente
+          actualizarIndicadoresCliente(id_cliente, fecha, (updateErr) => {
+            if (updateErr) {
+              console.error('Error al actualizar indicadores del cliente:', updateErr.message);
+              db.run('ROLLBACK;', () => sendResponse(500, { error: updateErr.message }));
+              return;
+            }
+
+            console.log(`Indicadores del cliente ${id_cliente} actualizados con éxito.`);
+
+            // Consultar la información de la empresa
+            db.get('SELECT * FROM InfoEmpresa WHERE id = ?', [1], (infoErr, infoEmpresa) => {
+              if (infoErr) {
+                console.error('Error al obtener la información de la empresa:', infoErr);
+                db.run('ROLLBACK;', () => sendResponse(500, { error: infoErr.message }));
+                return;
+              }
+
+              console.log('Información de la empresa obtenida:', infoEmpresa);
+
+              // Notificar a repartidores si es Delivery
+              if (!parsedMetodoEntrega.PickUp && parsedMetodoEntrega.Delivery) {
+                db.all('SELECT email FROM repartidores', [], (repErr, repartidores) => {
+                  if (repErr) {
+                    console.error('Error al obtener los correos de los repartidores:', repErr);
+                  } else if (repartidores.length > 0) {
+                    const transporter = nodemailer.createTransport({
+                      service: 'gmail',
+                      auth: {
+                        user: 'mycrushpizzaspain@gmail.com',
+                        pass: 'pfpjczrsksoytvhv', // Contraseña de la aplicación
+                      },
+                    });
+
+                    const mailPromises = repartidores.map((repartidor) => {
+                      const mailOptions = {
+                        from: 'mycrushpizzaspain@gmail.com',
+                        to: repartidor.email,
+                        subject: 'Nuevo Pedido de Delivery - MyPizzaCrush',
+                        text: `
+                          ¡Hola!
+
+                          Se ha registrado un nuevo pedido de Delivery.
+
+                          Detalles del pedido:
+                          - Orden ID: ${id_order}
+                          - Dirección de entrega: ${parsedMetodoEntrega.Delivery?.address || 'No especificada'}
+                          - Cliente ID: ${id_cliente}
+                          - Hora del pedido: ${hora}
+                          - Total: €${total_con_descuentos}
+
+                          Por favor, revisa tu panel para más detalles.
+
+                          ¡Gracias!
+                          MyPizzaCrush Team
+                        `,
+                      };
+
+                      return transporter.sendMail(mailOptions);
+                    });
+
+                    Promise.all(mailPromises)
+                      .then((results) => {
+                        console.log('Correos enviados con éxito a los repartidores:', results);
+                      })
+                      .catch((err) => {
+                        console.error('Error al enviar correos a los repartidores:', err);
+                      });
+                  } else {
+                    console.log('No se encontraron repartidores para notificar.');
+                  }
+                });
+              }
+
+              // Generar factura en PDF y enviar al cliente
+              const doc = new PDFDocument({ margin: 30 });
+              const pdfFilePath = path.join(__dirname, `factura_${id_order}.pdf`);
+              const writeStream = fs.createWriteStream(pdfFilePath);
+              doc.pipe(writeStream);
+
+              doc.fontSize(14).font('Courier-Bold').text('MyPizzaCrush - Confirmación de Pedido', { align: 'center' });
+              doc.moveDown(0.5);
+              doc.fontSize(10).font('Courier').text(`Registro Fiscal: ${infoEmpresa?.registro_fiscal || 'No disponible'}`);
+              doc.text(`Dirección: ${infoEmpresa?.direccion || 'No disponible'}`);
+              doc.text(`Teléfono: ${infoEmpresa?.telefono_contacto || 'No disponible'}`);
+              doc.text(`Correo: ${infoEmpresa?.correo_contacto || 'No disponible'}`);
+              doc.moveDown(1);
+              doc.fontSize(12).text(`Orden: ${id_order}`);
+              doc.text(`Fecha: ${fecha}`);
+              doc.text(`Hora: ${hora}`);
+              doc.text(`Cliente ID: ${id_cliente}`);
+              doc.text(`Método de Pago: ${metodo_pago}`);
+              doc.end();
+
+              writeStream.on('finish', () => {
+                const transporter = nodemailer.createTransport({
+                  service: 'gmail',
+                  auth: {
+                    user: 'mycrushpizzaspain@gmail.com',
+                    pass: 'pfpjczrsksoytvhv',
+                  },
+                });
+
+                const mailOptions = {
+                  from: 'mycrushpizzaspain@gmail.com',
+                  to: email,
+                  subject: 'Confirmación de Pedido - MyPizzaCrush',
+                  text: 'Adjuntamos tu factura digital en formato PDF.',
+                  attachments: [
+                    {
+                      filename: `factura_${id_order}.pdf`,
+                      path: pdfFilePath,
+                    },
+                  ],
+                };
+
+                transporter.sendMail(mailOptions, (err, info) => {
+                  if (err) {
+                    console.error('Error al enviar el correo:', err);
+                  } else {
+                    console.log('Correo enviado con éxito al cliente:', info.response);
+                  }
+                });
+
+                db.run('COMMIT;', (commitErr) => {
+                  if (commitErr) {
+                    sendResponse(500, { error: commitErr.message });
+                    return;
                   }
 
-                  const id_venta = this.lastID;
-                  console.log(`Venta registrada con éxito. ID de la venta: ${id_venta}`);
-
-                  // Llamar a actualizarIndicadoresCliente
-                  actualizarIndicadoresCliente(id_cliente, fecha, (updateErr) => {
-                      if (updateErr) {
-                          console.error('Error al actualizar indicadores del cliente:', updateErr.message);
-                          db.run('ROLLBACK;', () => sendResponse(500, { error: updateErr.message }));
-                          return;
-                      }
-
-                      console.log(`Indicadores del cliente ${id_cliente} actualizados con éxito.`);
-
-                      // Consultar la información de la empresa
-                      db.get('SELECT * FROM InfoEmpresa WHERE id = ?', [1], (infoErr, infoEmpresa) => {
-                          if (infoErr) {
-                              console.error('Error al obtener la información de la empresa:', infoErr);
-                              db.run('ROLLBACK;', () => sendResponse(500, { error: infoErr.message }));
-                              return;
-                          }
-
-                          console.log('Información de la empresa obtenida:', infoEmpresa);
-
-                          // Notificar a repartidores si es Delivery
-                          if (!parsedMetodoEntrega.PickUp && parsedMetodoEntrega.Delivery) {
-                              db.all('SELECT email FROM repartidores', [], (repErr, repartidores) => {
-                                  if (repErr) {
-                                      console.error('Error al obtener los correos de los repartidores:', repErr);
-                                  } else if (repartidores.length > 0) {
-                                      const transporter = nodemailer.createTransport({
-                                          service: 'gmail',
-                                          auth: {
-                                              user: 'mycrushpizzaspain@gmail.com',
-                                              pass: 'pfpjczrsksoytvhv', // Contraseña de la aplicación
-                                          },
-                                      });
-
-                                      const mailPromises = repartidores.map((repartidor) => {
-                                          const mailOptions = {
-                                              from: 'mycrushpizzaspain@gmail.com',
-                                              to: repartidor.email,
-                                              subject: 'Nuevo Pedido de Delivery - MyPizzaCrush',
-                                              text: `
-                                                  ¡Hola!
-
-                                                  Se ha registrado un nuevo pedido de Delivery.
-
-                                                  Detalles del pedido:
-                                                  - Orden ID: ${id_order}
-                                                  - Dirección de entrega: ${parsedMetodoEntrega.Delivery?.address || 'No especificada'}
-                                                  - Cliente ID: ${id_cliente}
-                                                  - Hora del pedido: ${hora}
-                                                  - Total: €${total_con_descuentos}
-
-                                                  Por favor, revisa tu panel para más detalles.
-
-                                                  ¡Gracias!
-                                                  MyPizzaCrush Team
-                                              `,
-                                          };
-
-                                          return transporter.sendMail(mailOptions);
-                                      });
-
-                                      Promise.all(mailPromises)
-                                          .then((results) => {
-                                              console.log('Correos enviados con éxito a los repartidores:', results);
-                                          })
-                                          .catch((err) => {
-                                              console.error('Error al enviar correos a los repartidores:', err);
-                                          });
-                                  } else {
-                                      console.log('No se encontraron repartidores para notificar.');
-                                  }
-                              });
-                          }
-
-                          // Generar factura en PDF y enviar al cliente
-                          const doc = new PDFDocument({ margin: 30 });
-                          const pdfFilePath = path.join(__dirname, `factura_${id_order}.pdf`);
-                          const writeStream = fs.createWriteStream(pdfFilePath);
-                          doc.pipe(writeStream);
-
-                          doc.fontSize(14).font('Courier-Bold').text('MyPizzaCrush - Confirmación de Pedido', { align: 'center' });
-                          doc.moveDown(0.5);
-                          doc.fontSize(10).font('Courier').text(`Registro Fiscal: ${infoEmpresa?.registro_fiscal || 'No disponible'}`);
-                          doc.text(`Dirección: ${infoEmpresa?.direccion || 'No disponible'}`);
-                          doc.text(`Teléfono: ${infoEmpresa?.telefono_contacto || 'No disponible'}`);
-                          doc.text(`Correo: ${infoEmpresa?.correo_contacto || 'No disponible'}`);
-                          doc.moveDown(1);
-                          doc.fontSize(12).text(`Orden: ${id_order}`);
-                          doc.text(`Fecha: ${fecha}`);
-                          doc.text(`Hora: ${hora}`);
-                          doc.text(`Cliente ID: ${id_cliente}`);
-                          doc.text(`Método de Pago: ${metodo_pago}`);
-                          doc.end();
-
-                          writeStream.on('finish', () => {
-                              const transporter = nodemailer.createTransport({
-                                  service: 'gmail',
-                                  auth: {
-                                      user: 'mycrushpizzaspain@gmail.com',
-                                      pass: 'pfpjczrsksoytvhv',
-                                  },
-                              });
-
-                              const mailOptions = {
-                                  from: 'mycrushpizzaspain@gmail.com',
-                                  to: email,
-                                  subject: 'Confirmación de Pedido - MyPizzaCrush',
-                                  text: 'Adjuntamos tu factura digital en formato PDF.',
-                                  attachments: [
-                                      {
-                                          filename: `factura_${id_order}.pdf`,
-                                          path: pdfFilePath,
-                                      },
-                                  ],
-                              };
-
-                              transporter.sendMail(mailOptions, (err, info) => {
-                                  if (err) {
-                                      console.error('Error al enviar el correo:', err);
-                                  } else {
-                                      console.log('Correo enviado con éxito al cliente:', info.response);
-                                  }
-                              });
-
-                              db.run('COMMIT;', (commitErr) => {
-                                  if (commitErr) {
-                                      sendResponse(500, { error: commitErr.message });
-                                      return;
-                                  }
-
-                                  sendResponse(200, {
-                                      success: true,
-                                      message: 'Venta registrada y cliente actualizado con éxito',
-                                      id_venta,
-                                  });
-                              });
-                          });
-                      });
+                  sendResponse(200, {
+                    success: true,
+                    message: 'Venta registrada y cliente actualizado con éxito',
+                    id_venta,
                   });
-              }
-          );
-      });
+                });
+              });
+            });
+          });
+        }
+      );
+    });
   });
 });
 app.post('/clientes', (req, res) => {
-  const { email, password, phone, name, address_1, address_2, bday } = req.body;
+  const { email, password, phone, name, address_1, address_2, bday, latitud, longitud } = req.body;
 
   // Validar campos obligatorios
   if (!email || !password || !name || !phone) {
@@ -4126,13 +4297,13 @@ app.post('/clientes', (req, res) => {
 
     // Insertar el cliente con segmento inicial 1 (POTENCIAL)
     const insertClienteSql = `
-      INSERT INTO clientes (id_cliente, email, password, phone, name, address_1, address_2, bday, segmento, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'));
+      INSERT INTO clientes (id_cliente, email, password, phone, name, address_1, address_2, bday, latitud, longitud, segmento, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATETIME('now'));
     `;
 
     db.run(
       insertClienteSql,
-      [id_cliente, email, password, phone, name, address_1, address_2, bday, 1], // Segmento inicial 1
+      [id_cliente, email, password, phone, name, address_1, address_2, bday, latitud, longitud, 1], // Segmento inicial 1
       function (err) {
         if (err) {
           console.error('Error al agregar cliente:', err);
@@ -4392,36 +4563,35 @@ app.patch('/inventario/descontar', async (req, res) => {
     const { id_venta } = req.body;
     if (!id_venta) {
       console.error("❌ Error: No se recibió un id_venta.");
-      return res.status(400).json({ error: "Se requiere un id_venta para descontar ingredientes." });
+      return res.status(400).json({ error: "Se requiere un id_venta para descontar ingredientes y partners." });
     }
 
-    // 1️⃣ Obtener los productos de la venta específica desde `registro_ventas`
+    // 🔍 1️⃣ Obtener los productos y partners de la venta desde `registro_ventas`
     const venta = await new Promise((resolve, reject) => {
-      db.get("SELECT productos FROM registro_ventas WHERE id_venta = ?", [id_venta], (err, row) => {
+      db.get("SELECT productos, partners FROM registro_ventas WHERE id_venta = ?", [id_venta], (err, row) => {
         if (err) reject(err);
         else resolve(row);
       });
     });
 
-    if (!venta || !venta.productos) {
-      console.error(`❌ Venta con id_venta ${id_venta} no encontrada o sin productos.`);
-      return res.status(404).json({ error: "Venta no encontrada o sin productos." });
+    if (!venta) {
+      console.error(`❌ Venta con id_venta ${id_venta} no encontrada.`);
+      return res.status(404).json({ error: "Venta no encontrada." });
     }
 
-    console.log("✅ Productos encontrados:", venta.productos);
-    const productos = JSON.parse(venta.productos); // Convertir string JSON a objeto
+    console.log("✅ Productos y partners encontrados:", venta);
 
+    const productos = venta.productos ? JSON.parse(venta.productos) : [];
+    const partners = venta.partners ? JSON.parse(venta.partners) : [];
+
+    // 🔹 2️⃣ Descontar ingredientes de las pizzas
     for (const producto of productos) {
       console.log(`🔍 Procesando pizza ID: ${producto.id_pizza}`);
 
-      // Aquí construiremos la lista final de ingredientes que se deben descontar
       let ingredientesFinales = [];
 
-      // ----------------------------------------------------------------
-      // CASO 1: Pizzas “completas” (ID ≠ 101, 102, 103)
-      // ----------------------------------------------------------------
       if (producto.id_pizza !== 101 && producto.id_pizza !== 102 && producto.id_pizza !== 103) {
-        // 1A) Obtener la receta base desde `menu_pizzas`
+        // Obtener ingredientes base de la pizza
         const pizzaBase = await new Promise((resolve, reject) => {
           db.get(
             "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
@@ -4435,190 +4605,24 @@ app.patch('/inventario/descontar', async (req, res) => {
 
         if (!pizzaBase) {
           console.error(`❌ No se encontraron ingredientes para la pizza ID: ${producto.id_pizza}`);
-          continue; // Pasar a la siguiente pizza
+          continue;
         }
 
-        // 1B) Combinar receta base + extraIngredients
         ingredientesFinales = JSON.parse(pizzaBase.ingredientes) || [];
         if (producto.extraIngredients && Array.isArray(producto.extraIngredients)) {
           ingredientesFinales = ingredientesFinales.concat(producto.extraIngredients);
         }
-
-        console.log(`✅ (ID normal) Ingredientes combinados:`, ingredientesFinales);
-
-        // ----------------------------------------------------------------
-        // CASO 2: Pizza 101 o 103 (personalizada “completa”)
-        // ----------------------------------------------------------------
-      } else if (producto.id_pizza === 101 || producto.id_pizza === 103) {
-        console.log(`🛑 Pizza personalizada ID ${producto.id_pizza}. Usando solo extraIngredients.`);
-        // Estos IDs no tienen receta en `menu_pizzas`, solo se basan en el array extraIngredients
+      } else {
+        // Para pizzas personalizadas (ID 101/103) o mitad y mitad (ID 102)
         ingredientesFinales = producto.extraIngredients || [];
-
-        console.log(`✅ (ID personalizado 101/103) Ingredientes extra:`, ingredientesFinales);
-
-        // ----------------------------------------------------------------
-        // CASO 3: Pizza 102 (mitad y mitad)
-        // ----------------------------------------------------------------
-      } else if (producto.id_pizza === 102) {
-        console.log("🛑 Pizza mitad y mitad (ID 102). Desglosando sus dos mitades...");
-
-        // 3A) Revisa si existe la propiedad halfAndHalf con izquierda y derecha
-        if (!producto.halfAndHalf || !producto.halfAndHalf.izquierda || !producto.halfAndHalf.derecha) {
-          console.warn(`⚠️ No se encontró halfAndHalf completo en la pizza 102. Se usarán extraIngredients si existen.`);
-          // En caso de que no haya halfAndHalf, solo tomamos los extras
-          ingredientesFinales = producto.extraIngredients || [];
-        } else {
-          // Obtenemos el id de cada mitad
-          const leftID = producto.halfAndHalf.izquierda.id;
-          const rightID = producto.halfAndHalf.derecha.id;
-
-          // 3B) Obtener la receta de la mitad izquierda
-          let leftIngredientes = [];
-          if (leftID) {
-            const leftPizzaRow = await new Promise((resolve, reject) => {
-              db.get(
-                "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
-                [leftID],
-                (err, row) => {
-                  if (err) reject(err);
-                  else resolve(row);
-                }
-              );
-            });
-            if (leftPizzaRow) {
-              leftIngredientes = JSON.parse(leftPizzaRow.ingredientes) || [];
-            }
-          }
-
-          // 3C) Obtener la receta de la mitad derecha
-          let rightIngredientes = [];
-          if (rightID) {
-            const rightPizzaRow = await new Promise((resolve, reject) => {
-              db.get(
-                "SELECT ingredientes FROM menu_pizzas WHERE id = ?",
-                [rightID],
-                (err, row) => {
-                  if (err) reject(err);
-                  else resolve(row);
-                }
-              );
-            });
-            if (rightPizzaRow) {
-              rightIngredientes = JSON.parse(rightPizzaRow.ingredientes) || [];
-            }
-          }
-
-          console.log("👈 Ingredientes (mitad izquierda):", leftIngredientes);
-          console.log("👉 Ingredientes (mitad derecha):", rightIngredientes);
-
-          // 3D) Ajustar cada ingrediente multiplicando por 0.5
-          //    y luego por `producto.cantidad` (si piden más de 1 pizza)
-          const ingredientesIzq = leftIngredientes.map((ing) => {
-            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
-            return {
-              ...ing,
-              // Multiplicamos la porción base x 0.5 x cantidad
-              cantBySize: baseCant * 0.5 * producto.cantidad
-            };
-          });
-
-          const ingredientesDer = rightIngredientes.map((ing) => {
-            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
-            return {
-              ...ing,
-              cantBySize: baseCant * 0.5 * producto.cantidad
-            };
-          });
-
-          // 3E) Unir ambas mitades
-          //    (Opcional: podrías agrupar por IDI si quisieras sumar duplicados)
-          let combined = [...ingredientesIzq, ...ingredientesDer];
-
-          // 3F) Incorporar extraIngredients si existiera
-          if (producto.extraIngredients && Array.isArray(producto.extraIngredients)) {
-            // En el caso de la mitad y mitad, estos extras se aplican a la pizza entera
-            // (asumiendo que el user decidió agregarlos encima)
-            // Por lo tanto, no van a la mitad, sino al total completo
-            combined = combined.concat(
-              producto.extraIngredients.map((extraIng) => {
-                // Igual que con las mitades, calculamos la cantidad * product.cantidad
-                const baseCant = extraIng.cantBySize?.[producto.size] || extraIng.cantBySize || 0;
-                return {
-                  ...extraIng,
-                  cantBySize: baseCant * producto.cantidad
-                };
-              })
-            );
-          }
-
-          ingredientesFinales = combined;
-        }
-
-        console.log("✅ (ID 102) Ingredientes finales a descontar:", ingredientesFinales);
       }
 
-      // ----------------------------------------------------------------
-      // A partir de aquí: validación de stock y descuento
-      // ----------------------------------------------------------------
-      // Nota: en los casos 101/103 (y 102 si no encontró halfAndHalf),
-      // `ingredientesFinales` podría provenir directamente de extraIngredients,
-      // que ya traen la propiedad `cantBySize`.
-
-      // 3️⃣ Validar disponibilidad en inventario antes de descontar
-      //    Ajustamos el map para usar la *nueva* lógica: cada ingrediente
-      //    ahora guarda la cantidad necesaria en la propiedad `cantBySize`.
-      //    (Cuando la receta venía de la DB, era un objeto { S: 40, M: 60... }).
-      //    En el caso 102, ya lo hemos convertido a un número multiplicado por 0.5.
-
-      const ingredientesProcesables = await Promise.all(
-        ingredientesFinales.map(async (ing) => {
-          const lotes = await new Promise((resolve, reject) => {
-            db.all(
-              "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
-              [ing.IDI],
-              (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-              }
-            );
-          });
-
-          const cantidadDisponible = lotes.reduce((acc, lote) => acc + lote.disponible, 0);
-
-          // Si `ing.cantBySize` es un número, lo tomamos directamente.
-          // Si aún fuera un objeto (caso de pizzas normales ID≠102) interpretamos la sintaxis original.
-          // Este fallback evita romper la lógica si vienen objetos {S,M,L}.
-          let cantidadNecesaria = 0;
-          if (typeof ing.cantBySize === "number") {
-            // CASO: 102 (o la parte 101/103) ya convirtió a número
-            cantidadNecesaria = ing.cantBySize;
-          } else {
-            // CASO: Pizzas normales, donde `cantBySize` sigue siendo {S: X, M: Y, L: Z}
-            const baseCant = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
-            cantidadNecesaria = baseCant * (producto.cantidad || 1);
-          }
-
-          if (cantidadDisponible < cantidadNecesaria) {
-            console.warn(
-              `⚠️ Stock insuficiente para ${ing.nombre} (IDI: ${ing.IDI}). ` +
-              `Se usará lo que queda (${cantidadDisponible}) y se marcará como agotado.`
-            );
-            cantidadNecesaria = cantidadDisponible; // 🔹 Ajustamos la cantidad a lo que hay
-          }
-          // Retornamos la info del ingrediente, pero además incluimos la cantidadNecesaria calculada
-          return {
-            ...ing,
-            _cantidadNecesaria: cantidadNecesaria
-          };
-        })
-      );
-
-      // Filtrar out nulos
-      const ingredientesFiltrados = ingredientesProcesables.filter(Boolean);
-
-      // 4️⃣ Descontar del inventario cada ingrediente
-      for (const ing of ingredientesFiltrados) {
-        console.log(`🔄 Procesando ingrediente: $(IDI: ${ing.IDI})`);
+      // 🔹 Validar stock y descontar ingredientes
+      for (const ing of ingredientesFinales) {
+        if (!ing.IDI) {
+          console.warn(`⚠️ Ingrediente sin IDI, se omite:`, ing);
+          continue;
+        }
 
         const lotes = await new Promise((resolve, reject) => {
           db.all(
@@ -4631,7 +4635,8 @@ app.patch('/inventario/descontar', async (req, res) => {
           );
         });
 
-        let cantidadRestante = ing._cantidadNecesaria;
+        let cantidadRestante = ing.cantBySize?.[producto.size] || ing.cantBySize || 0;
+        cantidadRestante *= producto.cantidad;
 
         for (let lote of lotes) {
           if (cantidadRestante <= 0) break;
@@ -4639,7 +4644,7 @@ app.patch('/inventario/descontar', async (req, res) => {
           const cantidadADescontar = Math.min(cantidadRestante, lote.disponible);
           cantidadRestante -= cantidadADescontar;
 
-          console.log(`➖ Descontando ${cantidadADescontar} de lote IDR ${lote.IDR}`);
+          console.log(`➖ Descontando ${cantidadADescontar} de ingrediente ${ing.nombre} (Lote IDR: ${lote.IDR})`);
 
           await new Promise((resolve, reject) => {
             db.run(
@@ -4654,18 +4659,62 @@ app.patch('/inventario/descontar', async (req, res) => {
         }
 
         if (cantidadRestante > 0) {
-          console.warn(
-            `⚠️ No se pudo cubrir completamente el ingrediente ${ing.nombre} (${ing.IDI}). ` +
-            `Faltan ${cantidadRestante} unidades.`
-          );
+          console.warn(`⚠️ No hay suficiente stock para el ingrediente ${ing.nombre} (${ing.IDI}). Faltan ${cantidadRestante} unidades.`);
         }
       }
     }
 
-    res.json({ message: "✅ Ingredientes descontados correctamente." });
+    // ✅ 3️⃣ Descontar inventario de los PARTNERS (complementos)
+    for (const partner of partners) {
+      if (!partner.idi) {
+        console.warn(`⚠️ Partner sin IDI, se omite:`, partner);
+        continue;
+      }
+
+      console.log(`🔍 Procesando partner (complemento): ${partner.producto} (ID: ${partner.id}, IDI: ${partner.idi})`);
+
+      const lotes = await new Promise((resolve, reject) => {
+        db.all(
+          "SELECT IDR, disponible FROM inventario WHERE IDI = ? ORDER BY fechaCaducidad ASC, IDR ASC",
+          [partner.idi],  
+          (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          }
+        );
+      });
+
+      let cantidadRestante = partner.cantidad; 
+
+      for (let lote of lotes) {
+        if (cantidadRestante <= 0) break;
+
+        const cantidadADescontar = Math.min(cantidadRestante, lote.disponible);
+        cantidadRestante -= cantidadADescontar;
+
+        console.log(`➖ Descontando ${cantidadADescontar} de ${partner.producto} (Lote IDR: ${lote.IDR})`);
+
+        await new Promise((resolve, reject) => {
+          db.run(
+            "UPDATE inventario SET disponible = ? WHERE IDR = ?",
+            [lote.disponible - cantidadADescontar, lote.IDR],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }
+
+      if (cantidadRestante > 0) {
+        console.warn(`⚠️ No hay suficiente stock para el partner ${partner.producto} (${partner.idi}). Faltan ${cantidadRestante} unidades.`);
+      }
+    }
+
+    res.json({ message: "✅ Ingredientes y partners descontados correctamente del inventario." });
   } catch (error) {
-    console.error("❌ Error interno al descontar ingredientes:", error);
-    res.status(500).json({ error: "Error interno al descontar ingredientes." });
+    console.error("❌ Error interno al descontar inventario:", error);
+    res.status(500).json({ error: "Error interno al descontar ingredientes y partners." });
   }
 });
 app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
@@ -5988,21 +6037,21 @@ app.put('/IngredientExtraPrices/:id', async (req, res) => {
   }
 });
 app.put('/clientes/:id_cliente', (req, res) => {
-  const { name, phone, address_1, address_2 } = req.body; // Agregamos address_2
+  const { name, phone, address_1, address_2, latitud, longitud } = req.body; // Agregamos latitud y longitud
   const { id_cliente } = req.params;
 
   db.run(
     `UPDATE clientes 
-     SET name = ?, phone = ?, address_1 = ?, address_2 = ? 
+     SET name = ?, phone = ?, address_1 = ?, address_2 = ?, latitud = ?, longitud = ? 
      WHERE id_cliente = ?`,
-    [name, phone, address_1, address_2, id_cliente],  // Agregamos address_2 en los valores
+    [name, phone, address_1, address_2, latitud, longitud, id_cliente],  // Agregamos latitud y longitud en los valores
     function (err) {
       if (err) {
         res.status(500).json({ error: "Error al actualizar el cliente" });
         console.error("Error al actualizar el cliente:", err);
         return;
       }
-      res.json({ message: "Cliente actualizado correctamente" });
+      res.json({ message: "Cliente actualizado correctamente con coordenadas" });
     }
   );
 });

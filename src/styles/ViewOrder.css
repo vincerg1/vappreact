@@ -1,120 +1,60 @@
-/* styles/ViewOrder.css */
-.table-container {
-  width: 95%;
-  max-height: 800px; /* Ajusta la altura máxima según tus necesidades */
-  overflow-y: auto;  /* Activa el scroll vertical */
-  scrollbar-width: thin; /* Estilo fino para el scrollbar en Firefox */
-  margin: 0 auto;
-}
-
-.table-container thead th {
-  color: #adacac ;
-  background-color: rgb(0, 0, 0);
-}
-.table-container-button button {
-  color: rgb(255, 255, 255);
-  background-color: rgb(0, 0, 0);
-  }
-  .table-container-button button :hover{
-    color: rgb(255, 255, 255);
-    background-color: rgb(130, 127, 127);
-    }
-
-.table-container::-webkit-scrollbar {
-  width: 8px;  /* Ancho del scrollbar */
-}
-
-.table-container::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.3); /* Color del scrollbar */
-  border-radius: 10px;
-}
-
-.table-container::-webkit-scrollbar-track {
-  background-color: #f4f4f4;  /* Fondo del scrollbar */
-}
-
-/* Ajustes para la tabla */
+/* Ajuste principal: forzar la tabla a usar anchos fijos */
 .table-container table {
-  width: 100%; /* La tabla usa todo el ancho disponible */
-  table-layout: auto; /* Ajustar automáticamente el tamaño de las columnas */
-}
-
-.table-container th, .table-container td {
-  padding: 8px; /* Espaciado interno */
-  text-align: left; /* Alineación del texto */
-  min-width: 50px; /* Establecer un ancho mínimo */
-}
-
-/* Especificar anchos para columnas específicas */
-.table-container th:nth-child(1), /* Primera columna: ID Orden */
-.table-container td:nth-child(1) {
-  width: 80px;  /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(2), /* Segunda columna: Fecha */
-.table-container td:nth-child(2) {
-  width: 100px;  /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(3), /* Tercera columna: Hora */
-.table-container td:nth-child(3) {
-  width: 80px;  /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(4), /* Cuarta columna: Cliente */
-.table-container td:nth-child(4) {
-  width: 150px; /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(5), /* Quinta columna: Productos */
-.table-container td:nth-child(5) {
-  width: 200px; /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(6), /* Sexta columna: Total */
-.table-container td:nth-child(6) {
-  width: 80px; /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(7), /* Séptima columna: TicketExpress */
-.table-container td:nth-child(7) {
-  width: 50px; /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(8), /* Octava columna: Incentivos */
-.table-container td:nth-child(8) {
-  width: 50px; /* Ajusta según sea necesario */
-}
-
-.table-container th:nth-child(9), /* Novena columna: Acciones */
-.table-container td:nth-child(9) {
-  width: 100px; /* Ajusta según sea necesario */
-}
-
-button {
-  padding: 5px 10px; /* Ajustar el espaciado */
-  margin: 2px; /* Espacio entre botones */
-  border: none; /* Sin borde */
-  border-radius: 4px; /* Bordes redondeados */
-  background-color: #000000; /* Color de fondo */
-  color: white; /* Color del texto */
-  cursor: pointer; /* Cambiar el cursor al pasar el ratón */
-  font-size: 14px; /* Tamaño de fuente */
-  transition: background-color 0.3s; /* Transición para el hover */
-}
-
-button:hover {
-  background-color: #7c7f7c; /* Cambiar color en hover */
+  width: 95%;
+  border-collapse: collapse; /* Para que queden sin doble borde */
+  margin: 0 auto; 
 }
 .filter-container2{
   width: 95%;
-  background-color: #e3e2e2;
-  border-radius: 10px;
-  margin: 0 auto;
-  margin-top: 50px;
+  margin: 0 auto; 
+}
+
+.table-container-button button{
+  margin-right: 1rem;
+  gap: 15px;          
+  align-items: center;
+}
+
+.table-container ul {
+  list-style-type: none; /* Quitar viñetas */
+  margin: 0;             /* Quitar margen por defecto */
+  padding: 0;            /* Quitar padding por defecto */
 }
 
 
-.filter-container2 select{
-  background-color: #eeecec;
+.order-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999; /* Asegura que esté por encima de otros elementos */
+}
+
+.order-modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  width: 250px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.order-modal-content button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.order-modal-content button:last-child {
+  background-color: #dc3545;
 }

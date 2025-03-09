@@ -357,11 +357,9 @@ margin-top: -1rem;
   overflow-y: auto; 
   padding-right: 5px;
 }
-
 .complementos-lista::-webkit-scrollbar {
   width: 6px;
 }
-
 .complementos-lista::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 4px;
@@ -376,3 +374,11 @@ margin-top: -1rem;
 .no-complementos p{
   background-color: #0056b3;
 }
+.error-message p {
+  margin-top: 5px;
+  font-size: 0.65em;
+  color: rgb(243, 24, 24);
+  font-weight: bold;
+}
+
+

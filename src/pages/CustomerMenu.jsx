@@ -27,14 +27,24 @@ const CustomerMenu = () => {
     DescuentosDailyChallenge: 0,
     cupones: initialCompra.cupones || [], 
     venta: initialCompra.venta || [],
-    Entrega: initialCompra.Entrega || {},
+    complementos: initialCompra.complementos || [],
+    Entrega: {
+      ...initialCompra.Entrega,
+      Delivery: initialCompra.Entrega?.Delivery
+          ? {
+              ...initialCompra.Entrega.Delivery,
+              latitud: initialCompra.Entrega?.Delivery?.latitud || '',
+              longitud: initialCompra.Entrega?.Delivery?.longitud || ''
+          }
+          : {}
+  },
     total_productos: initialCompra.total_productos || 0.0,
     total_descuentos: initialCompra.total_descuentos || 0.0,
     total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
     venta_procesada: 0,
     origen: '',
     observaciones: '',
-    complementos: initialCompra.complementos || [],
+    is_scheduled_order: false,
   });
 
 
@@ -535,6 +545,9 @@ setTotalPrice(newTotalPrice);
       };
     });
   };
+
+ 
+  
   
 
   return (
@@ -552,7 +565,7 @@ setTotalPrice(newTotalPrice);
       eliminarComplemento={eliminarComplemento} 
       />
 
-      {/* Menú y selección de pizza */}
+
       {!showDeliveryForm && (
         <>
           <h1>Selecciona tu Pizza del Menú</h1>
@@ -573,12 +586,9 @@ setTotalPrice(newTotalPrice);
           </div>
         </>
       )}
-
-      {/* Mostrar formulario de condiciones de entrega cuando se hace clic en "Siguiente" */}
       {showDeliveryForm && (
         <DeliveryForm compra={compra} setCompra={setCompra} />
       )}
-
       {isFormVisible && pizzaDetails && (
         <div className="form-container">
           <div className="modal-content">

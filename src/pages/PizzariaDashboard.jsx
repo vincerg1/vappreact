@@ -4,6 +4,7 @@ import { _PizzaContext } from './_PizzaContext';
 import axios from 'axios';
 import TimeAttendanceModal from "./TimeAttendanceModal";
 import WarningModal from './WarningModal';
+import ScheduledOrdersModal from './ScheduledOrdersModal';
 import '../styles/PizzariaDashboard.css';
 import moment from 'moment-timezone';  
 
@@ -31,6 +32,8 @@ const PizzariaDashboard = () => {
   const [warningActive, setWarningActive] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningsDashboard, setWarningsDashboard] = useState([]);
+  const [scheduledOrders, setScheduledOrders] = useState([]);      
+  const [showScheduledModal, setShowScheduledModal] = useState(false);
   const navigate = useNavigate();  
 
   
@@ -202,6 +205,42 @@ const PizzariaDashboard = () => {
   
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    const fetchScheduledOrders = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/registro_ventas');
+        const allOrders = response.data.data || [];
+  
+        // Filtrar los pedidos que:
+        // - Tengan is_scheduled_order = 1
+        // - Estén sin procesar (venta_procesada = 0)
+        // - Sean para HOY (fechaYHoraPrometida empiece con YYYY-MM-DD actual)
+        const today = moment().format('YYYY-MM-DD');
+  
+        const todayScheduled = allOrders.filter(order => {
+          if (order.is_scheduled_order !== 1 || order.venta_procesada === 1) return false;
+  
+          const metodoEntrega = JSON.parse(order.metodo_entrega || '{}');
+          const fechaPrometida = metodoEntrega.Delivery?.fechaYHoraPrometida ||
+                                 metodoEntrega.PickUp?.fechaYHoraPrometida ||
+                                 '';
+          // Revisar si coincide con el día actual
+          return fechaPrometida.startsWith(today);
+        });
+  
+        setScheduledOrders(todayScheduled);
+      } catch (error) {
+        console.error('Error al obtener pedidos programados:', error);
+      }
+    };
+  
+    // Llamada inicial y cada 10-15 segundos
+    fetchScheduledOrders();
+    const interval = setInterval(fetchScheduledOrders, 15000);
+  
+    return () => clearInterval(interval);
+  }, []);
+  
   
   const irAListaIngredientes = () => {
     navigate('/_Inicio/_InvIngDB/_ListaIngredientes');
@@ -464,7 +503,15 @@ const PizzariaDashboard = () => {
       <div className="top-bar">
         <div className="icon-group">
           <div className="icon weather-icon" title="Clima">🌤️</div>
-          <div className="icon calendar-icon" title="Calendario">📅</div>
+          <div
+            className={`icon calendar-icon ${
+              scheduledOrders.length > 0 ? 'scheduled-active' : ''
+            }`}
+            title="Pedidos programados para hoy"
+            onClick={() => setShowScheduledModal(true)}
+          >
+            📅
+          </div>
           <div
           className={`icon warning-icon ${warningActive ? 'warning-active' : ''}`}
           onClick={() => setShowWarningModal(true)}
@@ -485,11 +532,13 @@ const PizzariaDashboard = () => {
           </div>
         </div>
       </div>
-      {isServiceSuspended && (
-        <div className="suspension-notice">
-          <p>Servicio suspendido. {remainingTime}</p>
-        </div>
+      {showScheduledModal && (
+        <ScheduledOrdersModal
+          orders={scheduledOrders}
+          onClose={() => setShowScheduledModal(false)}
+        />
       )}
+
   
       <div className="current-date">
       <h1>Pizzeria Dashboard</h1>
@@ -639,6 +688,16 @@ const PizzariaDashboard = () => {
             setWarningsDashboard={setWarningsDashboard}
             setWarningActive={setWarningActive}
           />
+          </div>
+        </div>
+      )}
+      {showScheduledModal && (
+        <div className="modal-overlay">
+          <div className="modal-content scheduled-modal">
+            <ScheduledOrdersModal
+              orders={scheduledOrders}
+              onClose={() => setShowScheduledModal(false)}
+            />
           </div>
         </div>
       )}

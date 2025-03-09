@@ -1,29 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../styles/inicio_style.css';
 
 export const Inicio = () => {
   const navigate = useNavigate();
+
+  // 1. Leemos localStorage la primera vez que se renderiza el componente
+  const [loggedIn, setLoggedIn] = useState(() => {
+    const storedLoggedIn = localStorage.getItem('loggedIn');
+    return storedLoggedIn ? JSON.parse(storedLoggedIn) : false;
+  });
+
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ Estado de carga agregado
+  const [loading, setLoading] = useState(false);
+
+  // 2. Si `loggedIn` ya está en true en localStorage, evita que reinicie sesión
+  //    (Opcional). Solo si necesitas redirigir automáticamente al Panel
+  useEffect(() => {
+    if (loggedIn) {
+      navigate('/_Inicio');
+    }
+  }, [loggedIn, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true); // ⏳ Inicia la carga
+    setLoading(true);
     setError(null);
 
     try {
       const response = await axios.post('http://localhost:3001/admin/login', { correo, contrasena });
-
       if (response.data.admin) {
+        // Guardamos en localStorage
         localStorage.setItem('loggedIn', JSON.stringify(true));
         localStorage.setItem('admin', JSON.stringify(response.data.admin));
 
+        // Actualizamos el estado
         setLoggedIn(true);
+
+        // Navegamos al Backoffice
+        navigate('/_Inicio');
       }
     } catch (error) {
       if (error.response && error.response.status === 401) {
@@ -32,7 +50,7 @@ export const Inicio = () => {
         setError('⚠ Error al iniciar sesión. Inténtalo más tarde.');
       }
     } finally {
-      setLoading(false); // 🔄 Finaliza la carga
+      setLoading(false);
     }
   };
 
@@ -45,7 +63,7 @@ export const Inicio = () => {
   const handleRouteSetterClick = () => navigate('/RouteSetterAdmin');
   const handleControlHorarioIndexSetterClick = () => navigate('/control-horario');
 
-
+  // 3. Renderizado condicional en base a loggedIn
   return (
     <div className="login-container">
       {!loggedIn ? (
@@ -127,4 +145,3 @@ export const Inicio = () => {
 };
 
 export default Inicio;
-

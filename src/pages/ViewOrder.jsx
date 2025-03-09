@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Ticket from './Ticket'; 
+import moment from 'moment';
 import '../styles/ViewOrder.css'; 
 
 const ViewOrder = () => {
   const [orders, setOrders] = useState([]);
-  const [pizzas, setPizzas] = useState([]); // Para almacenar los nombres de las pizzas
+  const [pizzas, setPizzas] = useState([]); 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [locations, setLocations] = useState([]); // Para almacenar las ubicaciones extraídas de las órdenes
-  const [selectedLocation, setSelectedLocation] = useState(''); // Ubicación seleccionada para filtrar
+  const [locations, setLocations] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(''); 
+  const [updateTime, setUpdateTime] = useState(Date.now());
 
 
   useEffect(() => {
@@ -61,6 +63,14 @@ const ViewOrder = () => {
 
     fetchOrders();
     fetchPizzas();
+  }, []);
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      // Con esto forzamos un re-render marcando el estado
+      setUpdateTime(Date.now()); 
+    }, 60000); // cada 60 segundos
+  
+    return () => clearInterval(intervalId);
   }, []);
 
   const markOrderAsProcessed = async (id_venta) => {
@@ -145,7 +155,7 @@ const ViewOrder = () => {
         {filteredOrders.length === 0 ? (
           <div style={{ textAlign: "center", marginTop: "10rem" }}>
             <div style={{ fontSize: "80px" }}>🐒</div>
-            <p>No hay órdenes pendientes... </p>
+            <p>No hay órdenes pendientes...! </p>
           </div>
         ) : (
           <div className="table-container"> 
@@ -159,29 +169,46 @@ const ViewOrder = () => {
                   <th>Productos</th>
                   <th>Total</th>
                   <th>TicketExpress</th>
+                  <th>Programado</th>
                   <th>Incentivos</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map((order) => {
-                  const productos = JSON.parse(order.productos); 
+                  const productos = JSON.parse(order.productos);
                   const metodoEntrega = JSON.parse(order.metodo_entrega);
                   const isPickup = metodoEntrega.PickUp;
                   const isDelivery = metodoEntrega.Delivery;
-                  const isTicketExpress = isPickup ? metodoEntrega.PickUp.TicketExpress : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false); 
-                  const fechaYHoraPrometida = isPickup 
-                    ? metodoEntrega.PickUp.fechaYHoraPrometida 
-                    : isDelivery 
-                    ? metodoEntrega.Delivery.fechaYHoraPrometida 
-                    : 'N/A';  
-                  const metodo = isPickup ? 'Pickup' : 'Delivery'; 
-    
+                  const isTicketExpress = isPickup
+                    ? metodoEntrega.PickUp.TicketExpress
+                    : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false);
+
+                  const fechaYHoraPrometida = isPickup
+                    ? metodoEntrega.PickUp.fechaYHoraPrometida
+                    : isDelivery
+                      ? metodoEntrega.Delivery.fechaYHoraPrometida
+                      : 'N/A';
+
+                  const metodo = isPickup ? 'Pickup' : 'Delivery';
+
+                  // Leer incentivos
                   const incentivos = order.incentivos ? JSON.parse(order.incentivos) : [];
-                  const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0 
-                    ? incentivos.map(inc => inc.id).join(', ') 
+                  const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0
+                    ? incentivos.map(inc => inc.id).join(', ')
                     : 'No';
-    
+
+                  // 1) Ver si el pedido es programado
+                  const isScheduled = (order.is_scheduled_order === 1);
+                  let canProcess = true; 
+                  if (isScheduled && fechaYHoraPrometida !== 'N/A') {
+                  const diffInMinutes = moment(fechaYHoraPrometida, 'YYYY-MM-DD HH:mm').diff(moment(updateTime), 'minutes');
+
+                    
+                    // Si faltan más de 60 min, NO podemos procesar
+                    canProcess = (diffInMinutes <= 60);
+                  }
+
                   return (
                     <tr key={order.id_venta}>
                       <td>{order.id_venta}</td>
@@ -191,38 +218,40 @@ const ViewOrder = () => {
                       <td>
                         <ul>
                           {productos.map((producto) => {
+                            // Buscar la pizza en tu lista
                             const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
-                            const customPizzaNames = {
-                              101: 'PP1',
-                              102: 'PP2',
-                              103: 'PP3',
-                            };
+                            const customPizzaNames = { 101: 'PP1', 102: 'PP2', 103: 'PP3' };
+                            
                             let nombrePizza = 'Desconocida';
                             if (pizza) {
                               nombrePizza = pizza.nombre;
                             } else if (customPizzaNames[producto.id_pizza]) {
                               nombrePizza = customPizzaNames[producto.id_pizza];
                             }
-    
+
+                            // Manejar mitad y mitad
                             if (producto.id_pizza === 102 && producto.halfAndHalf) {
                               return (
                                 <li key={producto.id_pizza}>
                                   Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
                                   <ul>
-                                    <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre} </li>
+                                    <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre}</li>
                                     <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
                                   </ul>
                                 </li>
                               );
                             }
-    
+
+                            // Caso normal
                             return (
                               <li key={producto.id_pizza}>
-                                Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza} 
+                                Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
                                 {producto.extraIngredients && producto.extraIngredients.length > 0 && (
                                   <ul>
                                     {producto.extraIngredients.map((extra, idx) => (
-                                      <li key={idx}>+IE: {extra.nombre} ({extra.precio.toFixed(2)}€)</li>
+                                      <li key={idx}>
+                                        +IE: {extra.nombre} ({extra.precio.toFixed(2)}€)
+                                      </li>
                                     ))}
                                   </ul>
                                 )}
@@ -232,11 +261,26 @@ const ViewOrder = () => {
                         </ul>
                       </td>
                       <td>{parseFloat(order.total_con_descuentos).toFixed(2)}€</td>
-                      <td>{isTicketExpress ? 'Sí' : 'No'}</td> 
+                      <td>{isTicketExpress ? 'Sí' : 'No'}</td>
+                      <td>{order.is_scheduled_order === 1 ? 'Sí' : 'No'}</td>
                       <td>{incentivosIds}</td>
-                      <td className='table-container-button'>
-                        <button onClick={() => markOrderAsProcessed(order.id_venta)}>Ready</button>
+
+                      {/* 3) Botones: Ready se deshabilita si !canProcess */}
+                      <td className="table-container-button">
+                        <button
+                          onClick={() => markOrderAsProcessed(order.id_venta)}
+                          disabled={!canProcess}
+                        >
+                          Ready
+                        </button>
                         <button onClick={() => showTicketModal(order)}>Print</button>
+
+                        {/* 4) Mensaje si faltan > 1 hora */}
+                        {!canProcess && (
+                          <span style={{ marginLeft: '5px', color: 'red', fontSize: '0.85rem' }}>
+                         
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -246,15 +290,15 @@ const ViewOrder = () => {
           </div>
         )}
     
-        {showModal && selectedOrder && (
-          <div className="modal">
-            <div className="modal-content">
-              <Ticket order={selectedOrder} />
-              <button onClick={() => window.print()}>Imprimir</button>
-              <button onClick={closeModal}>Cerrar</button>
-            </div>
+          {showModal && selectedOrder && (
+        <div className="order-modal">
+          <div className="order-modal-content">
+            <Ticket order={selectedOrder} />
+            <button onClick={() => window.print()}>Imprimir</button>
+            <button onClick={closeModal}>Cerrar</button>
           </div>
-        )}
+        </div>
+      )}
       </div>
     );    
 };

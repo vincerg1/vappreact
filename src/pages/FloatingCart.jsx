@@ -22,7 +22,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   const [complementoQuantities, setComplementoQuantities] = useState({});
   const [complementoEnEdicion, setComplementoEnEdicion] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-
+  const isScheduledOrder = compra?.is_scheduled_order ? 1 : 0;
 
   useEffect(() => {
     const fetchIncentivos = async () => {
@@ -56,10 +56,20 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     }
   }, [compra.venta]);
   useEffect(() => {
-    if (compra.Entrega) {
-      guardarEnHistorial('entrega', { metodo: compra.Entrega });
+    if (compra.Entrega?.Delivery) {
+        setCompra((prevCompra) => ({
+            ...prevCompra,
+            Entrega: {
+                ...prevCompra.Entrega,
+                Delivery: {
+                    ...prevCompra.Entrega.Delivery,
+                    latitud: prevCompra.Entrega.Delivery.latitud || prevCompra.Entrega.Delivery.tiendaSalida?.lat, // ✅ Extraemos de tiendaSalida si es necesario
+                    longitud: prevCompra.Entrega.Delivery.longitud || prevCompra.Entrega.Delivery.tiendaSalida?.lng // ✅ Extraemos de tiendaSalida si es necesario
+                }
+            }
+        }));
     }
-  }, [compra.Entrega]);
+  }, [compra.Entrega]); 
   useEffect(() => {
     setQrData(getQRCodeData());
   }, [compra?.Entrega]);
@@ -70,7 +80,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         console.log("🟢 Estado actualizado de compra:", nuevaCompra);
         return nuevaCompra;
     });
-}, [compra]);
+  }, [compra]);
 
 
 
@@ -267,8 +277,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         totalCupones: costos.totalCupones,
         freePassApplied
     };
-};
-
+  };
   const handleUndo = () => {
     const qrActual = qrData;
     // Borrar todo y restaurar QR
@@ -314,6 +323,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         total_con_descuentos: compra.total_a_pagar_con_descuentos || totalSinDescuentosNum,
         total_productos: totalSinDescuentosNum,
         total_descuentos: totalDescuentosNum,
+        is_scheduled_order: isScheduledOrder,
         productos: compra.venta.map((item) => {
           // Manejo especial para pizzas mitad y mitad
           if (item.id === 102 && item.halfAndHalf) {
@@ -335,6 +345,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
             extraIngredients: item.extraIngredients || [],
           };
         }),
+        partners: compra.complementos, 
         cupones: compra.cupones,
         incentivos: incentivosAlcanzados.map((inc) => ({ id: inc.id })),
         metodo_entrega: JSON.stringify({
@@ -346,6 +357,8 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
               : compra.Entrega?.Delivery?.costoReal,
             costoReal: compra.Entrega?.Delivery?.costoReal,
             freePassApplied: compra.Entrega?.Delivery?.freePassApplied || false,
+            latitud: compra.Entrega?.Delivery?.latitud, // 🔹 Agregamos coordenadas
+            longitud: compra.Entrega?.Delivery?.longitud // 🔹 Agregamos coordenadas
           },
         }),
         observaciones: compra.observaciones,
@@ -454,6 +467,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         precio: complemento.precio,
         cantidad: cantidadSeleccionada,
         id: complemento.id,
+        idi: complemento.IDI,
         subcategoria: complemento.subcategoria,
         total: parseFloat((complemento.precio * cantidadSeleccionada).toFixed(2)),
       });
@@ -504,7 +518,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     setSelectedSubcategoria(complemento.subcategoria);
     setShowComplementModal(true);
   };
-
   const resaltarCoincidencias = (texto, busqueda) => {
     if (!busqueda) return texto; // Si no hay búsqueda, devolver el texto normal
   
@@ -686,57 +699,78 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       </div>
 
       {showComplementModal && (
-        <div className="modal-complementos">
-          <div className="modal-content">
-            <h3>Pick Your {selectedSubcategoria}</h3>
+  <div className="modal-complementos">
+    <div className="modal-content">
+      <h3>Pick Your {selectedSubcategoria}</h3>
 
-            {/* Barra de búsqueda */}
-            <input
-              type="text"
-              placeholder="Buscar..."
-              className="complementos-busqueda"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <ul className="complementos-lista">
-            {filteredComplementos.length === 0 ? (
-  <p className="no-complementos">
-    🤷‍♀️ Sorry, no {selectedSubcategoria} available right now! 😢
-  </p>
-              ) : (
-                filteredComplementos.map((item) => (
-                  <li key={item.id} className="complemento-item">
-                    <span className="complemento-nombre">
-                      {resaltarCoincidencias(item.producto, searchTerm)} - {item.precio}€
-                    </span>
-                    <select
-                      className="complemento-cantidad"
-                      value={complementoQuantities[item.id] || 0}
-                      onChange={(e) => handleLocalQuantityChange(e, item.id)}
-                    >
-                      {[...Array(10).keys()].map((num) => (
-                        <option key={num} value={num}>
-                          {num}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="agregar-complemento"
-                      onClick={() => {
-                        handleAddComplemento(item);
-                        handleCloseModal();
-                      }}
-                    >
-                      ✔
-                    </button>
-                  </li>
-                ))
-              )}
+      {/* Barra de búsqueda */}
+      <input
+        type="text"
+        placeholder="Buscar..."
+        className="complementos-busqueda"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <ul className="complementos-lista">
+        {filteredComplementos.length === 0 ? (
+          <p className="no-complementos">
+            🤷‍♀️ Sorry, no {selectedSubcategoria} available right now! 😢
+          </p>
+        ) : (
+          filteredComplementos.map((item) => {
+            const cantidadSeleccionada = complementoQuantities[item.id] || 0;
 
-            </ul>
-          </div>
-        </div>
-      )}
+            return (
+              <li
+                key={item.id}
+                className={`complemento-item ${cantidadSeleccionada === 0 ? "error" : ""}`}
+              >
+                <span className="complemento-nombre">
+                  {resaltarCoincidencias(item.producto, searchTerm)} - {item.precio}€
+                </span>
+                <select
+                  className="complemento-cantidad"
+                  value={cantidadSeleccionada}
+                  onChange={(e) => handleLocalQuantityChange(e, item.id)}
+                >
+                  {[...Array(10).keys()].map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="agregar-complemento"
+                  onClick={() => {
+                    if (cantidadSeleccionada === 0) {
+                      // Muestra el error solo si el usuario intenta agregar con cantidad 0
+                      document.getElementById(`error-${item.id}`).style.display = "block";
+                      return;
+                    }
+                    handleAddComplemento(item);
+                    handleCloseModal();
+                  }}
+                >
+                  ✔
+                </button>
+                {/* Mensaje de error visible solo si el usuario intenta agregar con cantidad 0 */}
+                <p
+                  id={`error-${item.id}`}
+                  className="error-message"
+                  style={{ display: "none", color: "red", fontSize: "0.9em" }}
+                >
+                  ⚠️ You must select at least 1 unit.
+                </p>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  </div>
+)}
+
+
 
       {(compra.total_productos > 0 || compra.venta.length > 0 || compra.complementos.length > 0) && (
         <div className="totals2">

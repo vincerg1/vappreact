@@ -3,10 +3,9 @@ import React, { useState, useContext, useEffect, useRef, useCallback } from 'rea
 import { _PizzaContext } from './_PizzaContext';
 import { useLocation } from 'react-router-dom';  
 import { GoogleMap, Marker, Autocomplete, LoadScriptNext } from "@react-google-maps/api";
-
+import { debounce } from 'lodash';
 import axios from 'axios';
 import moment from 'moment';
-import { debounce } from 'lodash';
 import '../styles/DeliveryForm.css';
 import AddressFormModal from './AddressFormModal';
 
@@ -418,6 +417,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
     const nuevaTemporalidad = e.target.value;
     setDeliveryTimeOption(nuevaTemporalidad);
 
+    const esProgramado = (nuevaTemporalidad === 'custom');
     let extraMinutes = 0;
     if (nuevaTemporalidad === '30min') extraMinutes = 30;
     else if (nuevaTemporalidad === '45min') extraMinutes = 45;
@@ -451,6 +451,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
     setCompra((prevCompra) => {
         const updatedCompra = {
             ...prevCompra,
+            is_scheduled_order: esProgramado, 
             Entrega: selectedOption === 'pickup'
                 ? {
                     PickUp: {
@@ -459,6 +460,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
                         telefono: pickupInfo.telefono,
                         fechaYHoraPrometida: horaPrometida,
                         TicketExpress: nuevaTemporalidad === 'Express',
+                        fechaYHoraPrometida: esProgramado ,
                         costoTicketExpress: costoTicketExpress,
                         puntoRecogida: storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
                     }
@@ -471,16 +473,19 @@ const DeliveryForm = ({ setCompra, compra }) => {
                         fechaYHoraPrometida: horaPrometida,
                         address: addressInfo.address,
                         postalCode: addressInfo.postalCode,
+                        latitud: addressInfo.lat, // 🔹 Agregar coordenadas
+                        longitud: addressInfo.lng, // 🔹 Agregar coordenadas
                         costo: costoDelivery,  // ✅ Aquí aplicamos el valor corregido
                         costoReal: calcularPrecioDelivery(),
                         TicketExpress: nuevaTemporalidad === 'Express',
+                        fechaYHoraPrometida: esProgramado,
                         costoTicketExpress: costoTicketExpress,
                         tiendaSalida: storeLocation,
-                        freePassApplied: freePassFinal,  // ✅ Se asegura que se propague correctamente
+                        freePassApplied: freePassFinal,  
                     }
                 },
             totalTicketExpress: costoTicketExpress,
-            totalDelivery: costoDelivery,  // ✅ Se sincroniza con el estado correcto
+            totalDelivery: costoDelivery,  
             cliente: {
                 name: pickupInfo.nombre,
                 phone: pickupInfo.telefono,
@@ -624,30 +629,136 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const handleSaveDelivery = async () => {
     console.log('handleSaveDelivery called');
 
+    setError(''); // Limpiar errores previos
+
+    // Validación de datos básicos
     if (!pickupInfo.nombre || !pickupInfo.telefono || !deliveryTimeOption) {
         setError('Por favor completa todos los campos obligatorios.');
         return;
     }
 
+    // Validación de dirección en caso de delivery
     if (selectedOption === 'delivery' && (!addressInfo.address || !addressInfo.lat || !addressInfo.lng || !isAddressConfirmed)) {
         setError('Confirma la dirección antes de continuar.');
         return;
     }
 
+    // Obtener ID del cliente
+    const idCliente = sessionData?.id_cliente;
+    if (!idCliente) {
+        setError('No se encontró un cliente en la sesión.');
+        return;
+    }
+
+    // 🛠️ **Actualizar la información del cliente en la tabla `clientes` (solo si es `delivery`)**
+    if (selectedOption === 'delivery') {
+        const clienteData = {
+            name: pickupInfo.nombre,
+            phone: pickupInfo.telefono,
+            address_1: addressInfo.address,
+            lat: addressInfo.lat,
+            lng: addressInfo.lng, // 🚀 **Asegurando que guardamos las coordenadas**
+            observations: addressInfo.observations,
+        };
+
+        try {
+            await axios.put(`http://localhost:3001/clientes/${idCliente}`, clienteData);
+            console.log('✅ Cliente actualizado correctamente con coordenadas:', clienteData);
+        } catch (error) {
+            console.error('❌ Error al actualizar la dirección del cliente:', error);
+            setError('Error al actualizar la dirección. Inténtalo de nuevo.');
+            return;
+        }
+    }
+
+    // Calcular tienda más cercana si es delivery
     let tiendaMasCercana = selectedOption === 'delivery' ? calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng) : null;
     if (selectedOption === 'delivery' && !tiendaMasCercana) {
         setError('No se pudo encontrar una tienda cercana para el delivery.');
         return;
     }
 
-    // const horaPrometida = calcularHoraPrometida(deliveryTimeOption === 'Express' ? 20 : 45);
-    // const costoDelivery = compra?.Entrega?.Delivery?.costo ?? 0;
+    // Determinar la fecha y hora prometida
+    let fechaYHoraPrometida = '';
+    if (deliveryTimeOption === 'custom') {
+        if (!customTime.fecha || !customTime.hora) {
+            setError('Debes seleccionar una fecha y hora válida.');
+            return;
+        }
+        fechaYHoraPrometida = `${customTime.fecha} ${customTime.hora}`;
+    } else {
+        const extraMinutes = deliveryTimeOption === '30min' ? 30 :
+                             deliveryTimeOption === '45min' ? 45 :
+                             deliveryTimeOption === 'Express' ? 20 : 0;
+        fechaYHoraPrometida = calcularHoraPrometida(extraMinutes);
+    }
 
+    // Calcular costos adicionales
+    const costoDelivery = (selectedOption === 'delivery' && isAddressConfirmed) ? calcularPrecioDelivery() : 0;
+    const costoTicketExpress = (deliveryTimeOption === 'Express') ? calcularCostoTicketExpress() : 0;
 
+    // Aplicar Free Pass si corresponde
+    const { newDeliveryCost, newFreePassApplied } = applyFreePassIfAny(
+        compra,
+        incentivos
+    );
 
-    setTriggerUpdate((prev) => !prev);
-    setError('');
-  };
+    // Si ya tenía Free Pass activo, mantenerlo
+    const freePassFinal = newFreePassApplied || (compra.Entrega?.Delivery?.freePassApplied ?? false);
+
+    if (freePassFinal) {
+        console.log("✅ Aplicando Free Pass: Delivery gratis");
+    }
+
+    // Actualizar el estado de compra
+    setCompra((prevCompra) => ({
+        ...prevCompra,
+        is_scheduled_order: deliveryTimeOption === 'custom',
+        Entrega: selectedOption === 'pickup'
+            ? {
+                PickUp: {
+                    id_cliente: idCliente,
+                    nombre: pickupInfo.nombre,
+                    telefono: pickupInfo.telefono,
+                    fechaYHoraPrometida,
+                    TicketExpress: deliveryTimeOption === 'Express',
+                    costoTicketExpress,
+                    puntoRecogida: storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
+                }
+            }
+            : {
+                Delivery: {
+                    id_cliente: idCliente,
+                    nombre: pickupInfo.nombre,
+                    telefono: pickupInfo.telefono,
+                    fechaYHoraPrometida,
+                    address: addressInfo.address,
+                    latitud: addressInfo.lat,  
+                    longitud: addressInfo.lng,  
+                    postalCode: addressInfo.postalCode,
+                    costo: freePassFinal ? 0 : costoDelivery,  
+                    costoReal: calcularPrecioDelivery(),
+                    TicketExpress: deliveryTimeOption === 'Express',
+                    costoTicketExpress,
+                    tiendaSalida: tiendaMasCercana,
+                    freePassApplied: freePassFinal
+                }
+            },
+        totalTicketExpress: costoTicketExpress,
+        totalDelivery: freePassFinal ? 0 : costoDelivery, // Aplicar Free Pass si corresponde
+        cliente: {
+            name: pickupInfo.nombre,
+            phone: pickupInfo.telefono,
+        },
+        observaciones: selectedOption === 'pickup' ? pickupInfo.observations : addressInfo.observations
+    }));
+
+    console.log('✅ Estado de compra actualizado:', compra);
+
+    // Disparar actualización visual
+    setTriggerUpdate(prev => !prev);
+};
+
   const handlePickupLocationChange = (e) => {
     setSelectedPickupLocation(e.target.value);
     const selectedLocation = storeLocations.find(location => location.id === parseInt(e.target.value));
