@@ -32,8 +32,8 @@ const MakeARarePizza = () => {
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
     DescuentosDailyChallenge: 0,
-    cupones: Array.isArray(initialCompra?.cupones) ? initialCompra.cupones : [],  // ✅ Siempre será un array
-    venta: Array.isArray(initialCompra?.venta) ? initialCompra.venta : [],      // ✅ Siempre será un array
+    cupones: Array.isArray(initialCompra?.cupones) ? initialCompra.cupones : [],  // ✅ Siempre 
+    venta: Array.isArray(initialCompra?.venta) ? initialCompra.venta : [],      // ✅ Siempre
     total_productos: initialCompra?.total_productos || 0.0,
     total_descuentos: initialCompra?.total_descuentos || 0.0,
     total_a_pagar_con_descuentos: initialCompra?.total_a_pagar_con_descuentos || 0.0,
