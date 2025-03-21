@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { _PizzaContext } from './_PizzaContext';
 import axios from 'axios';
 import moment from 'moment-timezone';
 import { Bar } from 'react-chartjs-2';
@@ -8,6 +9,7 @@ import '../styles/DeliveryPanel.css';
 
 
 const DeliveryPanel = () => {
+    const { sessionData } = useContext(_PizzaContext);
     const [loggedIn, setLoggedIn] = useState(() => {
         const storedLoggedIn = localStorage.getItem('loggedIn');
         return storedLoggedIn ? JSON.parse(storedLoggedIn) : false;
@@ -80,7 +82,7 @@ const DeliveryPanel = () => {
         const verificarSuspension = async () => {
             try {
                 // Obtener los datos del repartidor
-                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}`);
                 const repartidorData = response.data;
     
                 if (repartidorData.suspension_status) {
@@ -89,7 +91,7 @@ const DeliveryPanel = () => {
     
                     if (ahora.isAfter(fechaFinSuspension)) {
                         // Si la suspensión ha terminado, actualizar estado a Activo y suspensión a false
-                        const updateResponse = await axios.patch(`http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`, {
+                        const updateResponse = await axios.patch(`${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}/estado`, {
                             estado: 'Activo',
                             suspension_status: false,
                         });
@@ -118,7 +120,7 @@ const DeliveryPanel = () => {
     useEffect(() => {
         const verificarHorario = async () => {
             try {
-                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado-horario`);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}/estado-horario`);
                 setPuedeActivar(response.data.puedeActivar);
                 setMensajeHorario(response.data.mensaje.replace(response.data.mensaje.match(/\(.*?\)/g), `(${traducirDia(moment().format('dddd'))})`));
             } catch (error) {
@@ -136,7 +138,7 @@ const DeliveryPanel = () => {
             }
     
             try {
-                const response = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}`);
                 console.log('Estado recuperado del backend:', response.data.estado); // Log para verificar el estado
                 setEstado(response.data.estado); // Sincroniza el estado local con la base de datos
             } catch (error) {
@@ -191,7 +193,7 @@ const DeliveryPanel = () => {
     useEffect(() => {
         const fetchPedidosEnRuta = async () => {
             try {
-                const response = await axios.get("http://localhost:3001/registro_ventas");
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
                 const pedidosEnRuta = response.data.data.filter(
                     (pedido) => pedido.enRuta && pedido.estado_entrega === "Pendiente"
                 );
@@ -287,7 +289,7 @@ const DeliveryPanel = () => {
     
         try {
             // Verificar estado del repartidor
-            const repartidorResponse = await axios.get(`http://localhost:3001/repartidores/${repartidor.id_repartidor}`);
+            const repartidorResponse = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}`);
             const repartidorData = repartidorResponse.data;
     
             // Si está suspendido, cambiar automáticamente a "Inactivo"
@@ -300,7 +302,7 @@ const DeliveryPanel = () => {
             // Cambiar estado si no está suspendido
             const nuevoEstado = estado === 'Activo' ? 'Inactivo' : 'Activo';
             const response = await axios.patch(
-                `http://localhost:3001/repartidores/${repartidor.id_repartidor}/estado`,
+                `${process.env.REACT_APP_API_URL}/repartidores/${repartidor.id_repartidor}/estado`,
                 { estado: nuevoEstado }
             );
     
@@ -319,7 +321,7 @@ const DeliveryPanel = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:3001/repartidores/login', { username, password });
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/repartidores/login`, { username, password });
     
             if (response.data.success) {
                 const repartidorData = response.data.repartidor;
@@ -387,7 +389,7 @@ const DeliveryPanel = () => {
     };
     const fetchPedidos = async () => {
         try {
-            const response = await axios.get("http://localhost:3001/registro_ventas");
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
             console.log("Respuesta completa de registro_ventas:", response.data);
     
             const pedidosPendientes = response.data.data.filter(
@@ -408,7 +410,7 @@ const DeliveryPanel = () => {
         if (!repartidor) return;
     
         try {
-            const response = await axios.get(`http://localhost:3001/wallet/${repartidor.id_repartidor}?filtro=${filtroSeleccionado}`);
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/wallet/${repartidor.id_repartidor}?filtro=${filtroSeleccionado}`);
             if (response.data.success) {
                 const walletData = response.data.data;
     
@@ -438,7 +440,7 @@ const DeliveryPanel = () => {
             }
     
             // Verificar si el pedido sigue disponible
-            const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/disponibilidad/${pedidoId}`);
+            const checkResponse = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas/disponibilidad/${pedidoId}`);
             if (checkResponse.data.data.estado_entrega !== 'Pendiente' || checkResponse.data.data.enRuta) {
                 alert('El pedido ya fue tomado por otro repartidor o está en una ruta');
                 fetchPedidos(); // Actualizar la lista de pedidos
@@ -446,7 +448,7 @@ const DeliveryPanel = () => {
             }
     
             // Tomar el pedido si está disponible
-            const response = await axios.patch(`http://localhost:3001/registro_ventas/tomar_pedido/${pedidoId}`, {
+            const response = await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/tomar_pedido/${pedidoId}`, {
                 estado_entrega: 'Asignado',
                 id_repartidor: repartidor.id_repartidor
             });
@@ -476,7 +478,7 @@ const DeliveryPanel = () => {
             }
     
             // Validar la disponibilidad de los pedidos en la ruta
-            const checkResponse = await axios.get(`http://localhost:3001/registro_ventas/ruta_disponibilidad/${enRuta}`);
+            const checkResponse = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas/ruta_disponibilidad/${enRuta}`);
             const pedidosNoDisponibles = checkResponse.data.filter((pedido) => pedido.estado_entrega !== "Pendiente");
     
             if (pedidosNoDisponibles.length > 0) {
@@ -485,7 +487,7 @@ const DeliveryPanel = () => {
             }
     
             // Actualizar el estado de entrega de todos los pedidos en la ruta
-            const response = await axios.patch(`http://localhost:3001/registro_ventas/tomar_ruta/${enRuta}`, {
+            const response = await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/tomar_ruta/${enRuta}`, {
                 estado_entrega: 'Asignado',
                 id_repartidor: repartidor.id_repartidor
             });
@@ -526,7 +528,7 @@ const DeliveryPanel = () => {
             console.log("Cargando patch para finalizar pedido con ID:", pedidoId);
     
             try {
-                const response = await axios.patch(`http://localhost:3001/registro_ventas/finalizar_pedido/${pedidoId}`, {
+                const response = await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/finalizar_pedido/${pedidoId}`, {
                     estado_entrega: "Entregado",
                 });
                 console.log("Respuesta del servidor:", response.data);
@@ -534,8 +536,20 @@ const DeliveryPanel = () => {
             } catch (error) {
                 console.error('Error en la petición PATCH:', error.response || error.message);
             }
+    
+            // 📩 Enviar correo de confirmación al cliente
+            try {
+                await axios.post(`${process.env.REACT_APP_API_URL}/notificaciones/pedido_entregado`, {
+                    id_order: pedidoId,
+                    email: sessionData.email
+                });
+                console.log("Correo de confirmación de entrega enviado con éxito.");
+            } catch (error) {
+                console.error("Error al enviar el correo de confirmación de entrega:", error.response || error.message);
+            }
+    
             // POST a la wallet
-            await axios.post('http://localhost:3001/wallet/guardar_precio_delivery', {
+            await axios.post(`${process.env.REACT_APP_API_URL}/wallet/guardar_precio_delivery`, {
                 id_order: pedidoId,
                 id_repartidor: repartidor.id_repartidor,
                 monto_por_cobrar: costoDelivery
@@ -568,12 +582,12 @@ const DeliveryPanel = () => {
             const costoTotalDelivery = rutaSeleccionada.costo_total || 0;
     
             // Actualizar el estado de entrega a "Entregado" en la base de datos
-            await axios.patch(`http://localhost:3001/registro_ventas/finalizar_ruta/${enRuta}`, {
+            await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/finalizar_ruta/${enRuta}`, {
                 estado_entrega: "Entregado",
             });
     
             // Guardar el precio total del delivery en la wallet
-            await axios.post("http://localhost:3001/wallet/guardar_precio_delivery", {
+            await axios.post(`${process.env.REACT_APP_API_URL}/wallet/guardar_precio_delivery`, {
                 id_order: enRuta, // Usamos el id_ruta como identificador en la wallet
                 id_repartidor: repartidor.id_repartidor,
                 monto_por_cobrar: costoTotalDelivery,
@@ -602,7 +616,7 @@ const DeliveryPanel = () => {
                 .reduce((acc, entry) => acc + entry.monto_por_cobrar, 0);
     
             if (totalPorCobrar > 0) {
-                await axios.patch(`http://localhost:3001/wallet/consolidar/${repartidor.id_repartidor}`);
+                await axios.patch(`${process.env.REACT_APP_API_URL}/wallet/consolidar/${repartidor.id_repartidor}`);
                 await fetchMontoWallet();  
                 await fetchWallet();       
                 await fetchPedidos();      
@@ -617,7 +631,7 @@ const DeliveryPanel = () => {
     };
     const handlePagoConfirmado = async () => {
         try {
-            const response = await axios.patch(`http://localhost:3001/wallet/pago/${repartidor.id_repartidor}`);
+            const response = await axios.patch(`${process.env.REACT_APP_API_URL}/wallet/pago/${repartidor.id_repartidor}`);
             
             if (response.data.success) {
                 await fetchMontoWallet(); 
@@ -634,7 +648,7 @@ const DeliveryPanel = () => {
     
         try {
             // Llamar al endpoint que trae toda la información de la wallet del repartidor
-            const response = await axios.get(`http://localhost:3001/wallet/${repartidor.id_repartidor}`);
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/wallet/${repartidor.id_repartidor}`);
             if (response.data.success) {
                 const walletData = response.data.data;
     
@@ -668,7 +682,7 @@ const DeliveryPanel = () => {
         if (!repartidor) return;
     
         try {
-            const response = await axios.get(`http://localhost:3001/wallet/${repartidor.id_repartidor}`);
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/wallet/${repartidor.id_repartidor}`);
             if (response.data.success) {
                 const walletData = response.data.data;
     
@@ -699,7 +713,7 @@ const DeliveryPanel = () => {
     };
     const fetchPrecioDelivery = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/delivery/price');
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
             // console.log('Respuesta del backend para precio del delivery:', response.data); // Agrega este log para verificar la respuesta
             if (response.data.success) {
                 setPrecioDelivery(response.data.precio); // Cambia data.data a data
@@ -745,8 +759,8 @@ const DeliveryPanel = () => {
     const fetchRutas = async () => {
         try {
             const [rutasResponse, pedidosResponse] = await Promise.all([
-                axios.get("http://localhost:3001/rutas"),
-                axios.get("http://localhost:3001/registro_ventas"),
+                axios.get(`${process.env.REACT_APP_API_URL}/rutas`),
+                axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`),
             ]);
     
             if (rutasResponse.data.success && pedidosResponse.data.message === "success") {

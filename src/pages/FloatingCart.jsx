@@ -27,7 +27,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   useEffect(() => {
     const fetchIncentivos = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/incentivos');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos`);
         const incentivosActivos = response.data.filter((inc) => inc.activo === 1);
         setIncentivos(incentivosActivos);
       } catch (error) {
@@ -39,7 +39,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   useEffect(() => {
     const fetchIngredientExtraPrices = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/IngredientExtraPrices');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/IngredientExtraPrices`);
         setIngredientExtraPrices(response.data);
       } catch (error) {
         console.error('Error al obtener precios de ingredientes extras:', error);
@@ -51,8 +51,8 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     setCompra((prevCompra) => ({ ...prevCompra, id_order: orderId }));
   }, [orderId, setCompra]);
   useEffect(() => {
-    if (compra.venta.length > 0) {
-      guardarEnHistorial('venta', { ventaId: compra.venta[compra.venta.length - 1].id });
+    if (compra?.venta?.length > 0) {
+      guardarEnHistorial('venta', { ventaId: compra?.venta[compra?.venta?.length - 1].id });
     }
   }, [compra.venta]);
   useEffect(() => {
@@ -95,14 +95,14 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     }, 0);
 
     // Complementos
-    const totalComp = compra.complementos.reduce((acc, comp) => acc + (comp.total || 0), 0);
+    const totalComp = (compra.complementos ?? []).reduce((acc, comp) => acc + (comp.total || 0), 0);
 
     // Subtotal sin descuentos
     let subtotalProductos = totalPizzas + totalComp;
 
     // Descuentos
     let totalDescuentos = 0;
-    if (compra.cupones.length > 0 && subtotalProductos > 0) {
+    if (compra?.cupones?.length > 0 && subtotalProductos > 0) {
       compra.cupones.forEach((cupon) => {
         const descuentoAplicado = subtotalProductos * (cupon.Descuento || 0);
         const descuentoFinal = Math.min(descuentoAplicado, cupon.Max_Amount || descuentoAplicado);
@@ -300,7 +300,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       const hora = moment().format('HH:mm:ss');
       const metodo_pago = 'Tarjeta';
 
-      if (!compra.venta.length) throw new Error('No hay productos en la venta');
+      if (!compra?.venta?.length) throw new Error('No hay productos en la venta');
 
       const totalDescuentosNum = parseFloat(compra.total_descuentos) || 0;
       const totalSinDescuentosNum = parseFloat(compra.total_productos) || 0;
@@ -368,19 +368,19 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
 
       console.log('Datos de la compra:', compraData);
 
-      const response = await axios.post('http://localhost:3001/registro_ventas', compraData);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/registro_ventas`, compraData);
 
       if (response.data.success) {
         // Actualiza pedidos en cola
         if (compra.Entrega?.Delivery) {
           const idUbicacion = compra.Entrega?.Delivery?.tiendaSalida?.id;
           if (idUbicacion) {
-            await axios.post('http://localhost:3001/fill_pedidos_encola');
+            await axios.post(`${process.env.REACT_APP_API_URL}/fill_pedidos_encola`, {});
           }
         } else if (compra.Entrega?.PickUp) {
           const idUbicacion = compra.Entrega?.PickUp?.puntoRecogida?.id;
           if (idUbicacion) {
-            await axios.post('http://localhost:3001/fill_pedidos_encola');
+            await axios.post(`${process.env.REACT_APP_API_URL}/fill_pedidos_encola`, {});
           }
         }
 
@@ -552,7 +552,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         </button>
       </div>
 
-      {(compra.venta.length > 0 || compra.complementos.length > 0) && (
+      {(compra?.venta?.length > 0 || compra?.complementos?.length > 0) && (
         <div className="detalles-compra">
           <p>
             <strong>Order Details:</strong>
@@ -561,11 +561,11 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       )}
 
       <div className="detalles_pedidos">
-        {compra.venta.length === 0 && compra.complementos.length === 0 ? (
+        {compra?.venta?.length === 0 && compra?.complementos?.length === 0 ? (
           <p className="carrito-vacio bounce-effect">🍕¡Add some deliciousness!🍕</p>
         ) : (
           <ul>
-            {[...compra.venta, ...compra.complementos].map((item, index) => {
+            {[...(compra.venta ?? []), ...(compra.complementos ?? [])].map((item, index) => {
               const esComplemento = !!item.subcategoria;
               const precioPrincipal = esComplemento
                 ? item.precio
@@ -772,7 +772,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
 
 
 
-      {(compra.total_productos > 0 || compra.venta.length > 0 || compra.complementos.length > 0) && (
+      {(compra?.total_productos > 0 || compra?.venta?.length > 0 || compra?.complementos?.length > 0) && (
         <div className="totals2">
           {compra.cupones.map((cupon, index) => (
             <p key={index}>
@@ -794,7 +794,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   
       )}
 
-        {incentivos.length > 0 ? (
+        {incentivos?.length > 0 ? (
             incentivos.map((incentivo) => {
                 // 📌 Detectamos si es el DFP porque modifica el precio del delivery
                 const esDeliveryFreePass = incentivo.incentivo === "Delivery Free Pass";

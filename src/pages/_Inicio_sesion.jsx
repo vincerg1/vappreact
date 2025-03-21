@@ -27,7 +27,7 @@ const InicioSesion = () => {
         // console.log('Attempting login with email and password:', email); 
   
         // Intentar iniciar sesión con email y contraseña
-        const { data } = await axios.post('http://localhost:3001/api/auth/login', { email, password });
+        const { data } = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/login`, { email, password });
         console.log('Data received from backend:', data); // Verifica los datos que llegan del backend
   
         const { id_cliente, email: emailFromDB, ticketPromedio, ...rest } = data;
@@ -54,7 +54,7 @@ const InicioSesion = () => {
         // console.log('Attempting Remember Me with email:', email); 
   
         // Intentar "Remember Me" con solo email
-        const { data } = await axios.post('http://localhost:3001/api/auth/remember-me', { email });
+        const { data } = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/remember-me`, { email });
         // console.log('Password loaded from backend:', data.password); 
   
         setPassword(data.password); // Rellenar automáticamente la contraseña
@@ -80,7 +80,7 @@ const InicioSesion = () => {
     setErrorMessage('');
 
     try {
-      await axios.post('http://localhost:3001/agregar_cliente', { email, password });
+      await axios.post(`${process.env.REACT_APP_API_URL}/agregar_cliente`, { email, password });
       alert('Registration successful! Please log in.');
       setActiveTab('login');
       setEmail('');
@@ -103,7 +103,7 @@ const InicioSesion = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     const { credential } = credentialResponse;
     try {
-      const { data } = await axios.post('http://localhost:3001/api/auth/google-login', {
+      const { data } = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/google-login`, {
         token: credential,
       });
 

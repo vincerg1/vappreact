@@ -5,7 +5,7 @@ function Inventario() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:3001/inventario')  // Asegúrate de que la ruta coincida exactamente
+        fetch(`${process.env.REACT_APP_API_URL}/inventario`)  // Asegúrate de que la ruta coincida exactamente
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Error en la respuesta del servidor: ' + response.statusText);

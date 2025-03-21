@@ -21,7 +21,7 @@ export default function TVentas({ filters }) {
 
   const fetchVentas = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/ventas/promedios', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/ventas/promedios`, {
         params: filters,
       });
 

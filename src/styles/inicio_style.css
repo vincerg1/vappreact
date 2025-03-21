@@ -14,19 +14,7 @@ body {
   max-width: 1000px;
   margin: 0 auto;
 }
-h1.PDCRL {
-  text-align: center;
-  font-size: 2rem;
-  color: #333333;
-  margin-top: 20px;
-  font-weight: bold;
-}
-.PDCRL.t {
-  text-align: center;
-  font-size: 1.2rem;
-  color: #555555;
-  margin-bottom: 20px;
-}
+
 .background_icon_button {
   display: flex;
   align-items: center;
@@ -51,7 +39,7 @@ h1.PDCRL {
   background-color: #297a2b; /* Botón cambia al azul oscuro */
 }
 .background_icon_button:hover span {
-  color: #ffffff; /* Cambia el texto a blanco para más contraste */
+  color: #1aff00;
 }
 @media (max-width: 768px) {
   .contenedorPC {
@@ -75,59 +63,48 @@ h1.PDCRL {
   padding: 30px;
   border: none;
   border-radius: 10px;
-  background-color: #616562;
+  background-color: #77ea26;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
   width: 100%;
-  color: #ffffff;
+  color: #333333;
   font-size: 1.5rem;
+  font-weight: bold;
 }
-
-.logout-button :hover{
+.logout-button:hover{
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  background-color: #7f7f7f; /* Botón cambia al azul oscuro */
+  background-color: #41ca8a; /* Botón cambia al azul oscuro */
 }
-
-
-/* Contenedor principal */
 .login-container {
   width: 100%;
   max-width: 600px;
   margin: 50px auto;
   padding: 30px;
   background: #fff;
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
-
-/* Título del login */
 .login-title {
   font-size: 22px;
   font-weight: bold;
   margin-bottom: 20px;
 }
-
-/* Estilos para el formulario */
 .login-form {
   display: flex;
   flex-direction: column;
 }
-
-/* Grupo de inputs */
 .input-group {
   text-align: left;
   margin-bottom: 15px;
 }
-
 .input-group label {
   display: block;
   font-weight: bold;
   margin-bottom: 5px;
 }
-
 .input-group input {
   width: 100%;
   padding: 10px;
@@ -135,15 +112,11 @@ h1.PDCRL {
   border-radius: 5px;
   font-size: 16px;
 }
-
-/* Efecto al enfocar inputs */
 .input-group input:focus {
   border-color: #007bff;
   outline: none;
   box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.2);
 }
-
-/* Botón de inicio de sesión */
 .login-button {
   width: 100%;
   padding: 10px;
@@ -155,35 +128,27 @@ h1.PDCRL {
   cursor: pointer;
   transition: 0.3s ease;
 }
-
 .login-button:hover {
   background-color: #218838;
 }
-
 .login-button:disabled {
   background-color: #aaa;
   cursor: not-allowed;
 }
-
-/* Mensaje de error */
 .error-message {
   color: red;
   font-weight: bold;
   margin-bottom: 15px;
 }
-
-/* Enlace para registrarse */
 .register-link {
   margin-top: 15px;
   font-size: 14px;
 }
-
 .register-link-text {
   color: #007bff;
   cursor: pointer;
   font-weight: bold;
 }
-
 .register-link-text:hover {
   text-decoration: underline;
 }

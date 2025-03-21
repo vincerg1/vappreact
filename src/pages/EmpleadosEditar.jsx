@@ -16,7 +16,7 @@ function EmpleadosEditar() {
 
   // Obtener los datos del empleado
   useEffect(() => {
-    axios.get(`http://localhost:3001/api/empleados/${id}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/api/empleados/${id}`)
       .then((response) => {
         setFormData(response.data);
       })
@@ -34,7 +34,7 @@ function EmpleadosEditar() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.patch(`http://localhost:3001/api/empleados/${id}`, formData);
+      await axios.patch(`${process.env.REACT_APP_API_URL}/api/empleados/${id}`, formData);
       alert("Empleado actualizado con éxito");
       navigate("/control-horario/empleados/lista"); // Volver a la lista
     } catch (error) {

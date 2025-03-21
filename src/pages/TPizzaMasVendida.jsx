@@ -12,7 +12,7 @@ export default function TPizzaMasVendida({ filters }) {
 
   const fetchData = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/top_pizzas', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/top_pizzas`, {
         params: filters,
       });
 

@@ -20,7 +20,7 @@ function PartnerCreator({ partnerData, onSubmit }) {
   useEffect(() => {
     const fetchPartners = async () => {
       try {
-        const response = await fetch('http://localhost:3001/inventario-partner');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/inventario-partner`);
         const result = await response.json();
   
         if (result.message === 'success') {
@@ -45,7 +45,7 @@ function PartnerCreator({ partnerData, onSubmit }) {
     if (partnerId) {
       const loadPartnerData = async () => {
         try {
-          const response = await fetch(`http://localhost:3001/PartnerData/${partnerId}`);
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/PartnerData/${partnerId}`);
           const result = await response.json();
 
           if (result.message === 'success') {
@@ -134,8 +134,8 @@ function PartnerCreator({ partnerData, onSubmit }) {
     }
   
     const url = isEditMode
-      ? `http://localhost:3001/PartnerData/${partnerId}`
-      : 'http://localhost:3001/PartnerData';
+      ? `${process.env.REACT_APP_API_URL}/PartnerData/${partnerId}`
+      : `${process.env.REACT_APP_API_URL}/PartnerData`;
     const method = isEditMode ? 'PATCH' : 'POST';
   
     try {
@@ -195,7 +195,7 @@ function PartnerCreator({ partnerData, onSubmit }) {
       <input type="file" name="imagen" onChange={handleImageChange} />
       {formData.imagen && typeof formData.imagen === 'string' && (
         <img
-          src={`http://localhost:3001/${formData.imagen}`}
+          src={`${process.env.REACT_APP_API_URL}/${formData.imagen}`}
           alt="Imagen actual"
           className="partner-image-preview"
         />

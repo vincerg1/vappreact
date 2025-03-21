@@ -87,6 +87,9 @@ html, body {
 .sinRiesgo {
   background-color: #9E9E9E; /* Gris para 'sin riesgo' */
 }
+.riesgo span {
+  color:#ffffff ;
+}
 
 .bajo {
   background-color: #4CAF50; /* Verde para 'bajo' */

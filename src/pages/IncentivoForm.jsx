@@ -26,7 +26,7 @@ const IncentivoForm = () => {
     if (id) {
       const fetchIncentivo = async () => {
         try {
-          const response = await axios.get(`http://localhost:3001/api/incentivos/${id}`);
+          const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos/${id}`);
           const { TO_minimo, incentivo, detalle, activo } = response.data;
           setTO_minimo(TO_minimo);
           setIncentivo(incentivo);
@@ -54,11 +54,11 @@ const IncentivoForm = () => {
     try {
       if (isEditMode) {
         // Si estamos en modo edición, hacemos un PATCH
-        await axios.patch(`http://localhost:3001/api/incentivos/${id}`, nuevoIncentivo);
+        await axios.patch(`${process.env.REACT_APP_API_URL}/api/incentivos/${id}`, nuevoIncentivo);
         alert('Incentivo actualizado con éxito');
       } else {
         // Si no estamos en modo edición, hacemos un POST (crear nuevo incentivo)
-        await axios.post('http://localhost:3001/api/incentivos', nuevoIncentivo);
+        await axios.post(`${process.env.REACT_APP_API_URL}/api/incentivos`, nuevoIncentivo);
         alert('Incentivo creado con éxito');
       }
       // Después de crear o actualizar, redirigir a la lista de incentivos

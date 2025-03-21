@@ -5,15 +5,49 @@ body {
   margin: 20px;
 }
 .clientes-container {
-  max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 50px auto;
+  margin-bottom: 2rem;
+  padding: 30px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
+  min-height: 700px;
 }
 .botones-acciones {
   display: flex;
   justify-content: center;
-  gap: 40px; /* Aumentar el espacio entre los botones */
+  gap: 15px;
   margin-bottom: 20px;
+}
+.botones-acciones button{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  border: none;
+  border-radius: 10px;
+  background-color: #82f89c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+.botones-acciones span {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333333;
+  transition: color 0.3s ease;
+}
+.clientes-button:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  background-color: #297a2b;
+}
+
+.botones-acciones:hover span {
+  color: #1aff00; 
 }
 .lista-clientes-container {
   margin-top: 20px;
@@ -50,12 +84,12 @@ button {
   padding-right: 10px;
   color: #333;
 }
-.clientes-container {
+/* .clientes-container {
   width: 90%;
   max-width: 1200px;
   margin: 20px auto;
   text-align: center;
-}
+} */
 .clientes-table {
   width: 100%;
   border-collapse: collapse;
@@ -122,12 +156,13 @@ button.follow-up:hover {
 .suspender-menu button:hover {
   background-color: #e0a800;
 }
-.buscador {
-  width: 50%;
+.buscadorLS input{
+  width: 90%;
+  max-width: 1200px;
   padding: 8px;
   margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: 1px solid #ffffff;
+  border-radius: 10px;
 }
 .formulario-cliente {
   width: 40%;

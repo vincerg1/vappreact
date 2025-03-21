@@ -153,9 +153,9 @@ button:hover {
   animation: blinkingAnimation 1s infinite;
 }
 @keyframes blinkingAnimation {
-  0% { background-color: #28a745; }
+  0% { background-color: #f2df08; }
   50% { background-color: #ffcc00; }
-  100% { background-color: #28a745; }
+  100% { background-color: #f2df08; }
 }
 
 /* Contenedor general de botones */

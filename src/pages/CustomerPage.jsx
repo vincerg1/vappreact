@@ -98,7 +98,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   };
   const resetCoupons = () => {
   axios
-      .patch(`http://localhost:3001/api/offers/${offer.Oferta_Id}/reset-coupons`, {
+      .patch(`${process.env.REACT_APP_API_URL}/api/offers/${offer.Oferta_Id}/reset-coupons`, {
           Cupones_Disponibles: offer.Cupones_Asignados,
       })
       .then(() => {
@@ -224,7 +224,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   
     try {
       const response = await axios.patch(
-        `http://localhost:3001/api/offers/${offer.Oferta_Id}/use-coupon`
+        `${process.env.REACT_APP_API_URL}/api/offers/${offer.Oferta_Id}/use-coupon`
       );
   
       const updatedCuponesDisponibles = response.data.data.Cupones_Disponibles;
@@ -307,7 +307,7 @@ return (
       }
       style={{
         position: "relative", // Necesario para que el overlay se posicione correctamente
-        backgroundImage: `url(http://localhost:3001${offer.Imagen})`,
+        backgroundImage: `url(${process.env.REACT_APP_API_URL}${offer.Imagen})`,
         backgroundSize: "500px 500px",
         backgroundPosition: "center",
       }}
@@ -337,7 +337,7 @@ return (
 
       <div className="offer-content">
         <h3>{offer.Codigo_Oferta}</h3>
-        <p>¡Quedan <strong>{cuponesDisponibles}</strong> Cupones!</p>
+        <p className='msjleft'>¡Quedan <strong>{cuponesDisponibles}</strong> Cupones!</p>
         <p>{renderDiscountRange()}</p>
         <p>
           Precio:
@@ -381,9 +381,9 @@ return (
 };
 const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, compra }) => {
   const { sessionData } = useContext(_PizzaContext);
-
   const offersRef = useRef(null);
 
+  // --- Manejo de drag horizontal en el contenedor ---
   let isDragging = false;
   let startX;
   let scrollLeft;
@@ -402,27 +402,100 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
     if (!isDragging) return;
     e.preventDefault();
     const x = e.pageX - offersRef.current.offsetLeft;
-    const walk = (x - startX) * 3; 
+    const walk = (x - startX) * 3;
     offersRef.current.scrollLeft = scrollLeft - walk;
   };
+  // --- Fin manejo de drag ---
 
- 
-  const filteredOffers = offers.filter(
-    (offer) =>
-      offer.Estado === "Activa" &&
-      (
-        (offer.Tipo_Oferta === "Custom" && sessionData?.segmento) || // ✅ Cupones generales del segmento
-        (offer.Tipo_Oferta === "Customized" && offer.Id_cliente_Asig === sessionData?.id_cliente) // ✅ Solo cupones personalizados asignados
-      ) &&
-      (
-        offer.Tipo_Cupon === "permanente" || // ✅ Mantiene los cupones permanentes
-        (offer.Tipo_Cupon === "temporal" && offer.Cupones_Disponibles > 0) // ✅ Excluye cupones temporales agotados
-      )
-  );
-  
+  /**
+   * Quita acentos de un string para comparar con `Dias_Activos`.
+   */
+  function removeAccents(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
 
-  
-  
+  /**
+   * Determina si la oferta está activa hoy (filtros generales).
+   * (Ya se usaba dentro de tu sort en la versión previa para logs, lo mantenemos).
+   */
+  function isOfferCurrentlyActive(offer) {
+    if (!offer.Hora_Inicio || !offer.Hora_Fin) {
+      console.log(`⛔ Oferta ${offer.Codigo_Oferta} no tiene Hora_Inicio o Hora_Fin`);
+      return false;
+    }
+    const now = moment();
+    const start = moment(offer.Hora_Inicio, "HH:mm");
+    const end = moment(offer.Hora_Fin, "HH:mm");
+
+    const activeNow = now.isBetween(start, end);
+    console.log(`🟢 Evaluando ${offer.Codigo_Oferta}: Activa -> ${activeNow}`);
+    return activeNow;
+  }
+
+  // Nuevo helper: Devuelve 0, 1, 2 para saber si está activo, futuro hoy o finalizado hoy.
+  function getRelativeStatus(offer) {
+    const now = moment();
+    const start = moment(offer.Hora_Inicio, "HH:mm");
+    const end = moment(offer.Hora_Fin, "HH:mm");
+
+    if (now.isBetween(start, end)) {
+      return 0; // Activo en este momento
+    }
+    if (now.isBefore(start)) {
+      return 1; // Empieza más tarde hoy
+    }
+    // De lo contrario, ya pasó la hora fin
+    return 2; // Terminó para hoy
+  }
+
+  // --- 1) y 2) Filtrar por día actual y validaciones ---
+  const currentDay = removeAccents(moment().format("dddd").toLowerCase());
+  const filteredOffers = offers.filter((offer) => {
+    // Estado activa
+    if (offer.Estado !== "Activa") return false;
+
+    // Segmentos
+    const belongsToSegment =
+      offer.Tipo_Oferta === "Custom" &&
+      offer.Segmentos_Aplicables?.includes(`S${sessionData?.segmento}`);
+    const belongsToClient =
+      offer.Tipo_Oferta === "Customized" &&
+      offer.Id_cliente_Asig === sessionData?.id_cliente;
+
+    // Solo pasa si es "custom" para mi segmento o "customized" para mi cliente:
+    if (!(belongsToSegment || belongsToClient)) return false;
+
+    // Tipo cupon: permanente o temporal con stock
+    const isValidCupon =
+      offer.Tipo_Cupon === "permanente" ||
+      (offer.Tipo_Cupon === "temporal" && offer.Cupones_Disponibles > 0);
+    if (!isValidCupon) return false;
+
+    // Además, día actual
+    const diasActivos = JSON.parse(offer.Dias_Activos || "[]").map(removeAccents);
+    if (!diasActivos.includes(currentDay)) return false;
+
+    return true;
+  });
+
+  console.log("✅ OffersSection -> filteredOffers (después de filtrar):", filteredOffers);
+
+  // --- Ordenar ---
+  const sortedOffers = filteredOffers.slice().sort((a, b) => {
+    const aStatus = getRelativeStatus(a);
+    const bStatus = getRelativeStatus(b);
+    // Primero los activos, luego los que empezarán más tarde hoy, luego los finalizados hoy
+    if (aStatus !== bStatus) {
+      return aStatus - bStatus;
+    }
+
+    // Si ambos tienen mismo status, ordenar por Hora_Inicio asc
+    const aStart = moment(a.Hora_Inicio, "HH:mm");
+    const bStart = moment(b.Hora_Inicio, "HH:mm");
+    return aStart.valueOf() - bStart.valueOf();
+  });
+
+  console.log("✅ OffersSection -> sortedOffers:", sortedOffers);
 
   return (
     <div
@@ -433,7 +506,13 @@ const OffersSection = ({ offers, cuponesUsados, setCuponesUsados, setCompra, com
       onMouseUp={handleMouseLeaveOrUp}
       onMouseMove={handleMouseMove}
     >
-      {filteredOffers.map((offer) => (
+      {sortedOffers.length === 0 && (
+        <p style={{ textAlign: "center", fontStyle: "italic", color: "#888" }}>
+          No hay cupones disponibles para tu segmento.
+        </p>
+      )}
+
+      {sortedOffers.map((offer) => (
         <OfferCard
           key={offer.Oferta_Id}
           offer={offer}
@@ -455,7 +534,7 @@ const NotificationTicker = () => {
   useEffect(() => {
     const fetchActiveIncentives = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/incentivos');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos`);
         const incentives = Array.isArray(response.data) ? response.data : [];
         const activeIncentives = incentives.filter((incentive) => incentive.activo === 1);
 
@@ -476,7 +555,7 @@ const NotificationTicker = () => {
 
     const fetchOffers = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/ofertas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         const offers = Array.isArray(response.data.data) ? response.data.data : [];
         const activeOffers = offers.filter((offer) => offer.Estado === 'Activa');
         const messages = [];
@@ -536,7 +615,7 @@ const NotificationTicker = () => {
         const today = new Date().getDay();
         const dayName = dayMap[today];
     
-        const response = await axios.get(`http://localhost:3001/api/horarios/${dayName}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/horarios/${dayName}`);
         if (response.data.length > 0) {
           const currentHour = new Date().getHours() + ':' + String(new Date().getMinutes()).padStart(2, '0');
     
@@ -807,7 +886,7 @@ const CustomerPage = (offer) => {
   useEffect(() => {
   const checkSuspensionStatus = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/pizzeria-settings');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/pizzeria-settings`);
       const { is_suspended, suspension_end_time } = response.data;
       // console.log("Valores recibidos desde la API para verificar estado de suspensión:", is_suspended, suspension_end_time);
 
@@ -852,7 +931,7 @@ const CustomerPage = (offer) => {
   }, [compra]);
   useEffect(() => {
     axios
-      .get('http://localhost:3001/api/reviews')
+      .get(`${process.env.REACT_APP_API_URL}/api/reviews`)
       .then((response) => {
         setReviews(response.data);
         if (response.data.length > 0) {
@@ -878,7 +957,7 @@ const CustomerPage = (offer) => {
   useEffect(() => {
     const fetchCuponesDisponibles = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/ofertas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
   
         // Buscar oferta de Random Pizza
         const ofertaPizzaRara = response.data.data.find(
@@ -966,7 +1045,7 @@ const CustomerPage = (offer) => {
         // console.log("🚀 Buscando ofertas para segmento:", sessionData.segmento);
         setIsLoadingOffers(true);
   
-        const response = await axios.get(`http://localhost:3001/ofertas/${sessionData.segmento}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas/${sessionData.segmento}`);
         const { data } = response.data;
   
         moment.locale('es');
@@ -996,7 +1075,7 @@ const CustomerPage = (offer) => {
   useEffect(() => {
     const fetchOffers = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/ofertas");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         let allOffers = response.data.data;
   
         // Obtener el día actual en texto
@@ -1097,7 +1176,7 @@ const CustomerPage = (offer) => {
     fetchOffers();
   }, []); 
   useEffect(() => {
-    axios.get('http://localhost:3001/api/info-empresa')
+    axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`)
       .then((response) => {
         if (response.data.length > 0) {
           const empresa = response.data[0]; // 🔥 Tomar la primera tienda del array
@@ -1192,7 +1271,7 @@ const CustomerPage = (offer) => {
     };
 
     axios
-        .patch(`http://localhost:3001/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`, claimData)
+        .patch(`${process.env.REACT_APP_API_URL}/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`, claimData)
         .then((response) => {
             const { discount } = response.data.coupon;
 
@@ -1252,7 +1331,7 @@ const CustomerPage = (offer) => {
     // Verificar si el Daily Challenge ya está cargado para evitar llamadas redundantes
     if (!dailyChallenge) {
       axios
-        .get('http://localhost:3001/ofertas') // Llama a todas las ofertas
+        .get(`${process.env.REACT_APP_API_URL}/ofertas`) 
         .then((response) => {
           // Filtrar por Tipo_Oferta y Estado
           const challenges = response.data.data.filter(
@@ -1265,7 +1344,7 @@ const CustomerPage = (offer) => {
   
             // Adaptar la URL de la imagen si existe
             if (challenge.Imagen) {
-              challenge.img_url = `http://localhost:3001${challenge.Imagen}`;
+              challenge.img_url = `${process.env.REACT_APP_API_URL}${challenge.Imagen}`;
             }
   
             // Guardar el Daily Challenge en el estado
@@ -1283,7 +1362,7 @@ const CustomerPage = (offer) => {
   const handleContactButtonClick = () => {
     setShowContactInfo(!showContactInfo);
     if (!companyInfo) {
-      axios.get('http://localhost:3001/api/info-empresa').then((response) => {
+      axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`).then((response) => {
         const data = response.data;
         if (Array.isArray(data) && data.length > 0) {
           setCompanyInfo(data[0]); // Selecciona el primer registro (sede principal)
@@ -1347,15 +1426,13 @@ const CustomerPage = (offer) => {
   };
   const resetCoupons = async (offer) => {
     try {
-      await axios.patch(`http://localhost:3001/api/offers/${offer.Oferta_Id}/reset-coupons`, {
-        Cupones_Disponibles: offer.Cupones_Asignados,
-      });
-      setCuponesDisponibles(offer.Cupones_Asignados);
-      console.log('Cupones reseteados correctamente.');
+      const res = await axios.patch(`${process.env.REACT_APP_API_URL}/api/offers/reset-all-today`);
+      console.log(`Cupones reseteados globalmente: ${res.data.ofertasReseteadas}`);
     } catch (error) {
-      console.error('Error al resetear los cupones:', error);
+      console.error('Error al resetear los cupones globales:', error);
     }
   };
+  
   const filteredReviews = reviews.filter(review =>
     review.review.toLowerCase().includes(searchQuery.toLowerCase())
   );

@@ -8,7 +8,7 @@ const InfoEmpresaTable = () => {
 
   useEffect(() => {
     // Hacer una solicitud para obtener la información de la empresa
-    axios.get('http://localhost:3001/api/info-empresa')
+    axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`)
       .then((response) => {
         setCompanyInfo(response.data);
       })
@@ -23,7 +23,7 @@ const InfoEmpresaTable = () => {
 
   const handleDelete = (id) => {
     if (window.confirm('¿Estás seguro de que deseas eliminar esta empresa?')) {
-      axios.delete(`http://localhost:3001/api/info-empresa/${id}`)
+      axios.delete(`${process.env.REACT_APP_API_URL}/api/info-empresa/${id}`)
         .then(() => {
           alert('Empresa eliminada con éxito');
           setCompanyInfo(null); // Refrescar la lista

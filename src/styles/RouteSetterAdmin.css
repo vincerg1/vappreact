@@ -1,6 +1,14 @@
 .route-setter-container {
-    text-align: center;
-    padding: 30px;
+  width: 100%;
+  max-width: 600px;
+  margin: 50px auto;
+  margin-bottom: 2rem;
+  padding: 30px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  min-height: 700px;
   }
   
   .route-setter-title {
@@ -13,33 +21,34 @@
     display: flex;
     justify-content: center;
     gap: 15px;
-    flex-wrap: wrap;
     margin-bottom: 20px;
   }
   
   .route-button {
-    background-color: #28a745;
-    color: white;
-    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
     border: none;
-    padding: 12px 20px;
+    border-radius: 10px;
+    background-color: #82f89c;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
-    border-radius: 5px;
-    transition: background 0.3s ease;
   }
   
+  .route-button span {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333333;
+    transition: color 0.3s ease;
+  }
   .route-button:hover {
-    background-color: #218838;
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    background-color: #297a2b; 
   }
-  
-  .route-setter-footer {
-    margin-top: 40px;
-    font-size: 14px;
-    text-align: center;
-  }
-  
-  .social-icons i {
-    margin: 0 5px;
-    font-size: 18px;
+  .route-button:hover span {
+    color: #1aff00; 
   }
   

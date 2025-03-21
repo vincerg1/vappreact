@@ -1,0 +1,53 @@
+/* EmpleadosIndex.css */
+.formulario-container{
+    width: 100%;
+    max-width: 600px;
+    margin: 50px auto;
+    margin-bottom: 2rem;
+    padding: 30px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    min-height: 700px;
+    }
+    .formulario-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .formulario-buttons {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+    .btn-primary, 
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background-color: #82f89c;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+   
+    .btn-primary, 
+    .btn-secondary,
+     span {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333333;
+      transition: color 0.3s ease;
+    }
+
+
+    
+    

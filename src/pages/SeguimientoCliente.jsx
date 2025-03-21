@@ -65,7 +65,7 @@ function SeguimientoCliente() {
 
 const fetchListaClientes = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/clientes");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes`);
       setListaClientes(response.data);
     } catch (error) {
       console.error("Error al obtener la lista de clientes:", error);
@@ -73,7 +73,7 @@ const fetchListaClientes = async () => {
 };
 const fetchHistorialCompleto = async (clienteId) => {
   try {
-      const response = await axios.get(`http://localhost:3001/registro_ventas/cliente/${clienteId}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas/cliente/${clienteId}`);
       const data = response.data.data || [];
 
       if (data.length === 0) {

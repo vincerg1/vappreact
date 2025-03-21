@@ -51,7 +51,7 @@ const CustomerMenu = () => {
   useEffect(() => {
     const fetchMenuPizzas = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/menu_pizzas"); 
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`); 
         setMenuPizzas(response.data.data); // Guardamos la respuesta en el estado
         console.log("✅ Pizzas obtenidas desde la base de datos EN cm:", response.data.data);
       } catch (error) {
@@ -99,7 +99,7 @@ const CustomerMenu = () => {
       try {
         const idCliente = sessionData?.id_cliente;
         if (idCliente && !clienteInfo) {
-          const response = await axios.get(`http://localhost:3001/clientes/${idCliente}`);
+          const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`);
           const clienteData = response.data;
           setClienteInfo(clienteData);
           updateSessionData({ ...sessionData, cliente: clienteData });
@@ -241,7 +241,7 @@ const CustomerMenu = () => {
   useEffect(() => {
     const fetchExtraPrices = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/IngredientExtraPrices');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/IngredientExtraPrices`);
         const preciosExtra = response.data.reduce((acc, item) => {
           acc[item.size] = item.extra_price;
           return acc;
@@ -256,7 +256,7 @@ const CustomerMenu = () => {
   
   const fetchPizzaDetails = async (pizzaId) => {
     try {
-        const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas/${pizzaId}`);
         const pizzaData = response.data.data;
 
         if (pizzaData && pizzaData.PriceBySize) {
@@ -575,7 +575,7 @@ setTotalPrice(newTotalPrice);
               .map(pizza => (
                 <div className="menu-item-cm" key={pizza.id}>
                   <div className="menu-image-cm">
-                    <img src={`http://localhost:3001/${pizza.imagen}`} alt={pizza.nombre} />
+                    <img src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`} alt={pizza.nombre} />
                   </div>
                   <div className="menu-details">
                     <h3>{pizza.nombre}</h3>
@@ -590,9 +590,9 @@ setTotalPrice(newTotalPrice);
         <DeliveryForm compra={compra} setCompra={setCompra} />
       )}
       {isFormVisible && pizzaDetails && (
-        <div className="form-container">
-          <div className="modal-content">
-            <button className="close-button" onClick={handleCloseForm}>✖</button>
+        <div className="form-container-cm">
+          <div className="modal-content-cm">
+            <button className="close-button-cm" onClick={handleCloseForm}>✖</button>
             <h3>Detalles de {selectedPizza.nombre}</h3>
             <p className="pizza-description">{pizzaDetails.descripcion}</p>
             <p className="ingredient-description">{renderIngredientDescription()}</p>

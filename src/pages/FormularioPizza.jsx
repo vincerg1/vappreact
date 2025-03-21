@@ -101,7 +101,7 @@ const FormularioPizza = (
   useEffect(() => {
     const cargarInventario = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/inventario');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
         const inventario = response.data.data;
         // console.log(response.data.data)
         const complementos = inventario.filter(item => item.categoria === 'Complementos');

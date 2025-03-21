@@ -13,7 +13,7 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
   useEffect(() => {
     const fetchVentas = async () => {
       try {
-        const response = await fetch('http://localhost:3001/registro_ventas');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/registro_ventas`);
         const result = await response.json();
 
         if (!result.data || !Array.isArray(result.data)) {
@@ -111,7 +111,7 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
           <div key={pizza.id} onClick={() => onPizzaSelect(pizza)} className="carousel-item">
             <div className="carousel-image-container">
               <img
-                src={`http://localhost:3001/${pizza.imagen}`}
+                src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
                 alt={pizza.nombre}
                 className="carousel-image"
               />

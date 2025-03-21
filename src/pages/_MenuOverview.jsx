@@ -38,7 +38,7 @@ const MenuOverview = () => {
 useEffect(() => {
   const fetchPizzas = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/menu_pizzas');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
       if (response.status === 200 && response.data && Array.isArray(response.data.data)) {
         const pizzasData = response.data.data.map(pizza => {
           let ingredientesPizza = [];
@@ -66,7 +66,7 @@ useEffect(() => {
 useEffect(() => {
     const cargarPartners = async () => {
       try {
-        const respuesta = await axios.get('http://localhost:3001/PartnerData');
+        const respuesta = await axios.get(`${process.env.REACT_APP_API_URL}/PartnerData`);
         setPartners(respuesta.data.data);
         // console.log('Partners cargados:', respuesta.data.data);
       } catch (error) {
@@ -103,7 +103,7 @@ const handleDelete = async (id) => {
   if (window.confirm('¿Estás seguro de que deseas eliminar esta pizza?')) {
     try {
       // Asegúrate de que la URL coincida con la configurada en el servidor
-      await axios.delete(`http://localhost:3001/menu_pizzas/${id}`);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/menu_pizzas/${id}`);
       // Actualiza el estado para reflejar el cambio en la UI
       setMenus(prevMenus => prevMenus.filter(menu => menu.id !== id));
     } catch (error) {
@@ -123,7 +123,7 @@ const handleDeletePartner = async (id) => {
   if (window.confirm('¿Estás seguro de que deseas eliminar este partner?')) {
     try {
       // Asegúrate de que la URL coincida con la configurada en el servidor
-      await axios.delete(`http://localhost:3001/PartnerData/${id}`);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/PartnerData/${id}`);
       // Actualiza el estado para reflejar el cambio en la UI
       setPartners(prevPartners => prevPartners.filter(partner => partner.id !== id));
     } catch (error) {
@@ -143,7 +143,7 @@ return (
         pizzasConEstadoActualizado.map((menu, index) => (
           <div className="menu-item" key={index}>
             <div className="menu-image">
-              <img src={`http://localhost:3001/${menu.imagen}`} alt={menu.nombre} />
+              <img src={`${process.env.REACT_APP_API_URL}/${menu.imagen}`} alt={menu.nombre} />
             </div>
             <div className="menu-details">
               <h3>{menu.nombre}</h3>
@@ -177,7 +177,7 @@ return (
       {partners.map(partner => (
         <div className="menu-item">
         <div className="menu-image">
-          <img src={`http://localhost:3001/${partner.imagen}`} alt={partner.producto} />
+          <img src={`${process.env.REACT_APP_API_URL}/${partner.imagen}`} alt={partner.producto} />
         </div>
         <div className="menu-details">
           <h3>{partner.producto}</h3>

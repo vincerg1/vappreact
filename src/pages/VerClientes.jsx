@@ -14,7 +14,7 @@ function VerClientes() {
 
   const fetchClientes = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/clientes');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes`);
       if (Array.isArray(response.data)) {
         console.log("📊 Datos recibidos de la base de datos:", response.data);
         setClientes(response.data);
@@ -30,7 +30,7 @@ function VerClientes() {
     if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
 
     try {
-      await axios.delete(`http://localhost:3001/clientes/${id_cliente}`);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/clientes/${id_cliente}`);
       fetchClientes();
     } catch (error) {
       console.error('❌ Error al eliminar cliente:', error);
@@ -38,7 +38,7 @@ function VerClientes() {
   };
   const handleSuspenderCliente = async (id_cliente, suspensionPeriod) => {
     try {
-      await axios.put(`http://localhost:3001/clientes/suspender/${id_cliente}`, {
+      await axios.put(`${process.env.REACT_APP_API_URL}/clientes/suspender/${id_cliente}`, {
         suspensionPeriod,
       });
       console.log(`🚫 Cliente ${id_cliente} suspendido por ${suspensionPeriod} días`);
@@ -49,7 +49,7 @@ function VerClientes() {
   };
   const handleReactivarCliente = async (id_cliente) => {
     try {
-      await axios.put(`http://localhost:3001/clientes/reactivar/${id_cliente}`);
+      await axios.put(`${process.env.REACT_APP_API_URL}/clientes/reactivar/${id_cliente}`);
       console.log(`✅ Cliente ${id_cliente} reactivado con éxito`);
       fetchClientes();
     } catch (error) {
@@ -68,7 +68,7 @@ function VerClientes() {
   );
   return (
     <div className="clientes-container">
-      <h2>Lista de Clientes</h2>
+      <h2 className='buscadorLS'>Lista de Clientes</h2>
       <input
         type="text"
         placeholder="Buscar cliente por email..."

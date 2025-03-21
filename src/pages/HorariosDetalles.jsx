@@ -15,7 +15,7 @@ function HorariosDetalles() {
 
   const fetchHorarios = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/horarioPersonal/empleado/${id}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/horarioPersonal/empleado/${id}`);
       setHorarios(response.data);
     } catch (error) {
       console.error("Error al obtener horarios:", error);
@@ -25,7 +25,7 @@ function HorariosDetalles() {
   const handleEliminar = async (id) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar este horario?")) {
       try {
-        await axios.delete(`http://localhost:3001/horarioPersonal/${id}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/horarioPersonal/${id}`);
         fetchHorarios();
       } catch (error) {
         console.error("Error al eliminar horario:", error);

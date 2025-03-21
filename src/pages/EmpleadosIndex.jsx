@@ -4,14 +4,14 @@ import "../styles/EmpleadosIndex.css";
 
 function EmpleadosIndex() {
   return (
-    <div className="empleados-index-container">
-      <h2>Gestión de Empleados</h2>
+    <div className="empleados-index-container"> 
+      <h2 className="empleados-buttons-title" ><span>Staff Management</span> </h2>
       <div className="empleados-buttons">
         <Link to="/control-horario/empleados/crear">
-          <button className="empleados-button">Nuevo Empleado</button>
+          <button className="empleados-button"><span>New</span> </button>
         </Link>
         <Link to="/control-horario/empleados/lista">
-          <button className="empleados-button">Ver Empleados</button>
+          <button className="empleados-button"><span>View</span> </button>
         </Link>
       </div>
       

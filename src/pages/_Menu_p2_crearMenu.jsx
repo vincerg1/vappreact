@@ -251,7 +251,7 @@ const handleCreatePizza = async (e, formData, actionType) => {
 
   // Intentar enviar los datos al servidor
   try {
-    const response = await axios.post('http://localhost:3001/menu_pizzas', dataToSend, {
+    const response = await axios.post(`${process.env.REACT_APP_API_URL}/menu_pizzas`, dataToSend, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -295,7 +295,7 @@ const handleFormSubmit = async (e) => {
     try {
       const response = await axios({
         method: 'PATCH',
-        url: `http://localhost:3001/menu_pizzas/${pizzaId}`,
+        url: `${process.env.REACT_APP_API_URL}/menu_pizzas/${pizzaId}`,
         data: dataToSend,
       });
 
@@ -438,7 +438,7 @@ const handleFormSubmit = async (e) => {
         </select>
         {formData.imagen && (
           <img 
-          src={`http://localhost:3001/${formData.imagen}`} 
+          src={`${process.env.REACT_APP_API_URL}/${formData.imagen}`} 
           alt="Imagen actual de la pizza"
           className="image-preview" 
            />

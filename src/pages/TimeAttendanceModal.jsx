@@ -40,7 +40,7 @@ const TimeAttendanceModal = ({ onClose }) => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:3001/authenticate", { pin });
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/authenticate`, { pin });
       if (response.data.success && response.data.id_empleado) {
         setAuthenticated(true);
         setEmployeeId(response.data.id_empleado);
@@ -59,7 +59,7 @@ const TimeAttendanceModal = ({ onClose }) => {
   const fetchCurrentStatus = async (id_empleado) => {
     try {
       console.log("🔍 Cargando estado completo para empleado:", id_empleado);
-      const res = await axios.get(`http://localhost:3001/api/employees/${id_empleado}/current_status`);
+      const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/employees/${id_empleado}/current_status`);
 
       if (res.data.success) {
         console.log("✅ /current_status:", res.data);
@@ -89,7 +89,7 @@ const TimeAttendanceModal = ({ onClose }) => {
       return;
     }
     try {
-      const response = await axios.post("http://localhost:3001/mark_entry", {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/mark_entry`, {
         id_empleado: employeeId,
         day: shiftInfo.day,
         hora_inicio: shiftInfo.hora_inicio,
@@ -111,7 +111,7 @@ const TimeAttendanceModal = ({ onClose }) => {
   // ======================= 4) handleMarkExit => /mark_exit ======================= //
   const handleMarkExit = async () => {
     try {
-      const response = await axios.post("http://localhost:3001/mark_exit", {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/mark_exit`, {
         id_empleado: employeeId
       });
       if (response.data.success) {

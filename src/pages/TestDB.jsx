@@ -5,7 +5,7 @@ function TestDB() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:3001/testdb')  // Asegúrate de que la ruta coincida exactamente
+        fetch(`${process.env.REACT_APP_API_URL}/testdb`)  
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Error en la respuesta del servidor: ' + response.statusText);

@@ -1,11 +1,10 @@
 /* Estilos generales */
-body {
+  body {
     font-family: Arial, sans-serif;
     background-color: #f5f5f5;
     margin: 0;
     padding: 0;
   }
-  
   .infoEmpresaContenedor {
     max-width: 1200px;
     margin: 20px auto;
@@ -80,6 +79,82 @@ body {
   }
   
 
-  /*Modal edicion de la empresa*/
-  
-  
+/* Fondo oscuro semi-transparente del modal */
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #fff; /* Cambia el color a blanco */
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+.close-modal-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+}
+.close-modal-button:hover{
+  background-color: #ff021b;
+}
+.FINF_EMP {
+  background: #fff !important; /* Color blanco y forzamos con !important */
+  padding: 20px;
+  border-radius: 8px;
+}
+.FINF_EMP input, .FINF_EMP select {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+.FINF_EMP h2 {
+  margin-top: 5rem;
+}
+.socials-block {
+  margin-top: 15px;
+}
+.add-social {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.remove-social-button {
+  margin-left: 10px;
+  color: red;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 1.2em;
+}
+button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+}
+

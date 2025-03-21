@@ -9,15 +9,22 @@ function Clientes() {
   const navigate = useNavigate();
 
   return (
-    <div className="clientes-container">
-      <h2>Clientes</h2>
-      <div className="botones-acciones">
-        <button onClick={() => navigate('/clientes/crear')}>Crear Cliente</button>
-        <button onClick={() => navigate('/clientes/mapa')}>Mapa Clientes</button>
-        <button onClick={() => navigate('/clientes/ver')}>Ver Clientes</button>
-      </div>
-    </div>
-  );
+<div className="clientes-container">
+  <h1 className="clientes-title">Manage Clients</h1>
+  <div className="botones-acciones">
+    <button className="clientes-button" onClick={() => navigate('/clientes/crear')}>
+      <span>Create </span>
+    </button>
+    <button className="clientes-button" onClick={() => navigate('/clientes/mapa')}>
+      <span>Map</span>
+    </button>
+    <button className="clientes-button" onClick={() => navigate('/clientes/ver')}>
+      <span>View</span>
+    </button>
+  </div>
+</div>
+
+  ); 
 }
 
 export default Clientes;

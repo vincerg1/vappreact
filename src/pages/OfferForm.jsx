@@ -69,7 +69,7 @@ const OfferForm = () => {
  
     const fetchOffer = async (offerId) => {
         try {
-            const response = await axios.get(`http://localhost:3001/ofertas/edit/${offerId}`);
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas/edit/${offerId}`);
             const offerData = response.data.data;
 
             // Mapear los datos del servidor al formato del formulario
@@ -101,7 +101,7 @@ const OfferForm = () => {
             });
 
 
-            setCurrentImage(offerData.Imagen ? `http://localhost:3001${offerData.Imagen}` : null);
+            setCurrentImage(offerData.Imagen ? `${process.env.REACT_APP_API_URL}${offerData.Imagen}` : null);
         } catch (error) {
             console.error('Error al obtener la oferta:', error);
         }
@@ -179,12 +179,12 @@ const OfferForm = () => {
         try {
             if (id) {
                 // Actualizar oferta existente
-                await axios.patch(`http://localhost:3001/ofertas/${id}`, updatedFormData, {
+                await axios.patch(`${process.env.REACT_APP_API_URL}/ofertas/${id}`, updatedFormData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
             } else {
                 // Crear nueva oferta
-                await axios.post('http://localhost:3001/ofertas', updatedFormData, {
+                await axios.post(`${process.env.REACT_APP_API_URL}/ofertas`, updatedFormData, {
                     headers: { 'Content-Type': 'multipart/form-data' },
                 });
             }
@@ -234,7 +234,7 @@ const OfferForm = () => {
     };   
 
   return (
-    <div>
+    <div className='Formulario-Offers-container '>
         <h2>{id ? 'Editar Oferta' : 'Crear Oferta'}</h2>
         <div className="scrollable-form66">
             <form onSubmit={handleSubmit}>

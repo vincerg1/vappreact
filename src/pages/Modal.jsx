@@ -102,7 +102,7 @@ const Modal = ({
            'Selecciona un acompañante'}
         </h2>
         {contenidoFiltrado.map((item) => {
-          let imageUrl = contentType === 'pizzas' || contentType === 'partners' ? `http://localhost:3001/${item.imagen}` : `http://localhost:3001${item.Imagen}`;
+          let imageUrl = contentType === 'pizzas' || contentType === 'partners' ? `${process.env.REACT_APP_API_URL}/${item.imagen}` : `${process.env.REACT_APP_API_URL}${item.Imagen}`;
           return (
             <div className="menu-item" key={item.id || item.Oferta_Id}>
               <div className="menu-image">

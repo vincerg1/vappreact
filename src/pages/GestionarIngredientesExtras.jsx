@@ -11,7 +11,7 @@ const GestionarIngredientesExtras = () => {
   useEffect(() => {
     const fetchIngredientes = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/IngredientExtraPrices');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/IngredientExtraPrices`);
         setIngredientes(response.data);
       } catch (error) {
         console.error('Error al cargar los ingredientes extra:', error);
@@ -37,7 +37,7 @@ const GestionarIngredientesExtras = () => {
   
       console.log('Datos enviados al servidor:', { extra_price: updatedPrice });
   
-      await axios.put(`http://localhost:3001/IngredientExtraPrices/${id}`, { extra_price: updatedPrice });
+      await axios.put(`${process.env.REACT_APP_API_URL}/IngredientExtraPrices/${id}`, { extra_price: updatedPrice });
       setIngredientes((prev) =>
         prev.map((ing) => (ing.id === id ? { ...ing, extra_price: updatedPrice } : ing))
       );

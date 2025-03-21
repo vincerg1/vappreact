@@ -44,7 +44,7 @@ export default function TSegmentos({ filters }) {
   const fetchSegmentos = async (startDate, endDate) => {
     try {
       console.log('Fetching segmentos with dates:', startDate, endDate);
-      const response = await axios.get('http://localhost:3001/segmentos', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/segmentos`, {
         params: { startDate, endDate },
       });
 

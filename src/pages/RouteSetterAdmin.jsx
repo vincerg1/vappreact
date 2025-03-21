@@ -22,16 +22,16 @@ const RouteSetterAdmin = () => {
 
   return (
     <div className="route-setter-container">
-      <h1 className="route-setter-title">Route Setter - Administración</h1>
+      <h1 className="route-setter-title">Route Setter</h1>
       <div className="route-setter-buttons">
         <button className="route-button" onClick={handleCrearRepartidorClick}>
-          Crear Repartidor
+         <span>Add a Delivery</span> 
         </button>
         <button className="route-button" onClick={handlePrecioDeliveryClick}>
-          Precio Delivery
+        <span>Delivery Fee </span> 
         </button>
         <button className="route-button" onClick={handleReportsClick}>
-          Reports
+        <span>Insights</span>  
         </button>
       </div>
 
@@ -39,14 +39,6 @@ const RouteSetterAdmin = () => {
         <DeliveryPriceManagement showModal={showDeliveryPriceModal} onClose={handleCloseModal} />
       )}
 
-      <footer className="route-setter-footer">
-        <p><strong>VoltaPizzaApp 2025.</strong></p>
-        <div className="social-icons">
-          <i className="fab fa-instagram"></i>
-          <i className="fab fa-tiktok"></i>
-          <i className="fab fa-whatsapp"></i>
-        </div>
-      </footer>
     </div>
   );
 };

@@ -7,7 +7,7 @@ const WarningModal = ({ warnings, onConfirm, onClose, setWarningsDashboard, setW
     const dismissedWarningIds = warnings.map(w => w.id); // 🔥 Extraer solo los IDs
 
     try {
-        const response = await axios.post("http://localhost:3001/api/dismiss-warnings", { warnings: dismissedWarningIds });
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/dismiss-warnings`, { warnings: dismissedWarningIds });
 
       console.log("✅ [LOG] Respuesta del servidor:", response.data);
 

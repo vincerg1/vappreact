@@ -13,7 +13,7 @@ export const CrearAdmin = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:3001/admin/register', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/admin/register`, {
         nombre,
         correo,
         contrasena,

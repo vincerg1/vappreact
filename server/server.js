@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-
+const myDomain = "http://192.168.1.33:3001"; 
 // const determinarZonaRiesgo = (disponible, limite, fechaCaducidad) => {
 //   const fechaCaducidadParsed = parseISO(fechaCaducidad);
 //   const fechaActual = new Date();
@@ -653,7 +653,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
-cron.schedule('0 0 * * *', () => {
+cron.schedule('58 23 * * *', () => {
   console.log('=== Cron Job Iniciado: Evaluando horarios, cupones y Dias_Ucompra ===');
 
   // Obtener la fecha actual
@@ -751,24 +751,29 @@ cron.schedule('0 0 * * *', () => {
       const horaFin = moment(cupon.Hora_Fin, 'HH:mm');
       const diasActivos = JSON.parse(cupon.Dias_Activos) || [];
 
-      if (diasActivos.includes(diaActual) && moment().isSameOrAfter(horaFin)) {
+      if (
+        diasActivos.includes(diaActual) &&
+        moment().isSameOrAfter(horaFin) &&
+        cupon.Cupones_Disponibles < cupon.Cupones_Asignados
+      ) {
         console.log(`⏳ Reseteando cupones para la oferta ${cupon.Oferta_Id}, hora fin alcanzada.`);
-
+      
         const resetQuery = `
           UPDATE ofertas 
           SET Cupones_Disponibles = Cupones_Asignados 
           WHERE Oferta_Id = ?
         `;
-
+      
         db.run(resetQuery, [cupon.Oferta_Id], function (err) {
           if (err) {
             console.error(`❌ Error al resetear cupones para oferta ${cupon.Oferta_Id}:`, err);
             return;
           }
-
+      
           console.log(`✔️ Cupones reseteados para la oferta ${cupon.Oferta_Id}.`);
         });
       }
+      
     });
   });
 
@@ -888,70 +893,102 @@ cron.schedule('0 11 * * *', () => {
 });
 
 // the get zone
-app.get("/api/clientes-ventas/:idCliente", (req, res) => {
-  const idCliente = req.params.idCliente;
-  console.log("🔍 Consultando ventas de cliente:", idCliente);
+app.get("/api/clientes-ventas", (req, res) => {
+  let period = req.query.period || 'all';
+  if (!['7', '15', '30', 'all'].includes(period)) {
+    period = 'all';
+  }
+
+  let dateFilter = '';
+  if (period !== 'all') {
+    dateFilter = `AND fecha >= DATE('now', '-${period} days')`;
+  }
 
   const sql = `
-      SELECT rv.id_order, rv.id_cliente, rv.fecha, rv.hora, rv.total_con_descuentos, rv.total_productos, rv.metodo_entrega,
-             ie.id AS tienda_id, ie.nombre_empresa, ie.ciudad, ie.direccion, 
-             ie.coordenadas_latitud AS tienda_lat, ie.coordenadas_longitud AS tienda_lng
-      FROM registro_ventas rv
-      JOIN InfoEmpresa ie 
-      ON JSON_EXTRACT(rv.metodo_entrega, '$.Delivery.tiendaSalida.id') = CAST(ie.id AS TEXT)
-      WHERE rv.id_cliente = ? 
-      AND JSON_EXTRACT(rv.metodo_entrega, '$.Delivery.latitud') IS NOT NULL
+    SELECT
+      rv.id_order,
+      rv.id_cliente,
+      rv.fecha,
+      rv.hora,
+      rv.metodo_entrega,
+      ie.id AS tienda_id,
+      ie.nombre_empresa,
+      ie.ciudad,
+      ie.direccion,
+      ie.coordenadas_latitud AS tienda_lat,
+      ie.coordenadas_longitud AS tienda_lng
+    FROM registro_ventas rv
+    JOIN InfoEmpresa ie
+      ON json_extract(rv.metodo_entrega, '$.Delivery.tiendaSalida.id') = CAST(ie.id AS TEXT)
+    WHERE (
+      /* Solo las órdenes con lat/lng de Delivery 
+         (si quieres también PickUp, lo añades con OR) */
+      json_extract(rv.metodo_entrega, '$.Delivery.latitud') IS NOT NULL
+    )
+    ${dateFilter}
   `;
 
-  db.all(sql, [idCliente], (err, rows) => {
-      if (err) {
-          console.error("🚨 Error en la consulta SQL:", err.message);
-          res.status(500).json({ error: "Error al obtener las ventas del cliente." });
-          return;
+  db.all(sql, [], (err, rows) => {
+    if (err) {
+      console.error("❌ Error en la consulta SQL:", err.message);
+      return res.status(500).json({ error: "Error al obtener datos de clientes." });
+    }
+
+    // Transformar las filas en un objeto con lat/lng
+    const data = rows.map((venta) => {
+      let metodo;
+      try {
+        metodo = JSON.parse(venta.metodo_entrega);
+      } catch (e) {
+        console.warn("⚠️ Error parseando JSON:", venta.metodo_entrega);
+        metodo = {};
       }
 
-      if (rows.length === 0) {
-          return res.status(404).json({ message: "No se encontraron ventas de delivery para este cliente." });
-      }
+      const cliLat = metodo.Delivery?.latitud || null;
+      const cliLng = metodo.Delivery?.longitud || null;
 
-      // 🔹 Formatear la respuesta con ubicación del cliente y la tienda
-      const response = rows.map((venta) => {
-          try {
-              const metodoEntrega = JSON.parse(venta.metodo_entrega);
-
-              return {
-                  id_order: venta.id_order,
-                  id_cliente: venta.id_cliente,  // 👈 **Ahora incluimos id_cliente en la respuesta**
-                  fecha: venta.fecha,
-                  hora: venta.hora,
-                  total_con_descuentos: venta.total_con_descuentos,
-                  total_productos: venta.total_productos,
-                  metodo_entrega: {
-                      tipo: "Delivery",
-                      cliente: {
-                          lat: metodoEntrega.Delivery?.latitud || null,
-                          lng: metodoEntrega.Delivery?.longitud || null,
-                      },
-                      tiendaSalida: {
-                          id: venta.tienda_id,
-                          nombre: venta.nombre_empresa,
-                          ciudad: venta.ciudad,
-                          direccion: venta.direccion,
-                          lat: venta.tienda_lat,
-                          lng: venta.tienda_lng,
-                      }
-                  }
-              };
-          } catch (jsonError) {
-              console.error("❌ Error al parsear metodo_entrega:", venta.metodo_entrega);
-              return null;
+      return {
+        id_order: venta.id_order,
+        id_cliente: venta.id_cliente,
+        fecha: venta.fecha,
+        hora: venta.hora,
+        metodo_entrega: {
+          tipo: "Delivery",
+          cliente: {
+            lat: cliLat,
+            lng: cliLng,
+          },
+          tiendaSalida: {
+            id: venta.tienda_id,
+            nombre: venta.nombre_empresa,
+            ciudad: venta.ciudad,
+            direccion: venta.direccion,
+            lat: venta.tienda_lat,
+            lng: venta.tienda_lng
           }
-      }).filter(v => v !== null);
+        }
+      };
+    });
 
-      res.json(response);
+    res.json(data);
   });
 });
 app.get('/api/ventas-por-tienda', (req, res) => {
+  let period = req.query.period || 'all'; // Valores esperados: "7", "15", "30", "all"
+
+  // Validar que period sea uno de los permitidos
+  if (!['7', '15', '30', 'all'].includes(period)) {
+    console.warn("⚠️ Periodo inválido recibido:", period);
+    period = 'all';
+  }
+
+  // Si no es 'all', generamos la cláusula de filtro por fecha
+  let dateFilter = '';
+  if (period !== 'all') {
+    dateFilter = `AND fecha >= DATE('now', '-${period} days')`;
+  }
+
+  // Consulta SQL corregida
   const sql = `
     SELECT 
       e.id AS tienda_id,
@@ -960,34 +997,62 @@ app.get('/api/ventas-por-tienda', (req, res) => {
       e.ciudad,
       e.coordenadas_latitud,
       e.coordenadas_longitud,
-      COALESCE(delivery_ventas, 0) AS ventas_delivery,
-      COALESCE(pickup_ventas, 0) AS ventas_pickup,
-      COALESCE(delivery_ventas, 0) + COALESCE(pickup_ventas, 0) AS ventas_totales
+
+      COALESCE(d.delivery_ventas, 0) AS ventas_delivery,
+      COALESCE(p.pickup_ventas, 0) AS ventas_pickup,
+      COALESCE(d.delivery_ventas, 0) + COALESCE(p.pickup_ventas, 0) AS ventas_totales,
+
+      /* 🔹 PROMEDIO HISTÓRICO: filtra por la tienda (e.id) */
+      (SELECT COUNT(rv.id_order) * 1.0 / NULLIF(COUNT(DISTINCT rv.fecha), 0)
+       FROM registro_ventas rv
+       WHERE (
+         json_extract(rv.metodo_entrega, '$.Delivery.tiendaSalida.id') = e.id 
+         OR json_extract(rv.metodo_entrega, '$.PickUp.puntoRecogida.id') = e.id
+       )
+      ) AS promedio_historico,
+
+      /* 🔹 PROMEDIO DEL PERIODO SELECCIONADO: mismo filtro + dateFilter */
+      (SELECT COUNT(rv.id_order) * 1.0 / NULLIF(COUNT(DISTINCT rv.fecha), 0)
+       FROM registro_ventas rv
+       WHERE (
+         json_extract(rv.metodo_entrega, '$.Delivery.tiendaSalida.id') = e.id
+         OR json_extract(rv.metodo_entrega, '$.PickUp.puntoRecogida.id') = e.id
+       )
+       ${dateFilter}
+      ) AS promedio_periodo
+
     FROM InfoEmpresa e
+    /* Subconsulta de ventas Delivery por tienda en el periodo */
     LEFT JOIN (
       SELECT 
-        json_extract(v.metodo_entrega, '$.Delivery.tiendaSalida.id') AS tienda_id,
-        COUNT(v.id_order) AS delivery_ventas
-      FROM registro_ventas v
-      WHERE json_extract(v.metodo_entrega, '$.Delivery.tiendaSalida.id') IS NOT NULL
+        json_extract(metodo_entrega, '$.Delivery.tiendaSalida.id') AS tienda_id,
+        COUNT(id_order) AS delivery_ventas
+      FROM registro_ventas
+      WHERE json_extract(metodo_entrega, '$.Delivery.tiendaSalida.id') IS NOT NULL
+      ${dateFilter}
       GROUP BY tienda_id
     ) d ON e.id = d.tienda_id
+
+    /* Subconsulta de ventas PickUp por tienda en el periodo */
     LEFT JOIN (
       SELECT 
-        json_extract(v.metodo_entrega, '$.PickUp.puntoRecogida.id') AS tienda_id,
-        COUNT(v.id_order) AS pickup_ventas
-      FROM registro_ventas v
-      WHERE json_extract(v.metodo_entrega, '$.PickUp.puntoRecogida.id') IS NOT NULL
+        json_extract(metodo_entrega, '$.PickUp.puntoRecogida.id') AS tienda_id,
+        COUNT(id_order) AS pickup_ventas
+      FROM registro_ventas
+      WHERE json_extract(metodo_entrega, '$.PickUp.puntoRecogida.id') IS NOT NULL
+      ${dateFilter}
       GROUP BY tienda_id
     ) p ON e.id = p.tienda_id
+
     ORDER BY ventas_totales DESC;
   `;
 
+  console.log("🟢 Consulta SQL generada:\n", sql);
+
   db.all(sql, [], (err, rows) => {
     if (err) {
-      console.error("Error obteniendo ventas por tienda:", err);
-      res.status(500).json({ error: err.message });
-      return;
+      console.error("❌ Error obteniendo ventas por tienda:", err);
+      return res.status(500).json({ error: err.message });
     }
     res.json({ message: "success", data: rows });
   });
@@ -1555,11 +1620,13 @@ app.get('/repartidores/:id/estado-horario', (req, res) => {
 app.get('/repartidores/:id', (req, res) => {
   const { id } = req.params;
 
-  const query = 'SELECT estado FROM repartidores WHERE id_repartidor = ?';
+  // Consulta corregida para obtener TODOS los datos del repartidor
+  const query = 'SELECT id_repartidor, nombre, telefono, email, username, password, estado FROM repartidores WHERE id_repartidor = ?';
+  
   db.get(query, [id], (err, row) => {
       if (err) {
-          console.error('Error al obtener el estado del repartidor:', err);
-          res.status(500).json({ success: false, message: 'Error al obtener el estado' });
+          console.error('Error al obtener repartidor:', err);
+          res.status(500).json({ success: false, message: 'Error al obtener repartidor' });
           return;
       }
 
@@ -1568,7 +1635,8 @@ app.get('/repartidores/:id', (req, res) => {
           return;
       }
 
-      res.json({ success: true, estado: row.estado });
+      // Devolvemos todos los datos del repartidor
+      res.json({ success: true, data: row });
   });
 });
 app.get('/registro_ventas/ruta_disponibilidad/:enRuta', (req, res) => {
@@ -2568,6 +2636,163 @@ app.get('/ubicaciones', (req, res) => {
   });
 });
 //the post zone // 
+app.post('/notificaciones/pedido_entregado', (req, res) => {
+  const { id_order, email } = req.body;
+
+  // 🛑 Validar datos obligatorios
+  if (!id_order || !email) {
+    return res.status(400).json({
+      success: false,
+      message: "Faltan parámetros: 'id_order' y 'email' son obligatorios."
+    });
+  }
+
+  // 🔹 Consulta la BD para obtener logo y redes sociales
+  db.get(`SELECT logo_url, redes_sociales FROM InfoEmpresa WHERE id = 1`, (err, row) => {
+    if (err) {
+      console.error("❌ Error consultando InfoEmpresa:", err);
+      return res.status(500).json({ success: false, message: "Error consultando la base de datos." });
+    }
+    if (!row) {
+      console.warn("⚠️ No se encontró InfoEmpresa con id=1.");
+      return res.status(404).json({ success: false, message: "No se encontró InfoEmpresa." });
+    }
+
+    // 📌 Usar la imagen local EXACTAMENTE igual que en "pizza_ready"
+    const logoImgPath = path.join(__dirname, 'uploads', 'logo_url-1742407496287-679310851.png');
+
+    // 🔹 Construir links de redes sociales
+    let socialLinks = "";
+    try {
+      const redesSociales = JSON.parse(row.redes_sociales || "[]");
+      redesSociales.forEach(({ nombre, url }) => {
+        socialLinks += `<p><a href="${url}" target="_blank">${nombre}</a></p>`;
+      });
+    } catch (error) {
+      console.error("⚠️ Error procesando redes sociales:", error);
+    }
+
+    // 📧 Configurar transporte de email (MISMAS CREDENCIALES QUE `pizza_ready`)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'mycrushpizzaspain@gmail.com',
+        pass: 'pfpjczrsksoytvhv'
+      }
+    });
+
+    // 📩 Configurar email con redes sociales
+    const mailOptions = {
+      from: 'mycrushpizzaspain@gmail.com',
+      to: email,
+      subject: '🍕 Pedido Entregado ✅',
+      html: `
+        <h1>¡Tu pedido ha sido entregado! 🎉</h1>
+        <p>El pedido <strong>#${id_order}</strong> ha sido entregado con éxito. ¡Esperamos que lo disfrutes! 😊</p>
+        <img src="cid:logoImage" alt="logo" width="300px" />
+        <h3>Déjanos una reseña ⭐</h3>
+        <p>Tu opinión es muy importante para nosotros. <a href="https://mycrushpizza.com/reviews">Haz clic aquí para dejar tu reseña</a>.</p>
+        <h3>¡Síguenos en redes sociales! 📲</h3>
+        ${socialLinks || "<p>No tenemos redes sociales registradas</p>"}
+        <p>Gracias por confiar en <strong>MyCrushPizza</strong>. ¡Te esperamos pronto! 🍕</p>
+      `,
+      attachments: [
+        {
+          filename: 'logo.png',
+          path: logoImgPath,  // 📌 Exactamente igual que "pizza_ready"
+          cid: 'logoImage'
+        }
+      ]
+    };
+
+    // 📧 Enviar correo
+    transporter.sendMail(mailOptions, (error, infoMail) => {
+      if (error) {
+        console.error('❌ Error al enviar correo "Pedido Entregado":', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Error al enviar el correo de Pedido Entregado.'
+        });
+      }
+      console.log('✅ Correo "Pedido Entregado" enviado con éxito:', infoMail.response);
+      return res.json({
+        success: true,
+        message: 'Correo "Pedido Entregado" enviado con éxito.'
+      });
+    });
+  });
+});
+app.post('/notificaciones/pizza_ready', (req, res) => {
+  const { id_order, email } = req.body;
+
+  // Validar campos
+  if (!id_order || !email) {
+    return res.status(400).json({
+      success: false,
+      message: "Faltan parámetros: 'id_order' y 'email' son obligatorios."
+    });
+  }
+
+  // 🔸 Consulta la BD: obtener notification_img_url desde InfoEmpresa
+  db.get(`SELECT notification_img_url FROM InfoEmpresa WHERE id = 1`, (err, row) => {
+    if (err) {
+      console.error("Error consultando InfoEmpresa:", err);
+      return res.status(500).json({ success: false, message: "Error consultando la base de datos" });
+    }
+    if (!row) {
+      // Si no existe la fila con id=1
+      console.warn("No se encontró la InfoEmpresa con id=1");
+      return res.status(404).json({ success: false, message: "No se encontró InfoEmpresa" });
+    }
+
+    // Si no hay una imagen configurada, podrías usar un fallback
+    const notificationImgUrl = row.notification_img_url || "https://via.placeholder.com/300";
+
+    // Configurar transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'mycrushpizzaspain@gmail.com',
+        pass: 'pfpjczrsksoytvhv'
+      }
+    });
+
+    // Construir correo "Pizza Lista"
+    const mailOptions = {
+      from: 'mycrushpizzaspain@gmail.com',
+      to: email,
+      subject: '🍕 ¡Tu Pizza está Lista! 🎉',
+      html: `
+        <h1>¡Pizza Lista! 😊</h1>
+        <p>La pizza de tu pedido <strong>#${id_order}</strong> está ya terminada.</p>
+        <img src="cid:notificationImage" alt="Notificación" width="300px" />
+        <p>Gracias por tu compra en MyPizzaCrush. ¡Disfruta tu pizza!</p>
+      `,
+      attachments: [
+        {
+          filename: 'notification.png',
+          path: path.join(__dirname, 'uploads', 'notification_img_url-1742407496287-297866458.png'),
+          cid: 'notificationImage' // 📌 El mismo "cid" que usamos en el HTML
+        }
+      ]
+    };
+    // Enviar el correo
+    transporter.sendMail(mailOptions, (error, infoMail) => {
+      if (error) {
+        console.error('Error al enviar correo "Pizza Lista":', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Error al enviar el correo de Pizza Lista.'
+        });
+      }
+      console.log('Correo "Pizza Lista" enviado con éxito:', infoMail.response);
+      return res.json({
+        success: true,
+        message: 'Correo "Pizza Lista" enviado con éxito.'
+      });
+    });
+  });
+});
 app.post('/api/dismiss-warnings', (req, res) => {
   const { warnings } = req.body;
   console.log("📥 [LOG] Advertencias recibidas en API:", warnings);
@@ -3436,18 +3661,32 @@ app.post('/api/horarios', (req, res) => {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
   }
 
-  // Insertar el horario en la base de datos
-  const query = `INSERT INTO Horarios (Day, Shift, Hora_inicio, Hora_fin) VALUES (?, ?, ?, ?)`;
-  const params = [day, shift, startTime, endTime];
+  // Verificar si ya existe un turno con el mismo número en ese día
+  const checkQuery = `SELECT COUNT(*) AS count FROM Horarios WHERE Day = ? AND Shift = ?`;
+  const checkParams = [day, shift];
 
-  db.run(query, params, function (err) {
+  db.get(checkQuery, checkParams, (err, row) => {
     if (err) {
       console.error(err.message);
-      return res.status(500).json({ error: 'Error al agregar el horario' });
+      return res.status(500).json({ error: 'Error al verificar turnos existentes' });
     }
 
-    // Enviar la respuesta con el ID generado
-    res.status(201).json({ message: 'Horario agregado con éxito', Horario_id: this.lastID });
+    if (row.count > 0) {
+      return res.status(400).json({ error: `Ya existe un turno ${shift} para el día ${day}.` });
+    }
+
+    // Insertar el horario en la base de datos si no hay duplicado
+    const insertQuery = `INSERT INTO Horarios (Day, Shift, Hora_inicio, Hora_fin) VALUES (?, ?, ?, ?)`;
+    const insertParams = [day, shift, startTime, endTime];
+
+    db.run(insertQuery, insertParams, function (err) {
+      if (err) {
+        console.error(err.message);
+        return res.status(500).json({ error: 'Error al agregar el horario' });
+      }
+
+      res.status(201).json({ message: 'Horario agregado con éxito', Horario_id: this.lastID });
+    });
   });
 });
 app.post('/api/incentivos', async (req, res) => {
@@ -3483,67 +3722,95 @@ app.post('/api/daily-challenge/:id/participate', (req, res) => {
     return res.json({ success: true, message: 'Participación registrada con éxito.' });
   });
 });
-app.post('/api/info-empresa', upload.single('logo_url'), (req, res) => {
-  const { 
-    pais, 
-    region, 
-    codigo_postal, 
-    direccion, 
-    coordenadas_latitud, 
-    coordenadas_longitud, 
-    ciudad, 
-    ciudad_latitud, 
-    ciudad_longitud, 
-    nombre_empresa, 
-    correo_contacto, 
-    telefono_contacto, 
-    redes_sociales 
-  } = req.body;
+app.post('/api/info-empresa', 
+  upload.fields([
+    { name: 'logo_url', maxCount: 1 },
+    { name: 'notification_img_url', maxCount: 1 },
+  ]),
+  (req, res) => {
+    const { 
+      pais, 
+      region, 
+      codigo_postal, 
+      direccion, 
+      coordenadas_latitud, 
+      coordenadas_longitud, 
+      ciudad, 
+      ciudad_latitud, 
+      ciudad_longitud, 
+      nombre_empresa, 
+      correo_contacto, 
+      telefono_contacto, 
+      redes_sociales 
+    } = req.body;
 
-  const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
+    // Si te interesa, puedes hacer lo mismo con el logo:
+    const logo_url = req.files.logo_url
+      ? `${myDomain}/uploads/${req.files.logo_url[0].filename}`
+      : null;
 
-  // Log para verificar los datos recibidos
-  console.log('Datos recibidos del formulario:', {
-    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, 
-    ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, 
-    telefono_contacto, logo_url, redes_sociales
-  });
+    // Aquí viene el cambio importante:
+    const notification_img_url = req.files.notification_img_url
+      ? `${myDomain}/uploads/${req.files.notification_img_url[0].filename}`
+      : null;
 
-  // Validar datos requeridos
-  if (!pais || !region || !codigo_postal || !direccion || !nombre_empresa || !correo_contacto || !telefono_contacto) {
-    return res.status(400).json({ error: 'Faltan datos para completar la operación' });
-  }
+    console.log("🔹 Notification IMG URL calculada:", notification_img_url);
 
-  // 🔥 Verificar si `redes_sociales` es un objeto y convertirlo correctamente
-  let redesJson = null;
+    // Validaciones...
+    if (!pais || !region || !codigo_postal || !direccion || !nombre_empresa || !correo_contacto || !telefono_contacto) {
+      return res.status(400).json({ error: 'Faltan datos para completar la operación' });
+    }
 
-  try {
+    // Conversión de redes_sociales a JSON si aplica
+    let redesJson = null;
     if (redes_sociales) {
-      redesJson = typeof redes_sociales === 'string' ? redes_sociales : JSON.stringify(redes_sociales);
+      try {
+        redesJson = typeof redes_sociales === 'string'
+          ? redes_sociales
+          : JSON.stringify(redes_sociales);
+      } catch (error) {
+        console.error("Error al convertir redes_sociales a JSON:", error);
+        return res.status(400).json({ error: "Formato inválido en redes_sociales" });
+      }
     }
-  } catch (error) {
-    console.error("Error al convertir redes_sociales a JSON:", error);
-    return res.status(400).json({ error: "Formato inválido en redes_sociales" });
+
+    const query = `
+      INSERT INTO InfoEmpresa 
+      (
+        pais, region, codigo_postal, direccion, 
+        coordenadas_latitud, coordenadas_longitud, 
+        ciudad, ciudad_latitud, ciudad_longitud, 
+        logo_url, notification_img_url,
+        nombre_empresa, correo_contacto, telefono_contacto, redes_sociales
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    db.run(query, [
+      pais, 
+      region, 
+      codigo_postal, 
+      direccion, 
+      coordenadas_latitud, 
+      coordenadas_longitud, 
+      ciudad, 
+      ciudad_latitud, 
+      ciudad_longitud,
+      logo_url,
+      notification_img_url,
+      nombre_empresa, 
+      correo_contacto, 
+      telefono_contacto,
+      redesJson
+    ], function(err) {
+      if (err) {
+        console.error('Error al guardar la información de la empresa:', err);
+        return res.status(500).json({ error: 'Error al guardar la información de la empresa' });
+      }
+      res.json({ success: true, id: this.lastID });
+    });
   }
-
-  // Query para insertar en la base de datos
-  const query = `
-    INSERT INTO InfoEmpresa 
-    (pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, ciudad_latitud, ciudad_longitud, 
-    logo_url, nombre_empresa, correo_contacto, telefono_contacto, redes_sociales)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.run(query, [
-    pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, ciudad, 
-    ciudad_latitud, ciudad_longitud, logo_url, nombre_empresa, correo_contacto, telefono_contacto, redesJson
-  ], function(err) {
-    if (err) {
-      return res.status(500).json({ error: 'Error al guardar la información de la empresa' });
-    }
-    res.json({ success: true, id: this.lastID });
-  });
-});
+);
 app.post('/api/reviews', (req, res) => {
   const { email, review, rating } = req.body; // Asegurarse de que el email se pase correctamente desde el frontend
 
@@ -4735,6 +5002,59 @@ app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
     res.status(500).json({ error: 'Error al resetear los cupones' });
   }
 });
+
+app.patch('/api/offers/reset-all-today', async (req, res) => {
+  const diaActual = moment().format('dddd').toLowerCase(); // ejemplo: "friday"
+  const horaActual = moment(); // ahora mismo
+
+  try {
+    // Obtener todas las ofertas permanentes activas
+    db.all(
+      `SELECT * FROM ofertas WHERE Tipo_Cupon = 'permanente' AND Estado = 'Activa'`,
+      async (err, ofertas) => {
+        if (err) {
+          console.error('❌ Error al consultar ofertas permanentes:', err);
+          return res.status(500).json({ error: 'Error al consultar las ofertas' });
+        }
+
+        let reseteadas = 0;
+
+        for (const oferta of ofertas) {
+          const diasActivos = JSON.parse(oferta.Dias_Activos || '[]').map((d) => d.toLowerCase());
+          const horaFin = moment(oferta.Hora_Fin, 'HH:mm');
+
+          if (
+            diasActivos.includes(diaActual) &&
+            horaActual.isSameOrAfter(horaFin) &&
+            oferta.Cupones_Disponibles < oferta.Cupones_Asignados
+          ) {
+            await db.run(
+              `UPDATE ofertas SET Cupones_Disponibles = Cupones_Asignados WHERE Oferta_Id = ?`,
+              [oferta.Oferta_Id],
+              function (err) {
+                if (err) {
+                  console.error(`❌ Error al resetear oferta ${oferta.Oferta_Id}:`, err);
+                } else {
+                  console.log(`✅ Cupón reseteado: ${oferta.Oferta_Id}`);
+                  reseteadas++;
+                }
+              }
+            );
+          }
+        }
+
+        return res.status(200).json({
+          message: `Proceso completado`,
+          ofertasReseteadas: reseteadas,
+        });
+      }
+    );
+  } catch (error) {
+    console.error('❌ Error inesperado en reset-all-today:', error);
+    res.status(500).json({ error: 'Error inesperado' });
+  }
+});
+
 app.patch('/repartidores/:id/estado', async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -5392,96 +5712,121 @@ app.patch('/api/daily-challenge/:id/claim-coupon', (req, res) => {
     });
   });
 });
-app.patch('/api/info-empresa/:id', upload.single('logo_url'), (req, res) => {
-  const { id } = req.params;
-  const { 
-    pais, 
-    region, 
-    codigo_postal, 
-    direccion, 
-    coordenadas_latitud, 
-    coordenadas_longitud, 
-    ciudad, 
-    ciudad_latitud, 
-    ciudad_longitud, 
-    nombre_empresa, 
-    correo_contacto, 
-    telefono_contacto, 
-    redes_sociales,
-    estado  // ➜ Agregado para actualizar el estado si se envía en la petición
-  } = req.body;
 
-  const logo_url = req.file ? `/uploads/${req.file.filename}` : null;
+app.patch('/api/info-empresa/:id', 
+  upload.fields([
+    { name: 'logo_url', maxCount: 1 },
+    { name: 'notification_img_url', maxCount: 1 },
+  ]),
+  (req, res) => {
+    const { id } = req.params;
+    const { 
+      pais, 
+      region, 
+      codigo_postal, 
+      direccion, 
+      coordenadas_latitud, 
+      coordenadas_longitud, 
+      ciudad, 
+      ciudad_latitud, 
+      ciudad_longitud, 
+      nombre_empresa, 
+      correo_contacto, 
+      telefono_contacto, 
+      redes_sociales,
+      estado
+    } = req.body;
 
-  if (!id) {
-    console.error('Error: El ID no es válido');
-    return res.status(400).json({ error: 'El ID no es válido' });
-  }
+    // ⬇️ Ajuste principal: usamos URL completa
+    const logo_url = req.files.logo_url
+      ? `${myDomain}/uploads/${req.files.logo_url[0].filename}`
+      : null;
 
-  // Log de los datos recibidos para depuración
-  console.log('Datos recibidos para actualizar:', {
-    id, pais, region, codigo_postal, direccion, coordenadas_latitud, coordenadas_longitud, 
-    ciudad, ciudad_latitud, ciudad_longitud, nombre_empresa, correo_contacto, 
-    telefono_contacto, logo_url, redes_sociales, estado
-  });
+    const notification_img_url = req.files.notification_img_url
+      ? `${myDomain}/uploads/${req.files.notification_img_url[0].filename}`
+      : null;
 
-  // 🔥 Asegurar que `redes_sociales` se guarde correctamente en SQLite
-  let redesJson = null;
-
-  try {
-    if (redes_sociales) {
-      redesJson = typeof redes_sociales === 'string' ? redes_sociales : JSON.stringify(redes_sociales);
-    }
-  } catch (error) {
-    console.error("Error al convertir redes_sociales a JSON:", error);
-    return res.status(400).json({ error: "Formato inválido en redes_sociales" });
-  }
-
-  // Validar que el estado sea solo "activo" o "inactivo" si se envía en la petición
-  if (estado && estado !== 'activo' && estado !== 'inactivo') {
-    return res.status(400).json({ error: 'El estado debe ser "activo" o "inactivo"' });
-  }
-
-  // Generar dinámicamente los campos a actualizar para evitar sobrescribir valores no enviados
-  let updateFields = [];
-  let params = [];
-
-  if (pais) { updateFields.push("pais = ?"); params.push(pais); }
-  if (region) { updateFields.push("region = ?"); params.push(region); }
-  if (codigo_postal) { updateFields.push("codigo_postal = ?"); params.push(codigo_postal); }
-  if (direccion) { updateFields.push("direccion = ?"); params.push(direccion); }
-  if (coordenadas_latitud) { updateFields.push("coordenadas_latitud = ?"); params.push(coordenadas_latitud); }
-  if (coordenadas_longitud) { updateFields.push("coordenadas_longitud = ?"); params.push(coordenadas_longitud); }
-  if (ciudad) { updateFields.push("ciudad = ?"); params.push(ciudad); }
-  if (ciudad_latitud) { updateFields.push("ciudad_latitud = ?"); params.push(ciudad_latitud); }
-  if (ciudad_longitud) { updateFields.push("ciudad_longitud = ?"); params.push(ciudad_longitud); }
-  if (nombre_empresa) { updateFields.push("nombre_empresa = ?"); params.push(nombre_empresa); }
-  if (correo_contacto) { updateFields.push("correo_contacto = ?"); params.push(correo_contacto); }
-  if (telefono_contacto) { updateFields.push("telefono_contacto = ?"); params.push(telefono_contacto); }
-  if (redesJson !== null) { updateFields.push("redes_sociales = ?"); params.push(redesJson); }
-  if (logo_url) { updateFields.push("logo_url = ?"); params.push(logo_url); }
-  if (estado) { updateFields.push("estado = ?"); params.push(estado); } // ➜ Solo se actualiza si se envía
-
-  if (updateFields.length === 0) {
-    return res.status(400).json({ error: "No se proporcionaron datos para actualizar" });
-  }
-
-  params.push(id);
-  const query = `UPDATE InfoEmpresa SET ${updateFields.join(", ")} WHERE id = ?`;
-
-  db.run(query, params, function(err) {
-    if (err) {
-      console.error('Error al actualizar la información de la empresa:', err);
-      return res.status(500).json({ error: 'Error al actualizar la información de la empresa' });
+    // Resto del código igual:
+    if (!id) {
+      console.error('Error: El ID no es válido');
+      return res.status(400).json({ error: 'El ID no es válido' });
     }
 
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'No se encontró la empresa para actualizar' });
+    console.log('Datos recibidos para actualizar:', {
+      id, pais, region, codigo_postal, direccion, 
+      coordenadas_latitud, coordenadas_longitud, ciudad, 
+      ciudad_latitud, ciudad_longitud, nombre_empresa, 
+      correo_contacto, telefono_contacto, logo_url, 
+      notification_img_url, redes_sociales, estado
+    });
+
+    // Convertir redes_sociales a JSON si llega
+    let redesJson = null;
+    try {
+      if (redes_sociales) {
+        redesJson = typeof redes_sociales === 'string'
+          ? redes_sociales
+          : JSON.stringify(redes_sociales);
+      }
+    } catch (error) {
+      console.error("Error al convertir redes_sociales a JSON:", error);
+      return res.status(400).json({ error: "Formato inválido en redes_sociales" });
     }
 
-    res.json({ success: true, message: `Empresa ${id} actualizada correctamente` });
-  });
-});
+    if (estado && estado !== 'activo' && estado !== 'inactivo') {
+      return res.status(400).json({ error: 'El estado debe ser "activo" o "inactivo"' });
+    }
+
+    let updateFields = [];
+    let params = [];
+
+    if (pais) { updateFields.push("pais = ?"); params.push(pais); }
+    if (region) { updateFields.push("region = ?"); params.push(region); }
+    if (codigo_postal) { updateFields.push("codigo_postal = ?"); params.push(codigo_postal); }
+    if (direccion) { updateFields.push("direccion = ?"); params.push(direccion); }
+    if (coordenadas_latitud) { updateFields.push("coordenadas_latitud = ?"); params.push(coordenadas_latitud); }
+    if (coordenadas_longitud) { updateFields.push("coordenadas_longitud = ?"); params.push(coordenadas_longitud); }
+    if (ciudad) { updateFields.push("ciudad = ?"); params.push(ciudad); }
+    if (ciudad_latitud) { updateFields.push("ciudad_latitud = ?"); params.push(ciudad_latitud); }
+    if (ciudad_longitud) { updateFields.push("ciudad_longitud = ?"); params.push(ciudad_longitud); }
+    if (nombre_empresa) { updateFields.push("nombre_empresa = ?"); params.push(nombre_empresa); }
+    if (correo_contacto) { updateFields.push("correo_contacto = ?"); params.push(correo_contacto); }
+    if (telefono_contacto) { updateFields.push("telefono_contacto = ?"); params.push(telefono_contacto); }
+    if (redesJson !== null) { updateFields.push("redes_sociales = ?"); params.push(redesJson); }
+    if (logo_url) { updateFields.push("logo_url = ?"); params.push(logo_url); }
+
+    // ⬇️ También para notification_img_url
+    if (notification_img_url) {
+      updateFields.push("notification_img_url = ?");
+      params.push(notification_img_url);
+    }
+
+    if (estado) {
+      updateFields.push("estado = ?");
+      params.push(estado);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: "No se proporcionaron datos para actualizar" });
+    }
+
+    params.push(id);
+    const query = `UPDATE InfoEmpresa SET ${updateFields.join(", ")} WHERE id = ?`;
+
+    db.run(query, params, function(err) {
+      if (err) {
+        console.error('Error al actualizar la información de la empresa:', err);
+        return res.status(500).json({ error: 'Error al actualizar la información de la empresa' });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'No se encontró la empresa para actualizar' });
+      }
+
+      res.json({ success: true, message: `Empresa ${id} actualizada correctamente` });
+    });
+  }
+);
+
 app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   console.log('Request received for PATCH /ofertas/:Oferta_Id');
   console.log('Request body:', req.body);
@@ -6148,7 +6493,7 @@ app.put('/clientes/reactivar/:id_cliente', (req, res) => {
   });
 });
 //-------------------//
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on http://192.168.1.33:${port}`);
   console.log(`Server started at ${new Date().toISOString()}`);
 });

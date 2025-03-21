@@ -10,7 +10,7 @@ export default function CustomerFilter({ onChange }) {
 
   const fetchCustomers = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/clientes');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes`);
       setCustomers(response.data);
     } catch (error) {
       console.error('Error fetching customers', error);

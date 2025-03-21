@@ -16,7 +16,7 @@ const RRep = () => {
     useEffect(() => {
         const fetchRepartidores = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/repartidores');
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores`);
                 console.log("Respuesta de repartidores:", response.data);
                 const data = response.data.data || [];
                 setRepartidores(data);
@@ -35,7 +35,7 @@ const RRep = () => {
             if (!selectedRepartidor) return;
 
             try {
-                const response = await axios.get('http://localhost:3001/reportes/repartidores', {
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/reportes/repartidores`, {
                     params: { timeRange, repartidor: selectedRepartidor },
                 });
                 const data = response.data.data;
@@ -76,7 +76,7 @@ const RRep = () => {
     useEffect(() => {
         const fetchRankingData = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/reportes/posiciones-repartidores', {
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/reportes/posiciones-repartidores`, {
                     params: { timeRange },
                 });
                 const data = response.data.data;

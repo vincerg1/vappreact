@@ -10,7 +10,7 @@ export default function LocationFilter({ onChange }) {
 
   const fetchLocations = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/ubicaciones');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/ubicaciones`);
       const uniqueLocations = [...new Set(response.data.map(loc => loc.ciudad))];
       setLocations(uniqueLocations);
     } catch (error) {

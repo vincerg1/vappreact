@@ -10,7 +10,7 @@ const DetallesLote = () => {
 useEffect(() => {
   const fetchLotes = async () => {
     try {
-      const result = await axios.get('http://localhost:3001/inventario');
+      const result = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
       if (Array.isArray(result.data.data)) {
         // Mapea sobre los lotes y verifica la existencia de cada uno
         const lotesPromesas = result.data.data
@@ -88,7 +88,7 @@ useEffect(() => {
     const postLote = async (lote) => {
       try {
         // Primero verifica si el lote con ese InventarioID ya existe
-        const resVerificacion = await axios.get(`http://localhost:3001/DetallesLote/${lote.InventarioID}`);
+        const resVerificacion = await axios.get(`${process.env.REACT_APP_API_URL}/DetallesLote/${lote.InventarioID}`);
         if (!resVerificacion.data.existe) {
           // Si no existe, crea el nuevo lote
           const loteParaGuardar = {
@@ -100,7 +100,7 @@ useEffect(() => {
             referencia: lote.referencia,
             InventarioID: lote.InventarioID
           };
-          const response = await axios.post('http://localhost:3001/DetallesLote', loteParaGuardar);
+          const response = await axios.post(`${process.env.REACT_APP_API_URL}/DetallesLote`, loteParaGuardar);
           console.log('Detalle de lote creado', response.data);
         } else {
           console.log('El lote ya existe y no se creará uno nuevo');
@@ -112,7 +112,7 @@ useEffect(() => {
     const actualizarLote = async (lote) => {
       try {
         // Verifica si el lote existe
-        const resVerificacion = await axios.get(`http://localhost:3001/DetallesLote/${lote.InventarioID}`);
+        const resVerificacion = await axios.get(`${process.env.REACT_APP_API_URL}/DetallesLote/${lote.InventarioID}`);
         if (resVerificacion.data.existe) {
           // Si existe, actualiza el lote
           const datosParaActualizar = {
@@ -123,7 +123,7 @@ useEffect(() => {
             PorcentajeXLote: lote.PorcentajeXLote,
             referencia: lote.referencia
           };
-          const response = await axios.put(`http://localhost:3001/DetallesLote/${lote.InventarioID}`, datosParaActualizar);
+          const response = await axios.put(`${process.env.REACT_APP_API_URL}/DetallesLote/${lote.InventarioID}`, datosParaActualizar);
           console.log('Lote actualizado con éxito', response.data);
         } else {
           console.log('El lote no existe y no se puede actualizar');
@@ -157,7 +157,7 @@ useEffect(() => {
     };
     const verificarExistencia = async (InventarioID) => {
       try {
-        const respuesta = await axios.get(`http://localhost:3001/DetallesLote/${InventarioID}`);
+        const respuesta = await axios.get(`${process.env.REACT_APP_API_URL}/DetallesLote/${InventarioID}`);
         // La API debe devolver un objeto con una propiedad que indique si el lote existe
         return respuesta.data.existe; 
       } catch (error) {

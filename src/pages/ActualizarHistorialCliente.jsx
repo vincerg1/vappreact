@@ -12,7 +12,7 @@ const ActualizarHistorialCliente = ({ id_cliente, onUpdate }) => {
 
       try {
         // Obtener todas las compras del cliente desde la tabla de registro_ventas
-        const comprasResponse = await axios.get(`http://localhost:3001/registro_ventas/cliente/${id_cliente}`);
+        const comprasResponse = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas/cliente/${id_cliente}`);
         const compras = comprasResponse.data.data;
 
         if (!compras || compras.length === 0) {
@@ -61,7 +61,7 @@ const ActualizarHistorialCliente = ({ id_cliente, onUpdate }) => {
         const horaMasComprada = Object.keys(horasCompradas).reduce((a, b) => horasCompradas[a] > horasCompradas[b] ? a : b);
 
         // Paso 6: Actualizar la tabla HistorialCliente en el servidor
-        const updateResponse = await axios.post('http://localhost:3001/historial_cliente/actualizar', {
+        const updateResponse = await axios.post(`${process.env.REACT_APP_API_URL}/historial_cliente/actualizar`, {
           id_cliente,
           numeroDeCompras,
           MontoTotalCompras,

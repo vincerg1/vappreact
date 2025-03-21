@@ -14,7 +14,7 @@ function EmpleadosLista() {
 
   const fetchEmpleados = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/api/empleados");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/empleados`);
       setEmpleados(response.data);
     } catch (error) {
       console.error("Error al obtener empleados:", error);
@@ -25,7 +25,7 @@ function EmpleadosLista() {
   const handleEliminar = async (id) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar este empleado?")) {
       try {
-        await axios.delete(`http://localhost:3001/api/empleados/${id}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/api/empleados/${id}`);
         fetchEmpleados(); // Recargar la lista después de eliminar
       } catch (error) {
         console.error("Error al eliminar empleado:", error);

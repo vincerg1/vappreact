@@ -13,7 +13,7 @@ function HorariosMalla() {
 
   const fetchHorarios = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/horarioPersonal/empleado/${id}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/horarioPersonal/empleado/${id}`);
       setHorarios(response.data);
       console.log("Horarios cargados:", response.data);
     } catch (error) {

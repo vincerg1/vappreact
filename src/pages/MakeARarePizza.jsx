@@ -32,11 +32,11 @@ const MakeARarePizza = () => {
     hora: moment().format('HH:mm:ss'),
     id_cliente: sessionData?.id_cliente || '',
     DescuentosDailyChallenge: 0,
-    cupones: initialCompra.cupones || [],
-    venta: initialCompra.venta || [],
-    total_productos: initialCompra.total_productos || 0.0,
-    total_descuentos: initialCompra.total_descuentos || 0.0,
-    total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
+    cupones: Array.isArray(initialCompra?.cupones) ? initialCompra.cupones : [],  // ✅ Siempre será un array
+    venta: Array.isArray(initialCompra?.venta) ? initialCompra.venta : [],      // ✅ Siempre será un array
+    total_productos: initialCompra?.total_productos || 0.0,
+    total_descuentos: initialCompra?.total_descuentos || 0.0,
+    total_a_pagar_con_descuentos: initialCompra?.total_a_pagar_con_descuentos || 0.0,
     venta_procesada: 0,
     origen: 'MakeARarePizza',
   });
@@ -48,7 +48,7 @@ const MakeARarePizza = () => {
   useEffect(() => {
     const fetchMenuPizzas = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/menu_pizzas");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
         if (response.data && Array.isArray(response.data.data)) {
           console.log("📦 Menú Pizzas cargado desde BD:", response.data.data);
           setMenuPizzas(response.data.data);
@@ -65,7 +65,7 @@ const MakeARarePizza = () => {
   useEffect(() => {
     const fetchInventario = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/inventario");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
         if (response.data && Array.isArray(response.data.data)) {
           console.log("📋 Inventario cargado desde BD:", response.data.data);
           setInventario(response.data.data);
@@ -88,7 +88,7 @@ const MakeARarePizza = () => {
   useEffect(() => {
     const fetchOfertaPizzaRara = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/ofertas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         const oferta = response.data.data.find(
           (oferta) => oferta.Tipo_Oferta === 'Random Pizza'
         );
@@ -127,7 +127,7 @@ const MakeARarePizza = () => {
   useEffect(() => {
     const fetchIngredientesMenosUsados = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/api/ingredientes-uso");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/ingredientes-uso`);
         if (response.data && Array.isArray(response.data)) {
           // Ordenar ingredientes por total_vendido
           const ingredientesOrdenados = response.data.sort((a, b) => a.total_vendido - b.total_vendido);
@@ -249,7 +249,7 @@ const MakeARarePizza = () => {
       }
   
       // 🔹 Obtener oferta de Random Pizza
-      const ofertaResponse = await axios.get("http://localhost:3001/ofertas");
+      const ofertaResponse = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
       const ofertaEncontrada = ofertaResponse.data.data.find(
         (oferta) => oferta.Tipo_Oferta === "Random Pizza"
       );
@@ -271,7 +271,7 @@ const MakeARarePizza = () => {
       ) + Min_Descuento_Percent;
   
       // 🔹 Obtener base de pizza desde `menu_pizzas`
-      const response = await axios.get("http://localhost:3001/menu_pizzas");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
       const pizzasBase = response.data.data.filter(
         (pizza) => pizza.categoria.toLowerCase() === "base pizza"
       );
@@ -360,7 +360,7 @@ const MakeARarePizza = () => {
    
     try {
       await axios.patch(
-        `http://localhost:3001/api/offers/${ofertaPizzaRara.Oferta_Id}/use-coupon`,
+        `${process.env.REACT_APP_API_URL}/api/offers/${ofertaPizzaRara.Oferta_Id}/use-coupon`,
         {
           // Restar uno a Cupones_Disponibles
           Cupones_Disponibles: ofertaPizzaRara.Cupones_Disponibles - 1,
@@ -418,7 +418,7 @@ const MakeARarePizza = () => {
   };
   const resetCoupons = async (oferta) => {
     try {
-      await axios.patch(`http://localhost:3001/api/offers/${oferta.Oferta_Id}/reset-coupons`, {
+      await axios.patch(`${process.env.REACT_APP_API_URL}/api/offers/${oferta.Oferta_Id}/reset-coupons`, {
         Cupones_Disponibles: oferta.Cupones_Asignados,
       });
       setOfertaPizzaRara((prev) => ({

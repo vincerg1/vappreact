@@ -52,7 +52,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
       try {
         const idCliente = sessionData?.id_cliente;
         if (idCliente) {
-          const response = await axios.get(`http://localhost:3001/clientes/${idCliente}`);
+          const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`);
           const clienteData = response.data;
 
           setPickupInfo({
@@ -83,7 +83,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
   useEffect(() => {
     const fetchPedidosEnCola = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/registro_ventas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
         console.log('Datos de pedidos en cola:', response.data); // Log para verificar la información que trae
         const pedidosNoProcesados = response.data.data.filter(pedido => pedido.venta_procesada === 0);
         setPedidosEnCola(pedidosNoProcesados.length);
@@ -96,7 +96,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
   useEffect(() => {
     const fetchStoreLocations = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/info-empresa');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`);
         console.log("📦 Respuesta completa del servidor:", response.data);
   
         if (!response.data || !Array.isArray(response.data)) {
@@ -169,7 +169,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
   useEffect(() => {
     const fetchPedidosEnColaPorUbicacion = async (ubicacionId) => {
       try {
-        const response = await axios.get(`http://localhost:3001/pedidos_en_cola/${ubicacionId}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/pedidos_en_cola/${ubicacionId}`);
         if (response.data.success) {
           setPedidosEnCola(response.data.pedidosEnCola);
         } else {
@@ -205,7 +205,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
   useEffect(() => {
     const fetchIncentivos = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/incentivos');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos`);
         const incentivosActivos = response.data.filter((inc) => inc.activo === 1);
         setIncentivos(incentivosActivos); // 🛠️ Guardamos los incentivos en el estado local
       } catch (error) {
@@ -340,7 +340,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
         };
 
         try {
-          await axios.put(`http://localhost:3001/clientes/${idCliente}`, clienteData);
+          await axios.put(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`, clienteData);
           setError('');
           console.log('Cliente actualizado correctamente.', clienteData); // Log para verificar la actualización del cliente
           setIsAddressConfirmed(true);
@@ -662,7 +662,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
         };
 
         try {
-            await axios.put(`http://localhost:3001/clientes/${idCliente}`, clienteData);
+            await axios.put(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`, clienteData);
             console.log('✅ Cliente actualizado correctamente con coordenadas:', clienteData);
         } catch (error) {
             console.error('❌ Error al actualizar la dirección del cliente:', error);

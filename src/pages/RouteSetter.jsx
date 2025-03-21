@@ -24,7 +24,7 @@ const RouteSetter = () => {
   };
   const fetchRepartidoresActivos = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/repartidores/activos');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/repartidores/activos`);
       if (response.data.success) {
         setRepartidoresActivos(response.data.data);
       } else {
@@ -36,7 +36,7 @@ const RouteSetter = () => {
   };
   const fetchOrders = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/registro_ventas");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
       const registroVentas = response.data.data || [];
   
       // Filtrar pedidos pendientes o pedidos no procesados (venta_procesada !== 1), excluyendo PickUp
@@ -117,7 +117,7 @@ const RouteSetter = () => {
   };
   const fetchPrecioDelivery = async () => {
     try {
-        const response = await axios.get("http://localhost:3001/delivery/price");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
         if (response.data.success) {
             console.log("Precio por km obtenido:", response.data.precio);
             return response.data.precio;
@@ -339,7 +339,7 @@ const RouteSetter = () => {
             enRuta: p.idRuta,
         }));
 
-        await axios.patch("http://localhost:3001/registro_ventas", { orders: payload });
+        await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas`, { orders: payload });
         console.log("Actualización exitosa en la base de datos.");
     } catch (error) {
         console.error("Error al actualizar el estado enRuta en la base de datos:", error);
@@ -361,7 +361,7 @@ const RouteSetter = () => {
                 estado: ruta.estado,
             };
 
-            await axios.post("http://localhost:3001/rutas", rutaPayload);
+            await axios.post(`${process.env.REACT_APP_API_URL}/rutas`, rutaPayload);
             console.log(`Ruta ${ruta.idRuta} almacenada en la base de datos.`);
         }
     } catch (error) {
@@ -413,7 +413,7 @@ const RouteSetter = () => {
   
     // Actualizar estado en la base de datos
     try {
-      await axios.patch("http://localhost:3001/registro_ventas", {
+      await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas`, {
         orders: pedidosRestaurados.map((id) => ({ id_order: id, enRuta: null })),
       });
       // console.log("Estado enRuta actualizado en la base de datos.");
@@ -429,19 +429,8 @@ const RouteSetter = () => {
   useEffect(() => {
     calcularCantidadRutas();
   }, [orders]);
-  // useEffect(() => {
-  //   const checkRutasDisponibles = () => {
-  //     const agrupables = orders.filter(order => order.estadoEntrega === "Pendiente");
-  //     if (agrupables.length > 1) {
-  //       setRutasDisponibles(true);
-  //     } else {
-  //       setRutasDisponibles(false);
-  //     }
-  //   };
-   
-  // }, [orders]);
   useEffect(() => {
-    fetchRepartidoresActivos(); // Llamar a la función al montar el componente
+    fetchRepartidoresActivos(); 
   }, []);
   useEffect(() => {
     fetchOrders();
@@ -449,7 +438,7 @@ const RouteSetter = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/registro_ventas");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
         const registroVentas = response.data.data || [];
     
         // Filtrar solo las órdenes de Delivery pendientes

@@ -5,13 +5,13 @@ import "../styles/HorariosIndex.css";
 function HorariosIndex() {
   return (
     <div className="horarios-index-container">
-      <h2>Gestión de Horarios</h2>
+      <h2>Schedule Management </h2>
       <div className="horarios-buttons">
-        <Link to="/control-horario/horarios/crear">
-          <button className="horarios-button">Nuevo Horario</button>
+        <Link to="/control-horario/horarios/crear"> 
+          <button className="horarios-button"><span>New</span></button>
         </Link>
         <Link to="/control-horario/horarios/lista">
-          <button className="horarios-button">Ver Horarios</button>
+          <button className="horarios-button"><span>View</span></button>
         </Link>
       </div>
     </div>

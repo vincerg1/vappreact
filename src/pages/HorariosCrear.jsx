@@ -16,10 +16,10 @@ function HorariosCrear() {
 
 
   useEffect(() => {
-    axios.get("http://localhost:3001/api/empleados").then((res) => setEmpleados(res.data));
+    axios.get(`${process.env.REACT_APP_API_URL}/api/empleados`).then((res) => setEmpleados(res.data));
   }, []);
   useEffect(() => {
-    axios.get("http://localhost:3001/api/info-empresa")
+    axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`)
       .then((res) => {
         console.log("Ubicaciones recibidas en el frontend:", res.data); // LOG de depuración
         setUbicaciones(res.data);
@@ -34,7 +34,7 @@ function HorariosCrear() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:3001/api/horarioPersonal", formData);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/horarioPersonal`, formData);
       alert("✅ Horario creado con éxito");
       setFormData({ id_empleado: "", ubicacion: "", day: "", shift: "1", hora_inicio: "", hora_fin: "" });
     } catch (error) {

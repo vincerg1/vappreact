@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import "../styles/IncentivoList.css";
+
 
 const IncentivoList = () => {
   const [incentivos, setIncentivos] = useState([]);
@@ -9,7 +11,7 @@ const IncentivoList = () => {
   useEffect(() => {
     const fetchIncentivos = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/incentivos');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos`);
         setIncentivos(response.data);
       } catch (error) {
         console.error('Error al obtener los incentivos:', error);
@@ -20,7 +22,7 @@ const IncentivoList = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:3001/api/incentivos/${id}`);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/incentivos/${id}`);
       setIncentivos(incentivos.filter(incentivo => incentivo.id !== id));
       alert('Incentivo eliminado con éxito');
     } catch (error) {
@@ -29,7 +31,7 @@ const IncentivoList = () => {
   };
 
   return (
-    <div>
+    <div className='incentivos-lista-container'>
       <h2>Lista de Incentivos</h2>
       
       {/* Botón para crear nuevos incentivos */}

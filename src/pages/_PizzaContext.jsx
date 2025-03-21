@@ -131,7 +131,7 @@ export const PizzaProvider = ({ children }) => {
   const fetchClientData = useCallback(async (id) => {
     try {
       // console.log(`Fetching client data for id_cliente: ${id}`);
-      const { data } = await axios.get(`http://localhost:3001/clientes/${id}`);
+      const { data } = await axios.get(`${process.env.REACT_APP_API_URL}/clientes/${id}`);
       // console.log('Data fetched from backend:', data);
 
       // Convertir `ofertaMasUsada` a número si es necesario
@@ -161,7 +161,7 @@ export const PizzaProvider = ({ children }) => {
   const cargarOfertasPorSegmento = useCallback(async (segmento) => {
     // console.log(`Cargando ofertas para el segmento: ${segmento}`);
     try {
-      const response = await axios.get(`http://localhost:3001/ofertas/${segmento}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas/${segmento}`);
       if (response.data) {
         // console.log('Ofertas cargadas:', response.data.data);
         setOfertasPorSegmento(response.data.data);
@@ -184,7 +184,7 @@ useEffect(() => {
 useEffect(() => {
   const cargarInventario = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/inventario');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
       // Declaro inventarioCargado aquí
       const inventarioCargado = response.data.data;
       // console.log("✅ Inventario:", inventarioCargado);
@@ -200,7 +200,7 @@ useEffect(() => {
   const cargarLimites = async () => {
     setEstaCargandoLimites(true);
     try {
-      const response = await axios.get('http://localhost:3001/limites');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/limites`);
       if (Array.isArray(response.data)) {
         // console.log(response.data)
         const limitesObj = response.data.reduce((obj, item) => {
@@ -308,7 +308,7 @@ useEffect(() => {
 useEffect(() => {
   const cargarPizzas = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/menu_pizzas');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
       // console.log('Datos de pizzas cargadas:', response.data);
       setPizzas(response.data); 
     } catch (error) {
@@ -385,7 +385,7 @@ useEffect(() => {
 useEffect(() => {
   const cargarProximosACaducar = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/inventario');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
       if (response.data && Array.isArray(response.data.data)) {
         const inventarioCargado = response.data.data;
 
@@ -431,7 +431,7 @@ useEffect(() => {
   const cargarActivePartners = async () => {
     try {
       // 🔹 Obtener los partners de la tabla PartnerData
-      const response = await axios.get('http://localhost:3001/PartnerData');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/PartnerData`);
       if (response.data && Array.isArray(response.data.data)) {
         const partnerData = response.data.data;
 

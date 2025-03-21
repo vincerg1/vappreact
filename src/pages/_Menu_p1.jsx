@@ -20,29 +20,21 @@ const _Menu_p1 = () => {
 
   return (
     <div className="menu-module-container">
-      <h1 className="menu-module-title">Gestión del Menú</h1>
+      <h1 className="menu-module-title">Manage Menu</h1>
       <div className="menu-module-buttons">
         <button className="menu-button" onClick={handleCreatePlato}>
-          Crear Una Pizza
+          <span>Make a Pizza </span>
         </button>
         <button className="menu-button" onClick={handleCreatePartner}>
-          Crear un Partner
+        <span>Make a Partner</span>
         </button>
         <button className="menu-button" onClick={handleMenuOverview}>
-          Menu Overview
+        <span>Menu Overview</span>
         </button>
         <button className="menu-button" onClick={handleGestionarIngredientesExtras}>
-          Gestionar Ingredientes Extras
+        <span>Extra Ingredients</span>
         </button>
       </div>
-      <footer className="menu-module-footer">
-        <p><strong>VoltaPizzaApp 2025.</strong></p>
-        <div className="social-icons">
-          <i className="fab fa-instagram"></i>
-          <i className="fab fa-tiktok"></i>
-          <i className="fab fa-whatsapp"></i>
-        </div>
-      </footer>
     </div>
   );
 };

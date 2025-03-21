@@ -13,7 +13,7 @@ const OfferList = () => {
 
     const fetchOffers = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/ofertas');
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
             const offersData = response.data.data.map(offer => {
                 console.log(offer)
                 let parsedSegments = [];
@@ -39,7 +39,7 @@ const OfferList = () => {
     };
     const handleDelete = async (offerId) => {
         try {
-            await axios.delete(`http://localhost:3001/ofertas/${offerId}`);
+            await axios.delete(`${process.env.REACT_APP_API_URL}/ofertas/${offerId}`);
             fetchOffers(); // Refresh the list after deletion
         } catch (error) {
             console.error('Error deleting offer:', error);
@@ -85,7 +85,7 @@ const OfferList = () => {
                                     <td>{offer.Condiciones_Extras.toString()}</td>
                                     <td>
                                         {offer.Imagen ? (
-                                            <a href={`http://localhost:3001${offer.Imagen}`} target="_blank" rel="noopener noreferrer">
+                                            <a href={`${process.env.REACT_APP_API_URL}${offer.Imagen}`} target="_blank" rel="noopener noreferrer">
                                                 Ver Imagen
                                             </a>
                                         ) : 'Agrega una Imagen'}

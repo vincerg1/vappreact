@@ -11,7 +11,7 @@ export default function SimuladorVentas() {
 
   const fetchClientes = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/clientes');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/clientes`);
       console.log('Clientes obtenidos:', response.data);
       if (!Array.isArray(response.data)) {
         throw new Error('La respuesta de clientes no es un array');
@@ -117,7 +117,7 @@ export default function SimuladorVentas() {
     try {
       console.log('Ventas a enviar:', JSON.stringify(ventasSimuladas, null, 2));
 
-      const response = await axios.post('http://localhost:3001/registro_ventas/bulk', ventasSimuladas, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/registro_ventas/bulk`, ventasSimuladas, {
         headers: {
           'Content-Type': 'application/json'
         }

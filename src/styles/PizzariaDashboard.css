@@ -7,6 +7,7 @@
   width: 100%;
 }
 .top-bar {
+
   display: flex;
   justify-content: center; 
   width: 100%;
@@ -42,7 +43,8 @@
 .warning-icon  {
   filter: grayscale(100%);
 }
-.warning-active {
+.warning-active,
+.scheduled-active {
   filter: grayscale(0%) !important;
   animation: blink-effect 1s infinite alternate;
 }
@@ -55,13 +57,11 @@
   animation: blink-effect 1s infinite alternate;
 }
 
-/* Keyframes de parpadeo */
 @keyframes blink-effect {
   0% { opacity: 1; }
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
-
 .current-date {
   font-size: 1.2rem;
   text-align: center;
@@ -69,6 +69,7 @@
   margin-top: 2rem;
 }
 .current-date h1{
+  margin-top: 2rem;
 font-style: italic;
 font-size: 1.5rem;
 font-weight: bold;
@@ -80,17 +81,14 @@ font-weight: bold;
   align-items: center;
   gap: 25px; 
 }
-
-/* Alineación de los botones */
 .button-row {
   display: flex;
   justify-content: space-evenly;  
   width: 100%;
   max-width: 1000px; 
 }
-
 .dashboard-button {
-  width: 48%;
+  width: 45%;
   height: 100px;
   padding: 20px;
   border-radius: 10px;
@@ -102,14 +100,11 @@ font-weight: bold;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
-
 .dashboard-button:hover {
   transform: scale(1.02);
   background-color: #cccccc;
   box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.2);
 }
-
-/* Colores de los botones */
 .pedidos,
 .ingredientes,
 .datos-servicio,
@@ -118,8 +113,6 @@ font-weight: bold;
   font-size: 25px;
   color: white;
 }
-
-/* Botón de suspender servicio */
 .suspender-servicio {
   display: flex;
   justify-content: center;
@@ -147,40 +140,29 @@ font-weight: bold;
 
 /* Efectos de animación */
 .blinking {
-  animation: blink-animation 1s steps(5, start) infinite;
+  background-color: #ffcc00; 
+  color: #1a1919;
+  animation: blink-effect 1s infinite alternate;
 }
-@keyframes blink-animation {
-  to {
-    visibility: hidden;
-  }
+.dashboard-button .pedidos .blinking{
+  background-color: #dc3545;
 }
+
 .pulsating {
   animation: pulse 1.5s infinite;
 }
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-/* Aplicación uniforme a botones */
+
+
 .dashboard-button.route-setter {
   font-weight: bold;
 }
-
 .dashboard-button.route-setter.active-route {
-  background-color: #ffc107; /* Amarillo para destacar */
-  color: #000; /* Texto negro para contraste */
+  background-color: #ffc107; 
+  color: #000; 
 }
-
 .dashboard-button.blinking {
-  background-color: red;
-  color: white;
+  color: #000; 
+  font-weight: bold;
 }
 
 
@@ -197,7 +179,7 @@ font-weight: bold;
   transition: 0.3s;
 }
 .estado-button.activo {
-  background-color: #49b11c; /* Verde */
+  background-color: #1c1cb1; /* Verde */
   color: white;
 }
 .estado-button.inactivo {
@@ -211,3 +193,103 @@ font-weight: bold;
 
   align-items: center;
 }
+
+
+/* ================================
+   🏆 TABLET HORIZONTAL (Viewport: 1056px x 488px)
+   ================================ */
+   @media screen and (min-width: 900px) and (max-width: 1100px) {
+
+    /* 📌 Contenedor principal - Ocupar toda la altura */
+    .dashboard-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 15px;
+      align-items: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between; /* Distribuir mejor el espacio */
+      min-height: 100vh; /* Ocupar toda la pantalla */
+    }
+  
+    /* 🔹 Barra superior: Íconos y Fecha */
+    .top-bar {
+      justify-content: space-evenly;
+      flex-wrap: wrap;
+      gap: 15px;
+      padding: 10px 0; /* Mayor separación */
+    }
+    .current-date {
+      margin-top: 0.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .current-date h1{
+    font-style: italic;
+    font-size: 1.5rem;
+    font-weight: bold;
+     margin-top: 0.5rem;
+     margin-bottom: 0.25rem;
+    }
+    .current-date p{
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .dashboard-buttons {
+margin: 0;
+    }
+    .suspender-servicio {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 5rem;
+      width: 100%;
+      max-width: 1250px; 
+    }
+    .icon-group {
+      margin-top: 0;
+    }
+  
+  
+  
+    /* 📌 Contenedor de Botones */
+    .dashboard-buttons {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px; /* Mayor separación entre filas */
+      margin-top: -1.5rem;
+    }
+  
+    /* 🔹 Filas de botones: 2 en cada fila */
+    .button-row {
+      display: flex;
+      justify-content: space-evenly;
+      gap: 15px;
+    }
+  
+    /* 🔹 Tamaño de los botones */
+    .dashboard-button {
+      width: 47%; /* 🏆 Ajustado para que quepan 2 por fila */
+      height: 90px; /* Aumentamos la altura */
+      font-size: 1.4rem; /* Texto más grande */
+      padding: 10px;
+    }
+  
+    /* 📌 Botón "Suspend Service" */
+    .suspender-servicio {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 900px;
+    }
+  
+    .suspender {
+      width: 100%;
+      font-size: 1.6rem;
+      padding: 18px;
+      height: 90px;
+    }
+  }
+  

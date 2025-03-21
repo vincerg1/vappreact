@@ -26,7 +26,7 @@ const DRVCO = () => {
     useEffect(() => {
         const fetchPizzaMap = async () => {
             try {
-                const response = await axios.get('http://localhost:3001/menu_pizzas');
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
                 const pizzas = response.data?.data || [];
                 console.log('Datos de pizzas obtenidos:', pizzas);
                 const map = pizzas.reduce((acc, pizza) => {
@@ -47,7 +47,7 @@ const DRVCO = () => {
         const fetchData = async () => {
             console.log(`Cambiando rango de tiempo a: ${timeRange}`); // Log para verificar el cambio en el rango
             try {
-                const response = await axios.get(`http://localhost:3001/registro_ventas/filtrado?timeRange=${timeRange}`);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas/filtrado?timeRange=${timeRange}`);
                 const data = response.data?.data;
 
                 if (!Array.isArray(data) || data.length === 0) {

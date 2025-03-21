@@ -19,15 +19,15 @@ function HorariosEditar() {
 
   // Cargar datos del horario actual
   useEffect(() => {
-    axios.get(`http://localhost:3001/horarioPersonal/${id}`)
+    axios.get(`${process.env.REACT_APP_API_URL}/horarioPersonal/${id}`)
       .then((res) => setFormData(res.data))
       .catch((error) => console.error("Error al obtener horario:", error));
 
-    axios.get("http://localhost:3001/api/empleados")
+    axios.get(`${process.env.REACT_APP_API_URL}/api/empleados`)
       .then((res) => setEmpleados(res.data))
       .catch((error) => console.error("Error al obtener empleados:", error));
 
-    axios.get("http://localhost:3001/ubicaciones")
+    axios.get(`${process.env.REACT_APP_API_URL}/ubicaciones`)
       .then((res) => setUbicaciones(res.data))
       .catch((error) => console.error("Error al obtener ubicaciones:", error));
   }, [id]);
@@ -42,7 +42,7 @@ function HorariosEditar() {
     e.preventDefault();
     console.log("Datos a enviar:", formData); // 🛑 Verifica si hay algún campo vacío
     try {
-      await axios.patch(`http://localhost:3001/horarioPersonal/${id}`, formData);
+      await axios.patch(`${process.env.REACT_APP_API_URL}/horarioPersonal/${id}`, formData);
       alert("Horario actualizado con éxito");
       navigate("/control-horario/horarios/lista");
     } catch (error) {

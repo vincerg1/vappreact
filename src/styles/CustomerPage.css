@@ -95,9 +95,9 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  position: relative; /* 🔥 Permite mover el contenedor de forma más segura */
-  top: -3rem; /* 🔥 Mueve hacia arriba sin afectar elementos vecinos */
-  padding-bottom: 2rem; /* 🔥 Ajuste para evitar solapamiento */
+  position: relative; 
+  top: -3rem; 
+  padding-bottom: 2rem; 
 }
 .contact-info h3 {
   font-size: 2rem;
@@ -150,7 +150,7 @@
   border-radius: 10px;
   text-align: center;
   background-color: #fff;
-  transition: none;
+  transition: transform 0.3s ease; 
   width: 180px; 
   height: 300px; 
   flex-shrink: 0; 
@@ -172,9 +172,18 @@
 }
 .offer-card.active {
   border-color: #000000; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);  
+  transform: translateY(-1.5px);    
 }
 .offer-card.blocked {
-  border-color: #7b7b7b;
+  border-color: #898989;
+}
+.msjleft{
+color: rgb(255, 0, 0);
+font-weight: bold;
+font-size: 14px;
+/* background: linear-gradient(5deg, #E6E700 40%, transparent 60%); */
+background-color:#E6E700;
 }
 .offer-content.blurred {
   filter: grayscale(100%) opacity(0.6); /* Escala de grises y opacidad */
@@ -189,6 +198,14 @@
   margin-top: 10px;
   text-align: center; 
   font-weight: bold;
+}
+.coupon-message {
+  background: linear-gradient(90deg, #fdfdfd, #f0f0f0); 
+  padding: 4px 8px;              
+  border-radius: 4px;             
+  font-weight: 500;              
+  display: inline-block;         
+  border-bottom: 2px solid #e0e0e0; 
 }
 .expiration-bar {
   background-color: rgb(241, 243, 238);
@@ -795,13 +812,15 @@
   max-width: 80%;
   word-wrap: break-word;
   white-space: normal;
-  margin-bottom: 2.5px; /* Espacio uniforme entre cada ítem */
+  margin-bottom: 2.5px; 
 }
 .block-reason-container{
   margin-bottom: 2.5rem;
 }
+.offer-card:hover {
+  transform: scale(1.05);          
+}
 
-/* Efecto de visibilidad en hover */
 .offer-card:hover .block-overlay {
   opacity: 1;
   pointer-events: auto;

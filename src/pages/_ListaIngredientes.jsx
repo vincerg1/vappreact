@@ -211,7 +211,7 @@ useEffect(() => {
 
 }, [inventario, filtrosubcategoria, ubicacionSeleccionada, filtroEstado, terminoBusqueda, esOrdenAlfabetico]);
 useEffect(() => {
-  axios.get('http://localhost:3001/inventario')
+  axios.get(`${process.env.REACT_APP_API_URL}/inventario`)
     .then(response => {
       // Filtramos ingredientes y partners
       const productos = response.data.data.filter(item => 
@@ -265,7 +265,7 @@ useEffect(() => {
 
 const fetchLimits = async () => {
   try {
-    const response = await axios.get('http://localhost:3001/limites');
+    const response = await axios.get(`${process.env.REACT_APP_API_URL}/limites`);
     // console.log("Datos de límites cargados del servidor:", response.data);
     
     // Construir el nuevo objeto de límites
@@ -297,7 +297,7 @@ const handleEstadoIDI = async (IDI, esActivo) => {
 
   try {
     const estadoForzadoInt = esActivo ? 1 : 0; // 1 para inactivo, 0 para activo
-    const response = await fetch(`http://localhost:3001/inventario/por-idi/${IDI}`, {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/inventario/por-idi/${IDI}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -343,7 +343,7 @@ const handleEstadoLoteClick = async (IDR, esActivo) => {
 
   try {
     const estadoForzadoInt = esActivo ? 1 : 0; 
-    const response = await fetch(`http://localhost:3001/inventario/${IDR}`, {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/inventario/${IDR}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -436,7 +436,7 @@ const actualizarTLimite = async (IDI, nuevoLimite) => {
   }
 
   try {
-    const response = await axios.patch(`http://localhost:3001/limites/${IDI}`, { TLimite: nuevoLimite });
+    const response = await axios.patch(`${process.env.REACT_APP_API_URL}/limites/${IDI}`, { TLimite: nuevoLimite });
 
     if (response.status === 200) {
       alert('Límite actualizado con éxito');
@@ -487,6 +487,8 @@ return (
             value={terminoBusqueda}
             style={{
               padding: '15px 50px',
+              minWidth:'1200px',
+              borderRadius: '10px'
             }}
           />
    

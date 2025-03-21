@@ -25,192 +25,270 @@ const _Info_Restauratsx = () => {
   });
 
   const [addingShift, setAddingShift] = useState({});
-  const [editingShiftIndex, setEditingShiftIndex] = useState(null); // Guardar el índice de edición
+  const [editingShiftIndex, setEditingShiftIndex] = useState(null);
+
+  // ────────────────────────────────────────────────────────────
+  // 1. CARGA DE HORARIOS AL SELECCIONAR DÍA
+  // ────────────────────────────────────────────────────────────
   const handleDaySelection = async (day) => {
     if (selectedDays.includes(day)) {
+      // Quitar selección
       setSelectedDays(selectedDays.filter((d) => d !== day));
     } else {
+      // Agregar selección
       setSelectedDays([...selectedDays, day]);
 
       try {
         console.log(`Obteniendo horarios para el día: ${day}`);
-        const response = await axios.get(`http://localhost:3001/api/horarios/${day}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/horarios/${day}`);
         const horarios = response.data;
         console.log(`Horarios obtenidos para ${day}: `, horarios);
 
-        setExistingSchedules((prevSchedules) => ({
-          ...prevSchedules,
+        // Guardamos en existingSchedules
+        setExistingSchedules((prev) => ({
+          ...prev,
           [day]: horarios,
+        }));
+
+        // Inicializamos workHours[day] con los horarios de la DB
+        setWorkHours((prev) => ({
+          ...prev,
+          [day]: horarios.map((h) => ({
+            startTime: h.Hora_inicio,
+            endTime: h.Hora_fin,
+            shift: h.Shift,
+            horario_id: h.Horario_id,
+          })),
         }));
       } catch (error) {
         console.error('Error al obtener los horarios:', error);
       }
     }
   };
+
+  // ────────────────────────────────────────────────────────────
+  // 2. MANEJO DE CAMBIO DE CAMPOS (CREACIÓN/EDICIÓN)
+  // ────────────────────────────────────────────────────────────
   const handleWorkHoursChange = (day, index, field, value) => {
-    // Asegurarse de que el índice existe antes de acceder a él
-    if (!workHours[day][index]) {
-      console.error(`El índice ${index} para el día ${day} no está definido`);
-      return;
+    // Verificar que exista el array
+    if (!workHours[day]) {
+      setWorkHours((prev) => ({
+        ...prev,
+        [day]: [],
+      }));
     }
 
-    if (index >= workHours[day].length) {
-      console.error(`El índice ${index} está fuera del rango actual para el día ${day}`);
-      return;
-    }
-  
-    const updatedShifts = [...workHours[day]];
-  
-    // Asegurarse de que el objeto en el índice es válido
+    // Crear copia local
+    const updatedShifts = [...(workHours[day] || [])];
+
+    // Si no existe ese índice, lo creamos (modo creación)
     if (!updatedShifts[index]) {
-      console.error(`El turno en el índice ${index} no está definido`);
-      return;
+      updatedShifts[index] = {
+        startTime: '',
+        endTime: '',
+        shift: '',
+        horario_id: null,
+      };
     }
-  
+
+    // Actualizar campo
     updatedShifts[index] = { ...updatedShifts[index], [field]: value };
-    
-    console.log(`Modificando el campo ${field} en el índice ${index} para el día ${day}`);
-    console.log("Estado actual de workHours para", day, workHours[day]);
-  
-    setWorkHours((prevWorkHours) => ({
-      ...prevWorkHours,
+
+    console.log(`Modificando campo "${field}" en el índice ${index} para el día ${day}`);
+    console.log("workHours actualizado:", updatedShifts);
+
+    // Guardar nuevo estado
+    setWorkHours((prev) => ({
+      ...prev,
       [day]: updatedShifts,
     }));
-  
-    console.log("Nuevo estado de workHours para", day, workHours[day]);
   };
+
+  // ────────────────────────────────────────────────────────────
+  // 3. AGREGAR TURNO (SIN GUARDAR)
+  // ────────────────────────────────────────────────────────────
   const handleAddShift = (day) => {
     console.log(`Agregando un nuevo turno para ${day}`);
-    setWorkHours((prevWorkHours) => ({
-      ...prevWorkHours,
-      [day]: [...prevWorkHours[day], { startTime: '', endTime: '', shift: '' }],
-    }));
 
-    setAddingShift((prevAddingShift) => ({
-      ...prevAddingShift,
+    // Activamos el formulario de crear
+    setAddingShift((prev) => ({
+      ...prev,
       [day]: true,
     }));
-    setEditingShiftIndex(null); // Limpiar modo edición
+
+    // Empujamos un turno vacío a workHours[day]
+    setWorkHours((prev) => ({
+      ...prev,
+      [day]: [...(prev[day] || []), { startTime: '', endTime: '', shift: '' }],
+    }));
+
+    // Salimos del modo edición
+    setEditingShiftIndex(null);
   };
+
+  // ────────────────────────────────────────────────────────────
+  // 4. DESHACER TURNO AGREGADO ANTES DE GUARDAR
+  // ────────────────────────────────────────────────────────────
   const handleUndoShift = (day) => {
     console.log(`Deshaciendo último turno para ${day}`);
-    const updatedShifts = workHours[day].slice(0, -1); // Remover el último turno agregado
-    setWorkHours((prevWorkHours) => ({
-      ...prevWorkHours,
+    const updatedShifts = [...workHours[day]];
+    // Quitar el último
+    updatedShifts.pop();
+
+    setWorkHours((prev) => ({
+      ...prev,
       [day]: updatedShifts,
     }));
 
-    setAddingShift((prevAddingShift) => ({
-      ...prevAddingShift,
+    // Cerrar formulario
+    setAddingShift((prev) => ({
+      ...prev,
       [day]: false,
     }));
   };
+
+  // ────────────────────────────────────────────────────────────
+  // 5. GUARDAR NUEVO TURNO O EDITAR EXISTENTE (POST/PATCH)
+  // ────────────────────────────────────────────────────────────
   const handleAddNewShift = async (day, index) => {
-    const shift = workHours[day][index];
+    console.log(`Guardando turno para el día ${day}, índice ${index}`);
 
-    console.log(`Intentando agregar o editar un turno para el día ${day} en el índice ${index}`, shift);
+    // Copia local
+    const shifts = [...(workHours[day] || [])];
+    const shift = shifts[index];
 
-    if (!shift.startTime || !shift.endTime || !shift.shift) {
-      console.error("Faltan datos para agregar o editar el horario.");
+    // Validación de datos
+    if (!shift || !shift.startTime || !shift.endTime || !shift.shift) {
+      console.error("Faltan datos para agregar/editar el horario:", shift);
       return;
     }
 
+    // Validación de duplicados (por número de shift)
+    const existsDuplicate = shifts.some((s, i) => s.shift === shift.shift && i !== index);
+    if (existsDuplicate) {
+      console.error(`Ya existe el turno ${shift.shift} en el día ${day}.`);
+      alert(`Ya existe un turno con el número ${shift.shift} en ${day}. Seleccione otro.`);
+      return;
+    }
+
+    // Construimos objeto para la API
     const horarioData = {
-      day: day,
+      day,
       startTime: shift.startTime,
       endTime: shift.endTime,
       shift: shift.shift,
     };
 
     try {
+      // Modo edición o creación
       if (editingShiftIndex !== null) {
-        // Modo edición, hacer PATCH
-        const horarioId = workHours[day][editingShiftIndex]?.horario_id;
-        console.log(`Modo edición, PATCH para horario_id: ${horarioId}`);
+        // EDICIÓN (PATCH)
+        const horarioId = shifts[editingShiftIndex]?.horario_id;
+        console.log(`Editando turno con horario_id: ${horarioId}`);
 
         if (horarioId) {
-          const response = await axios.patch(`http://localhost:3001/api/horarios/${horarioId}`, horarioData);
-          console.log('Horario actualizado correctamente:', response.data);
+          const response = await axios.patch(`${process.env.REACT_APP_API_URL}/api/horarios/${horarioId}`, horarioData);
+          console.log('Horario actualizado:', response.data);
         }
       } else {
-        // Modo creación, hacer POST
-        const response = await axios.post('http://localhost:3001/api/horarios', horarioData);
-        console.log('Horario agregado correctamente:', response.data);
+        // CREACIÓN (POST)
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/horarios`, horarioData);
+        console.log('Horario creado:', response.data);
 
-        const updatedShifts = [...workHours[day]];
-        updatedShifts[index].horario_id = response.data.Horario_id;
-        updatedShifts[index].isSaved = true;
+        // Guardar horario_id en el estado
+        shifts[index].horario_id = response.data.Horario_id;
+        shifts[index].isSaved = true;
 
-        setWorkHours((prevWorkHours) => ({
-          ...prevWorkHours,
-          [day]: updatedShifts,
+        setWorkHours((prev) => ({
+          ...prev,
+          [day]: shifts,
         }));
       }
 
-      // Después de agregar o editar, cerramos el formulario
-      handleUndoShift(day); // Aquí llamamos a handleUndoShift para que cierre el formulario
-
+      // Cerrar formulario
+      setAddingShift((prev) => ({
+        ...prev,
+        [day]: false,
+      }));
+      setEditingShiftIndex(null);
     } catch (error) {
-      console.error('Error al hacer el POST o PATCH:', error);
+      console.error("Error al guardar turno:", error);
+      if (error.response?.data?.error) {
+        alert(error.response.data.error);
+      }
     }
   };
+
+  // ────────────────────────────────────────────────────────────
+  // 6. ELIMINAR TURNO
+  // ────────────────────────────────────────────────────────────
   const handleDeleteShift = async (day, index) => {
-    console.log(`Intentando eliminar el turno en el índice ${index} para ${day}`);
+    console.log(`Eliminando turno en el índice ${index} de ${day}`);
     const scheduleToDelete = existingSchedules[day][index];
 
     if (!scheduleToDelete?.Horario_id) {
-      console.error("No se puede eliminar un turno que no esté guardado en la base de datos.");
+      console.error("No se puede eliminar un turno que no exista en la base de datos.");
       return;
     }
 
     try {
-      const response = await axios.delete(`http://localhost:3001/api/horarios/${scheduleToDelete.Horario_id}`);
-      console.log(`Turno con horario_id ${scheduleToDelete.Horario_id} eliminado correctamente`);
+      const response = await axios.delete(`${process.env.REACT_APP_API_URL}/api/horarios/${scheduleToDelete.Horario_id}`);
+      console.log("Turno eliminado:", response.status);
 
       if (response.status === 200) {
-        const updatedShifts = existingSchedules[day].filter((_, i) => i !== index);
-        setExistingSchedules((prevSchedules) => ({
-          ...prevSchedules,
-          [day]: updatedShifts,
+        // Quitar del array existingSchedules
+        const filtered = existingSchedules[day].filter((_, i) => i !== index);
+        setExistingSchedules((prev) => ({
+          ...prev,
+          [day]: filtered,
         }));
       }
     } catch (error) {
       console.error('Error al eliminar el horario:', error);
     }
   };
-  const handleEditShift = (day, schedule, index) => {
-    // Verificar si el turno ya existe o si necesitamos inicializarlo
-    const existingShift = workHours[day][index] || {
-      startTime: '',
-      endTime: '',
-      shift: '',
-      horario_id: schedule.Horario_id,
-    };
-  
+
+  // ────────────────────────────────────────────────────────────
+  // 7. EDITAR TURNO (CARGA EN FORM DE EDICIÓN)
+  // ────────────────────────────────────────────────────────────
+  const handleEditShift = (day, schedule) => {
+    console.log(`Editando turno en ${day}, schedule:`, schedule);
+
+    // Si no hay turnos en workHours[day], no podemos editar
+    if (!workHours[day] || workHours[day].length === 0) {
+      console.error(`No hay turnos en workHours para el día ${day}.`);
+      return;
+    }
+
+    // Buscar el índice en base a horario_id
+    const realIndex = workHours[day].findIndex((sh) => sh.horario_id === schedule.Horario_id);
+    if (realIndex === -1) {
+      console.error("No se encontró el turno en workHours con horario_id:", schedule.Horario_id);
+      return;
+    }
+
+    // Actualizamos los campos con lo que viene de existingSchedules
     const updatedShifts = [...workHours[day]];
-    updatedShifts[index] = {
-      ...existingShift, // Cargar el turno existente o crear uno nuevo
+    updatedShifts[realIndex] = {
+      ...updatedShifts[realIndex],
       startTime: schedule.Hora_inicio,
       endTime: schedule.Hora_fin,
       shift: schedule.Shift,
-      horario_id: schedule.Horario_id,
     };
-  
-    setWorkHours((prevWorkHours) => ({
-      ...prevWorkHours,
+
+    setWorkHours((prev) => ({
+      ...prev,
       [day]: updatedShifts,
     }));
-  
-    console.log("Estado actualizado de workHours para", day, workHours[day]);
-  
-    setAddingShift((prevAddingShift) => ({
-      ...prevAddingShift,
-      [day]: true,
-    }));
-  
-    setEditingShiftIndex(index); // Guardar el índice del turno que se está editando
+
+    console.log(`Turno editado en ${day}, índice real: ${realIndex}`, updatedShifts[realIndex]);
+
+    setEditingShiftIndex(realIndex);
   };
 
+  // ────────────────────────────────────────────────────────────
+  // RENDER: Formulario y Listado
+  // ────────────────────────────────────────────────────────────
   const daysOfWeek = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
   return (
@@ -230,6 +308,7 @@ const _Info_Restauratsx = () => {
                   {day.charAt(0).toUpperCase() + day.slice(1)}
                 </label>
 
+                {/* Si el día está seleccionado, mostramos sus horarios y el formulario */}
                 {selectedDays.includes(day) && (
                   <div className="work-hours-form">
                     {existingSchedules[day].length > 0 ? (
@@ -250,7 +329,7 @@ const _Info_Restauratsx = () => {
                                 <td>{schedule.Hora_fin}</td>
                                 <td>{schedule.Shift}</td>
                                 <td>
-                                  <button type="button" onClick={() => handleEditShift(day, schedule, index)}>Editar</button>
+                                  <button type="button" onClick={() => handleEditShift(day, schedule)}>Editar</button>
                                   <button type="button" onClick={() => handleDeleteShift(day, index)}>Eliminar</button>
                                 </td>
                               </tr>
@@ -258,8 +337,8 @@ const _Info_Restauratsx = () => {
                           </tbody>
                         </table>
 
-                        {/* Botón para agregar otro turno */}
-                        {!addingShift[day] ? (
+                        {/* Botón Agregar Turno */}
+                        {!addingShift[day] && (
                           <button
                             type="button"
                             className="add-shift-button"
@@ -267,73 +346,150 @@ const _Info_Restauratsx = () => {
                           >
                             Agregar Turno
                           </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="add-shift-button"
-                            onClick={() => handleUndoShift(day)}
-                          >
-                            Deshacer
-                          </button>
+                        )}
+
+                        {/* Formulario Creación (cuando addingShift[day] === true) */}
+                        {addingShift[day] && (
+                          <div className="time-selectors">
+                            <label>Inicio:</label>
+                            <input
+                              type="time"
+                              className="time-selector"
+                              onChange={(e) =>
+                                handleWorkHoursChange(day, workHours[day].length - 1, 'startTime', e.target.value)
+                              }
+                            />
+
+                            <label>Fin:</label>
+                            <input
+                              type="time"
+                              className="time-selector"
+                              onChange={(e) =>
+                                handleWorkHoursChange(day, workHours[day].length - 1, 'endTime', e.target.value)
+                              }
+                            />
+
+                            <label>Turno:</label>
+                            <select
+                              className="shift-selector"
+                              onChange={(e) =>
+                                handleWorkHoursChange(day, workHours[day].length - 1, 'shift', e.target.value)
+                              }
+                            >
+                              <option value="">Selecciona Turno</option>
+                              {[1, 2, 3, 4].map((num) => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAddNewShift(day, workHours[day].length - 1)}
+                            >
+                              Guardar
+                            </button>
+
+                            {/* Botón para cancelar la creación */}
+                            <button type="button" onClick={() => handleUndoShift(day)}>
+                              Deshacer
+                            </button>
+                          </div>
                         )}
                       </>
                     ) : (
-                      !addingShift[day] ? (
-                        <button
-                          type="button"
-                          className="add-shift-button"
-                          onClick={() => handleAddShift(day)}
-                        >
-                          Agregar Turno
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="add-shift-button"
-                          onClick={() => handleUndoShift(day)}
-                        >
-                          Deshacer
-                        </button>
-                      )
+                      // No hay horarios en existingSchedules
+                      <>
+                        {!addingShift[day] && (
+                          <button
+                            type="button"
+                            className="add-shift-button"
+                            onClick={() => handleAddShift(day)}
+                          >
+                            Agregar Turno
+                          </button>
+                        )}
+
+                        {addingShift[day] && (
+                          <div className="time-selectors">
+                            <label>Inicio:</label>
+                            <input
+                              type="time"
+                              className="time-selector"
+                              onChange={(e) => handleWorkHoursChange(day, 0, 'startTime', e.target.value)}
+                            />
+
+                            <label>Fin:</label>
+                            <input
+                              type="time"
+                              className="time-selector"
+                              onChange={(e) => handleWorkHoursChange(day, 0, 'endTime', e.target.value)}
+                            />
+
+                            <label>Turno:</label>
+                            <select
+                              className="shift-selector"
+                              onChange={(e) => handleWorkHoursChange(day, 0, 'shift', e.target.value)}
+                            >
+                              <option value="">Selecciona Turno</option>
+                              {[1, 2, 3, 4].map((num) => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+
+                            <button type="button" onClick={() => handleAddNewShift(day, 0)}>
+                              Guardar
+                            </button>
+                            <button type="button" onClick={() => handleUndoShift(day)}>
+                              Deshacer
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
 
-                    {workHours[day].map((shift, index) => (
-                      <div key={index} className="time-selectors">
-                        <label>Inicio:</label>
-                        <input
-                          type="time"
-                          className="time-selector"
-                          value={shift.startTime || ''}
-                          onChange={(e) => handleWorkHoursChange(day, index, 'startTime', e.target.value)}
-                        />
+                    {/* Formulario de EDICIÓN (si editingShiftIndex no es null) */}
+                    {editingShiftIndex !== null &&
+                      workHours[day]?.[editingShiftIndex] && (
+                        <div className="time-selectors">
+                          <label>Inicio:</label>
+                          <input
+                            type="time"
+                            className="time-selector"
+                            value={workHours[day][editingShiftIndex].startTime || ''}
+                            onChange={(e) =>
+                              handleWorkHoursChange(day, editingShiftIndex, 'startTime', e.target.value)
+                            }
+                          />
 
-                        <label>Fin:</label>
-                        <input
-                          type="time"
-                          className="time-selector"
-                          value={shift.endTime || ''}
-                          onChange={(e) => handleWorkHoursChange(day, index, 'endTime', e.target.value)}
-                        />
+                          <label>Fin:</label>
+                          <input
+                            type="time"
+                            className="time-selector"
+                            value={workHours[day][editingShiftIndex].endTime || ''}
+                            onChange={(e) =>
+                              handleWorkHoursChange(day, editingShiftIndex, 'endTime', e.target.value)
+                            }
+                          />
 
-                        <label>Turno:</label>
-                        <select
-                          className="shift-selector"
-                          value={shift.shift || ''}
-                          onChange={(e) => handleWorkHoursChange(day, index, 'shift', e.target.value)}
-                        >
-                          <option value="">Selecciona Turno</option>
-                          {[1, 2, 3, 4].map((shiftOption) => (
-                            <option key={shiftOption} value={shiftOption}>{shiftOption}</option>
-                          ))}
-                        </select>
+                          <label>Turno:</label>
+                          <select
+                            className="shift-selector"
+                            value={workHours[day][editingShiftIndex].shift || ''}
+                            onChange={(e) =>
+                              handleWorkHoursChange(day, editingShiftIndex, 'shift', e.target.value)
+                            }
+                          >
+                            <option value="">Selecciona Turno</option>
+                            {[1, 2, 3, 4].map((num) => (
+                              <option key={num} value={num}>{num}</option>
+                            ))}
+                          </select>
 
-                        <div className="action-buttons">
-                          <button type="button" onClick={() => handleAddNewShift(day, index)}>
-                            {editingShiftIndex !== null ? "Editar" : "Agregar"}
+                          <button type="button" onClick={() => handleAddNewShift(day, editingShiftIndex)}>
+                            Guardar Cambios
                           </button>
                         </div>
-                      </div>
-                    ))}
+                      )}
                   </div>
                 )}
               </li>

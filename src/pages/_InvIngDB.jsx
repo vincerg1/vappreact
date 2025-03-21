@@ -31,7 +31,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchIngredientesUso = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/api/ingredientes-uso");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/ingredientes-uso`);
       if (response.data && Array.isArray(response.data)) {
         console.log("📊 Ponderación completa de ingredientes:", response.data);
 
@@ -130,7 +130,7 @@ const handleGoBack = () => {
 
   return (
     <div className="resto-del-dashboard">
-      <h1 className="PDCRL">Dashboard de Ingredientes</h1>
+      <h1 >Dashboard de Ingredientes</h1>
       
         {isPanelVisible && (
           <SidePanel 

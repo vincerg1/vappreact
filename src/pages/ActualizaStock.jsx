@@ -411,7 +411,7 @@ const ActualizaStock = () => {
   });
 
 useEffect(() => {
-    axios.get('http://localhost:3001/inventario')
+    axios.get(`${process.env.REACT_APP_API_URL}/inventario`)
          .then(response => {
              setInventario(response.data.data); 
              setInventarioOriginal(response.data.data)
@@ -500,7 +500,7 @@ const agregarIngrediente = async (e) => {
 
   try {
     // 🔹 Enviar ingrediente al inventario
-    const responseInventario = await fetch("http://localhost:3001/inventario", {
+    const responseInventario = await fetch(`${process.env.REACT_APP_API_URL}/inventario`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(ingredienteParaEnviar)
@@ -516,7 +516,7 @@ const agregarIngrediente = async (e) => {
     const nuevoIDI = dataInventario.data.IDI;
 
     // 🔹 Enviar IDI a la tabla de límites automáticamente
-    const responseLimites = await fetch("http://localhost:3001/limites", {
+    const responseLimites = await fetch(`${process.env.REACT_APP_API_URL}/limites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ IDI: nuevoIDI, TLimite: 0 }) // 🔥 TLimite como número
@@ -579,7 +579,7 @@ const modificarIngrediente = async (IDR, disponible, fechaCaducidadStr) => {
     : fechaCaducidadStr;
 
   try {
-    const response = await fetch(`http://localhost:3001/inventario/${IDR}`, {
+    const response = await fetch(`${process.env.REACT_APP_API_URL}/inventario/${IDR}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ IDR, disponible, fechaCaducidad: fechaValida })  // 🔥 Cambiado a fechaCaducidad
@@ -618,7 +618,7 @@ const eliminarIngrediente = async (IDR) => {
   if (!esConfirmado) return;
 
   try {
-    const response = await axios.delete(`http://localhost:3001/inventario/eliminar/${IDR}`);
+    const response = await axios.delete(`${process.env.REACT_APP_API_URL}/inventario/eliminar/${IDR}`);
 
     if (response.status === 200) {
       setInventario(prev => prev.filter(ingrediente => ingrediente.IDR !== IDR));
@@ -757,7 +757,7 @@ return (
       <div className='Filtros'>
           <button 
               className="boton-dashboard"
-              onClick={() => window.location.href='http://localhost:3000/_Inicio/_InvIngDB'}>
+              onClick={() => window.location.href=`${process.env.REACT_APP_API_URL}/_Inicio/_InvIngDB`}>
               Ir al Dashboard
           </button>
           <button 
@@ -770,7 +770,7 @@ return (
           onClick={toggleOrdenAlfabetico}>
             {esOrdenAlfabetico ? "Restablecer" : "Ordenar A-Z"}
           </button>
-          <select  
+          {/* <select  
           className="Filtro1" 
           onChange={handleUbicacionChange} 
           value={ubicacionSeleccionada}>
@@ -779,7 +779,7 @@ return (
             <option value="ubicacion 1">Ubicación 1</option>
             <option value="ubicacion 2">Ubicación 2</option>
             <option value="ver todas">Ver todas</option>
-          </select>
+          </select> */}
           <select 
           className="Filtro1"  
           onChange={handleCategoriaChange} 
@@ -798,6 +798,8 @@ return (
               value={terminoBusqueda}
               style={{
                 padding: '15px 50px',
+                minWidth:'1200px',
+                borderRadius: '10px'
               }}
             />
          <button 

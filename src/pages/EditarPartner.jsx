@@ -13,7 +13,7 @@ useEffect(() => {
     const fetchPartnerData = async () => {
       setIsLoading(true);
       try {
-        const response = await axios.get(`http://localhost:3001/PartnerData/${partnerId}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/PartnerData/${partnerId}`);
         setPartnerData(response.data.data);
       } catch (error) {
         console.error('Error al cargar los datos del partner:', error);
@@ -37,7 +37,7 @@ useEffect(() => {
 
       const response = await axios({
         method: 'patch',
-        url: `http://localhost:3001/PartnerData/${partnerId}`,
+        url: `${process.env.REACT_APP_API_URL}/PartnerData/${partnerId}`,
         data: formData,
         headers: {'Content-Type': 'multipart/form-data' }
       });

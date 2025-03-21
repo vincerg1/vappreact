@@ -25,7 +25,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
   useEffect(() => {
     console.log('Cargando Daily Challenge...');
     axios
-      .get('http://localhost:3001/api/daily-challenges')
+      .get(`${process.env.REACT_APP_API_URL}/api/daily-challenges`)
       .then((response) => {
         // 1. Filtra los retos activos y de tipo DailyChallenge
         const activeChallenges = response.data.filter(
@@ -190,7 +190,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
     if (!dailyChallenge) return;
 
     axios
-      .patch(`http://localhost:3001/api/offers/${dailyChallenge.Oferta_Id}/reset-coupons`, {
+      .patch(`${process.env.REACT_APP_API_URL}/api/offers/${dailyChallenge.Oferta_Id}/reset-coupons`, {
         Cupones_Disponibles: dailyChallenge.Cupones_Asignados,
       })
       .then((response) => {
@@ -253,7 +253,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
 
     axios
       .post(
-        `http://localhost:3001/api/daily-challenge/${dailyChallenge.Oferta_Id}/participate`,
+        `${process.env.REACT_APP_API_URL}/api/daily-challenge/${dailyChallenge.Oferta_Id}/participate`,
         participationData
       )
       .then((response) => {
@@ -277,7 +277,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
 
     axios
       .patch(
-        `http://localhost:3001/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`,
+        `${process.env.REACT_APP_API_URL}/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`,
         {
           ig_username: igUsername,
           post_link: igLink,
@@ -334,7 +334,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
             <>
               {dailyChallenge.Imagen && (
                 <img
-                  src={`http://localhost:3001${dailyChallenge.Imagen}`}
+                  src={`${process.env.REACT_APP_API_URL}${dailyChallenge.Imagen}`}
                   alt="Challenge"
                   className="challenge-image"
                 />

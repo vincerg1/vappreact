@@ -63,6 +63,7 @@
   /* Botones */
   button {
     padding: 6px 10px;
+    margin: .25rem;
     font-size: 0.9rem;
     border: none;
     cursor: pointer;

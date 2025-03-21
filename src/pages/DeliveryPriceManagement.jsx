@@ -14,7 +14,7 @@ const DeliveryPriceManagement = ({ showModal, onClose }) => {
 
   const fetchPrice = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/delivery/price');
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
       setPrice(response.data.precio);
     } catch (error) {
       console.error('Error fetching delivery price:', error);
@@ -28,7 +28,7 @@ const DeliveryPriceManagement = ({ showModal, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/precio-delivery', { precio: price }); // Cambio aquí para que coincida con el backend
+      await axios.post(`${process.env.REACT_APP_API_URL}/precio-delivery`, { precio: price }); // Cambio aquí para que coincida con el backend
       fetchPrice(); // Refresh the price after updating
       onClose(); // Close modal after updating
     } catch (error) {

@@ -21,7 +21,7 @@ const ReviewForm = ({ email, onClose }) => {
       return;
     }
 
-    fetch('http://localhost:3001/api/reviews', {
+    fetch(`${process.env.REACT_APP_API_URL}/api/reviews`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -16,7 +16,7 @@ const Ticket = ({ order }) => {
   useEffect(() => {
     const fetchPizzas = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/menu_pizzas'); // Ajusta la URL según tu API
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`); // Ajusta la URL según tu API
         if (Array.isArray(response.data.data)) {
           setPizzas(response.data.data); // Almacena las pizzas en el estado
         } else {
@@ -35,7 +35,7 @@ const Ticket = ({ order }) => {
     const fetchStoreContactInfo = async () => {
       try {
         console.log(`Haciendo solicitud para la información de la tienda principal con ID: 1`);
-        const response = await axios.get('http://localhost:3001/api/info-empresa/1'); // Endpoint para obtener la información de la tienda principal
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa/1`); // Endpoint para obtener la información de la tienda principal
         
         if (response.data && response.data.data) {
           console.log("Información de la tienda principal obtenida:", response.data.data);

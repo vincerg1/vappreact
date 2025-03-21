@@ -16,7 +16,7 @@ export default function FormularioCliente({ onClienteAgregado }) {
   
     try {
       const newCliente = { email, password, bday, mapsUrl };
-      const response = await axios.post('http://localhost:3001/agregar_cliente', newCliente);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/agregar_cliente`, newCliente);
   
       const { id_cliente } = response.data; // Recibir el id_cliente generado por el backend
       console.log('Cliente agregado con éxito:', id_cliente);

@@ -23,7 +23,7 @@ useEffect(() => {
   if (pizzaId) {
     const fetchPizzaData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/menu_pizzas/${pizzaId}`);
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas/${pizzaId}`);
         if (response.data && response.data.data) {
           const ingredientesParsed = typeof response.data.data.ingredientes === 'string'
         ? JSON.parse(response.data.data.ingredientes)
@@ -81,7 +81,7 @@ useEffect(() => {
       dataToSend.append('imagen', imageFile, imageFile.name);
     }
     try {
-      const response = await axios.patch(`http://localhost:3001/menu_pizzas/${pizzaId}`, dataToSend);
+      const response = await axios.patch(`${process.env.REACT_APP_API_URL}/menu_pizzas/${pizzaId}`, dataToSend);
       console.log(response.data);
       navigate('/_Inicio/_Menu_p1/_MenuOverview');
     } catch (error) {

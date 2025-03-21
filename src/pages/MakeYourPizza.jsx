@@ -121,7 +121,7 @@ const MakeYourPizza = () => {
   useEffect(() => {
     const fetchExtraPrices = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/IngredientExtraPrices');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/IngredientExtraPrices`);
         const preciosExtra = response.data.reduce((acc, item) => {
           acc[item.size] = item.extra_price;
           return acc;
@@ -136,7 +136,7 @@ const MakeYourPizza = () => {
   useEffect(() => {
     const fetchOfertas = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/ofertas");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         console.log("Ofertas recibidas:", response.data);
         
         if (Array.isArray(response.data.data)) {
@@ -184,7 +184,7 @@ const MakeYourPizza = () => {
   useEffect(() => {
     const fetchMenuPizzas = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/menu_pizzas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
         setMenuPizzas(response.data.data);
         console.log("✅ Pizzas obtenidas:", response.data.data);
       } catch (error) {
@@ -197,7 +197,7 @@ const MakeYourPizza = () => {
   useEffect(() => {
     const fetchInventario = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/inventario');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
         setInventario(response.data.data);
         console.log("✅ Inventario obtenido:", response.data.data);
       } catch (error) {
@@ -210,7 +210,7 @@ const MakeYourPizza = () => {
   useEffect(() => {
     const fetchMenuPizzas = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/menu_pizzas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
         setMenuPizzas(response.data.data);
         console.log("✅ Pizzas obtenidas:", response.data.data);
       } catch (error) {
@@ -800,7 +800,7 @@ const MakeYourPizza = () => {
                       <SwiperSlide key={index}>
                         <div className="pizza-slide">
                           <img
-                            src={`http://localhost:3001/${pizza.imagen}`}
+                            src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
                             alt={pizza.nombre}
                             className="pizza-image"
                           />
@@ -846,7 +846,7 @@ const MakeYourPizza = () => {
                       <SwiperSlide key={index}>
                         <div className="pizza-slide">
                           <img
-                            src={`http://localhost:3001/${pizza.imagen}`}
+                            src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
                             alt={pizza.nombre}
                             className="pizza-image"
                           />

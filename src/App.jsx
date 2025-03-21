@@ -63,6 +63,8 @@ import HorariosLista from "./pages/HorariosLista";
 import HorariosEditar from './pages/HorariosEditar.jsx';
 import HorariosMalla from './pages/HorariosMalla.jsx';
 import HorariosDetalles from './pages/HorariosDetalles.jsx';
+import ListaRepartidores from './pages/ListaRepartidores.jsx';
+import FormularioRepartidores from './pages/FormularioRepartidores.jsx';
 
 function App() {
   const [menus, setMenus] = useState([]);
@@ -91,6 +93,8 @@ function App() {
          <Route path="/RouteSetterAdmin" element={<RouteSetterAdmin />} />
          <Route path="/DeliveryPanel" element={<DeliveryPanel />} />
          <Route path="/Repartidores" element={<Repartidores />} />
+         <Route path="/repartidores/lista" element={<ListaRepartidores />} />
+         <Route path="/repartidores/crear" element={<FormularioRepartidores />} />
          <Route path="/RouteSetter" element={<RouteSetter />} />
          <Route path="/TestMap" element={<TestMap />} />
          <Route path="/view-order" element={<ViewOrder />} />

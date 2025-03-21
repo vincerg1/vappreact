@@ -5,25 +5,14 @@ import '../styles/inicio_style.css';
 
 export const Inicio = () => {
   const navigate = useNavigate();
-
-  // 1. Leemos localStorage la primera vez que se renderiza el componente
-  const [loggedIn, setLoggedIn] = useState(() => {
-    const storedLoggedIn = localStorage.getItem('loggedIn');
-    return storedLoggedIn ? JSON.parse(storedLoggedIn) : false;
-  });
-
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  // 2. Si `loggedIn` ya está en true en localStorage, evita que reinicie sesión
-  //    (Opcional). Solo si necesitas redirigir automáticamente al Panel
-  useEffect(() => {
-    if (loggedIn) {
-      navigate('/_Inicio');
-    }
-  }, [loggedIn, navigate]);
+  const [loggedIn, setLoggedIn] = useState(() => {
+    const storedLoggedIn = localStorage.getItem('loggedIn');
+    return storedLoggedIn ? JSON.parse(storedLoggedIn) : false;
+  });
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,7 +20,7 @@ export const Inicio = () => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:3001/admin/login', { correo, contrasena });
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/admin/login`, { correo, contrasena });
       if (response.data.admin) {
         // Guardamos en localStorage
         localStorage.setItem('loggedIn', JSON.stringify(true));
@@ -53,6 +42,20 @@ export const Inicio = () => {
       setLoading(false);
     }
   };
+  const handleLogout = () => {
+    localStorage.removeItem('loggedIn');
+    localStorage.removeItem('admin');
+    setLoggedIn(false);
+
+
+    navigate('/_Inicio');
+  };
+
+  useEffect(() => {
+    if (loggedIn) {
+      navigate('/_Inicio');
+    }
+  }, [loggedIn, navigate]);
 
   const handleInformacionClick = () => navigate('/_Inicio/_Informacion');
   const handleMenuClick = () => navigate('/_Inicio/_Menu_p1');
@@ -63,16 +66,15 @@ export const Inicio = () => {
   const handleRouteSetterClick = () => navigate('/RouteSetterAdmin');
   const handleControlHorarioIndexSetterClick = () => navigate('/control-horario');
 
-  // 3. Renderizado condicional en base a loggedIn
   return (
     <div className="login-container">
       {!loggedIn ? (
         <section className="login-section">
-          <h2 className="login-title">Inicio de Sesión - Administrador</h2>
+          <h2 className="login-title">Login - Administrator</h2>
 
           <form className="login-form" onSubmit={handleLogin}>
             <div className="input-group">
-              <label htmlFor="correo">Correo:</label>
+              <label htmlFor="correo">Email:</label>
               <input
                 type="email"
                 id="correo"
@@ -84,7 +86,7 @@ export const Inicio = () => {
             </div>
 
             <div className="input-group">
-              <label htmlFor="contrasena">Contraseña:</label>
+              <label htmlFor="contrasena">Password:</label>
               <input
                 type="password"
                 id="contrasena"
@@ -103,43 +105,47 @@ export const Inicio = () => {
           </form>
 
           <p className="register-link">
-            ¿No tienes una cuenta?{' '}
+            Don't have an account?{' '}
             <span onClick={() => navigate('/register')} className="register-link-text">
-              Crear una cuenta
+            Create an account
             </span>
           </p>
         </section>
       ) : (
         <>
-          <h1 className="PDCRL">Panel de Control / My_Backoffice</h1>
+          <h1>My_Backoffice</h1>
           <section className="contenedorPC">
             <button className="background_icon_button informacion" onClick={handleInformacionClick}>
-              <span>Información</span>
+              <span>Information</span>
             </button>
             <button className="background_icon_button menu" onClick={handleMenuClick}>
-              <span>Menú</span>
+              <span>Menu</span>
             </button>
             <button className="background_icon_button clientes" onClick={handleClientesClick}>
-              <span>Clientes</span>
+              <span>Customers</span>
             </button>
             <button className="background_icon_button inventario" onClick={handleInvClick}>
-              <span>Inventario</span>
+              <span>Inventory</span>
             </button>
             <button className="background_icon_button seguimiento" onClick={handleSeguimientoClick}>
-              <span>Seguimiento</span>
+              <span>My_Zones</span>
             </button>
             <button className="background_icon_button ofertas" onClick={handleOffersClick}>
-              <span>Ofertas</span>
+              <span>Offers</span>
             </button>
             <button className="background_icon_button routesetter" onClick={handleRouteSetterClick}>
-              <span>RouteSetter</span>
+              <span>Route_Setter</span>
             </button>
             <button className="background_icon_button ControlHorarioIndex" onClick={handleControlHorarioIndexSetterClick}>
-              <span>Control Horario</span>
+              <span>Schedule_Control</span>
             </button>
           </section>
+             <button className="logout-button" onClick={handleLogout}>
+             Sign Out!
+          </button>
         </>
       )}
+    
     </div>
   );
 };

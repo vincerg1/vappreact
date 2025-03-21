@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { _PizzaContext } from './_PizzaContext';
 import axios from 'axios';
 import Ticket from './Ticket'; 
 import moment from 'moment';
 import '../styles/ViewOrder.css'; 
 
 const ViewOrder = () => {
+  const { sessionData } = useContext(_PizzaContext);
   const [orders, setOrders] = useState([]);
   const [pizzas, setPizzas] = useState([]); 
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -17,7 +19,7 @@ const ViewOrder = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/registro_ventas');
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
         if (Array.isArray(response.data.data)) {
           const pendingOrders = response.data.data.filter(order => order.venta_procesada === 0);
           setOrders(pendingOrders);
@@ -50,7 +52,7 @@ const ViewOrder = () => {
 
     const fetchPizzas = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/menu_pizzas'); // Ajusta la URL según tu API
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`); // Ajusta la URL según tu API
         if (Array.isArray(response.data.data)) {
           setPizzas(response.data.data); // Almacena las pizzas en el estado
         } else {
@@ -75,28 +77,36 @@ const ViewOrder = () => {
 
   const markOrderAsProcessed = async (id_venta) => {
     try {
-        // 1️⃣ Descontar ingredientes primero
-        await axios.patch('http://localhost:3001/inventario/descontar', 
-          { id_venta }, 
-          { headers: { "Content-Type": "application/json" } }
-        );
-        alert('Ingredientes descontados correctamente.');
-
-        // 2️⃣ Luego marcar la orden como procesada
-        await axios.patch(`http://localhost:3001/registro_ventas/${id_venta}/procesar`);
-        alert('Orden marcada como completada.');
-
-        // 4️⃣ Actualizar los pedidos en cola
-        await axios.patch('http://localhost:3001/api/update-pedidos-en-cola');
-        alert('Pedidos en cola actualizados correctamente.');
-
-        // 5️⃣ Actualizar el estado local para reflejar los cambios
-        setOrders(orders.filter(order => order.id_venta !== id_venta));
+      // 1) Descontar ingredientes
+      await axios.patch(`${process.env.REACT_APP_API_URL}/inventario/descontar`, 
+        { id_venta }, 
+        { headers: { "Content-Type": "application/json" } }
+      );
+      alert('Ingredientes descontados correctamente.');
+  
+      // 2) Marcar la orden como completada
+      await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/${id_venta}/procesar`);
+      alert('Orden marcada como completada.');
+  
+      // 3) Enviar correo "Pizza Lista" usando tu nuevo endpoint de /registro_ventas
+      await axios.post(`${process.env.REACT_APP_API_URL}/notificaciones/pizza_ready`, {
+        id_order: id_venta,
+        email: sessionData.email
+      });
+      alert('Correo enviado al cliente notificando que su pizza está lista.');
+  
+      // 4) Actualizar los pedidos en cola
+      await axios.patch(`${process.env.REACT_APP_API_URL}/api/update-pedidos-en-cola`);
+      alert('Pedidos en cola actualizados correctamente.');
+  
+      // 5) Remover la orden del estado local
+      setOrders((prev) => prev.filter((order) => order.id_venta !== id_venta));
+  
     } catch (error) {
-        console.error('Error en la actualización:', error);
-        alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
+      console.error('Error en la actualización:', error);
+      alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
     }
-  };
+  };  
   const showTicketModal = (order) => {
     setSelectedOrder(order);
     setShowModal(true);

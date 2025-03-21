@@ -18,7 +18,7 @@ function CrearCliente({ onClienteAgregado }) {
 
     try {
       // Usar el endpoint `/agregar_cliente` para validar y crear el cliente
-      const response = await axios.post('http://localhost:3001/agregar_cliente', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/agregar_cliente`, {
         email,
         password,
         bday,

@@ -10,13 +10,19 @@ const OffersModule = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="offers-module">
-      <h1>Offers Module</h1>
-      <div className="button-container">
-        <button onClick={() => navigate('/offers/create')}>Create New Offer</button>
-        <button onClick={() => navigate('/offers/existing')}>Existing Offers</button>
-        <button onClick={() => navigate('/offers/incentivo')}>Incentivos</button>
-      </div>
+<div className="offers-module">
+  <h1 className="offers-title">Manage Offers</h1>
+  <div className="button-container-off">
+    <button className="offers-button" onClick={() => navigate('/offers/create')}>
+      <span>Create New Offer</span>
+    </button>
+    <button className="offers-button" onClick={() => navigate('/offers/existing')}>
+      <span>Existing Offers</span>
+    </button>
+    <button className="offers-button" onClick={() => navigate('/offers/incentivo')}>
+      <span>Incentives</span>
+    </button>
+  </div>
       <Routes>
         {/* Rutas existentes */}
         <Route path="create" element={<OfferForm />} />
