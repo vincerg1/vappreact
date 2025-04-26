@@ -22,8 +22,6 @@ export const _PizzaContext = createContext({
   setPizzas: () => {},
   activePizzas: [],
   setActivePizzas: () => {},
-  cart: [],
-  addPizzaToOrder: () => {},
   sessionData: {
     nombre: null, 
     segmento: null,
@@ -41,20 +39,6 @@ export const _PizzaContext = createContext({
   pizzasConEstadoActualizado: [],
   ingredientesProximosACaducar: [], 
   setIngredientesProximosACaducar:  () => {},
-  compra: {
-    id_order: '',
-    fecha: '',
-    hora: '',
-    id_cliente: '',
-    DescuentosCupon: 0,
-    DescuentosDailyChallenge: 0,
-    Max_Amount: 0,
-    Oferta_Id: null,
-    total_sin_descuento: 0,
-    total_a_pagar_con_descuentos: 0,
-    venta: [],
-    Delivery: { opcion: false, costo: 0 },
-  },
   setCompra: () => {}, 
   isServiceSuspended: false, 
   suspensionEndTime: null,   
@@ -72,7 +56,6 @@ export const PizzaProvider = ({ children }) => {
   const [nombresDeProductos, setNombresDeProductos] = useState([]);
   const [pizzas, setPizzas] = useState([]);
   const [activePizzas, setActivePizzas] = useState([]);
-  const [cart, setCart] = useState([]);
   const [ofertasPorSegmento, setOfertasPorSegmento] = useState([]);
   const [zonasDeRiesgoPorIDI, setZonasDeRiesgoPorIDI] = useState({});
   const [limites, setLimites] = useState({});
@@ -83,20 +66,6 @@ export const PizzaProvider = ({ children }) => {
   const [isServiceSuspended, setIsServiceSuspended] = useState(false);
   const [suspensionEndTime, setSuspensionEndTime] = useState(null);
   const [activePartners, setActivePartners] = useState([]);
-  const [compra, setCompra] = useState({
-    id_order: '',
-    fecha: moment().format('YYYY-MM-DD'),
-    hora: moment().format('HH:mm:ss'),
-    id_cliente: '',
-    DescuentosCupon: 0,
-    DescuentosDailyChallenge: 0,
-    Max_Amount: 0,
-    Oferta_Id: null,
-    total_sin_descuento: 0,
-    total_a_pagar_con_descuentos: 0,
-    venta: [],
-    Delivery: { opcion: false, costo: 0 },
-  });
   const [sessionData, setSessionData] = useState(() => {
     const storedData = localStorage.getItem('sessionData');
     return storedData
@@ -309,13 +278,23 @@ useEffect(() => {
   const cargarPizzas = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
-      // console.log('Datos de pizzas cargadas:', response.data);
-      setPizzas(response.data); 
+      
+      // console.log('📦 Respuesta completa de /menu_pizzas:', response.data);
+      
+      if (Array.isArray(response.data.data)) {
+        // console.log('✅ Array de pizzas detectado. Total:', response.data.data.length);
+        setPizzas(response.data); 
+      } else {
+        console.warn('⚠️ La estructura no es la esperada. ¿No hay un array en response.data.data?');
+      }
+
     } catch (error) {
-      console.error('Error al cargar las pizzas:', error);
+      console.error('❌ Error al cargar las pizzas:', error);
     }
   };
+
   if (pizzas.length === 0) {
+    console.log('🕵️‍♂️ No hay pizzas cargadas aún, solicitando...');
     cargarPizzas();
   }
 }, [pizzas]);
@@ -497,13 +476,7 @@ function zonaRiesgoToString(zonaRiesgo) {
     };
     return mapeo[zonaRiesgo] || 'inactivo';
 }
-const addPizzaToOrder  = (pizza) => {
-    setCart(currentCart => {
-      const updatedCart = [...currentCart, pizza];
-      // console.log("Carrito en el context después de añadir:", updatedCart);
-      return updatedCart;
-    });
-};
+
 const agruparInventarioPorIDI = (inventario) => {
   const inventarioAgrupado = {};
 
@@ -539,8 +512,6 @@ const agruparInventarioPorIDI = (inventario) => {
       setPizzas,
       activePizzas,
       setActivePizzas,
-      cart, 
-      addPizzaToOrder,
       sessionData,
       updateSessionData,
       clearSessionData,
@@ -555,8 +526,6 @@ const agruparInventarioPorIDI = (inventario) => {
       setPizzasConEstadoActualizado,
       ingredientesProximosACaducar, 
       setIngredientesProximosACaducar,
-      compra, 
-      setCompra,
       isServiceSuspended,
       suspensionEndTime,
       setSuspensionState, 

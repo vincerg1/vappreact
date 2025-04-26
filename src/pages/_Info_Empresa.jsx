@@ -9,7 +9,8 @@ const InfoEmpresa = () => {
   const [countries, setCountries] = useState([]);
   const [regions, setRegions] = useState([]);
   const [zipCodes, setZipCodes] = useState([]);
-
+  const [promoVideoUrl, setPromoVideoUrl] = useState('');   
+  const [promoVideo, setPromoVideo] = useState(null); 
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('');
   const [selectedZipCode, setSelectedZipCode] = useState('');
@@ -19,7 +20,6 @@ const InfoEmpresa = () => {
   const [city, setCity] = useState('');
   const [cityLatitude, setCityLatitude] = useState('');
   const [cityLongitude, setCityLongitude] = useState('');
-
   const [logo, setLogo] = useState(null);                      // Logo de la empresa
   const [notificationImg, setNotificationImg] = useState(null); // Imagen de notificación
   
@@ -106,7 +106,8 @@ const InfoEmpresa = () => {
     formData.append('nombre_empresa', companyName);
     formData.append('correo_contacto', email);
     formData.append('telefono_contacto', phone);
-
+    formData.append('video_promocional_url', promoVideoUrl); 
+    formData.append('video_promocional_file', promoVideo);   
     // Archivos:
     formData.append('logo_url', logo); 
     formData.append('notification_img_url', notificationImg);
@@ -363,7 +364,9 @@ const InfoEmpresa = () => {
             accept="image/*"
             onChange={(e) => setNotificationImg(e.target.files[0])}
           />
-
+            <label>Video Promocional</label>
+            <input type="file" accept="video/mp4" onChange={(e) => setPromoVideo(e.target.files[0])} />
+            
           {/* Nombre de la Empresa */}
           <label>Nombre de la Empresa:</label>
           <input
@@ -387,7 +390,7 @@ const InfoEmpresa = () => {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
-
+         
           {/* Redes Sociales */}
           <label>Redes Sociales:</label>
           <div className="socials-block">

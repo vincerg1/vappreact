@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require("axios");
 const db = require('./database.js');
 const cors = require('cors');
 const cron = require('node-cron');
@@ -28,40 +29,11 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-const myDomain = "http://192.168.1.33:3001"; 
-// const determinarZonaRiesgo = (disponible, limite, fechaCaducidad) => {
-//   const fechaCaducidadParsed = parseISO(fechaCaducidad);
-//   const fechaActual = new Date();
+const myDomain = process.env.MY_DOMAIN || 'http://localhost:3001';
 
-//   if (fechaCaducidadParsed < fechaActual) {
-//     return 5; // Caducado
-//   } else if (disponible <= limite) {
-//     return 4; // Inactivo por escasez
-//   } else if (disponible <= limite * 1.2) {
-//     return 3; // Riesgo alto
-//   } else if (disponible <= limite * 2) {
-//     return 2; // Riesgo medio
-//   } else {
-//     return 1; // Riesgo bajo
-//   }
-// };
-
-// const determinarEstadoDelProducto = (zonaRiesgo) => {
-//   return zonaRiesgo < 4; // Activo si la zona de riesgo es menor que 4
-// };
- function esFechaValida(fecha) {
+function esFechaValida(fecha) {
    const fechaParsed = Date.parse(fecha);
    return !isNaN(fechaParsed);
- }
- const jwt = require('jsonwebtoken');
- const JWT_SECRET_KEY = 'tu_clave_secreta'; 
- 
-
- // the generation zone
-function generateAuthToken(client) {
-
-   const token = jwt.sign({ id: client.id, segmento: client.segmento }, JWT_SECRET_KEY, { expiresIn: '1h' });
-   return token;
 }
 function actualizarIndicadoresCliente(id_cliente, fecha_actualizacion, callback) {
   db.serialize(() => {
@@ -441,27 +413,25 @@ function autoCloseExpiredShifts(id_empleado, callback) {
   // Si hubiese error, llamar callback(err).
 }
 function checkActiveEntry(id_empleado, callback) {
+  const today = new Date().toISOString().slice(0, 10);  // "2024-04-26"
+
   const query = `
-    SELECT * FROM timeRecord 
-    WHERE id_empleado = ? 
-    ORDER BY id_registro DESC 
+    SELECT * FROM timeRecord
+    WHERE id_empleado = ?
+      AND DATE(hora_inicio) = ?
+    ORDER BY id_registro DESC
     LIMIT 1
   `;
-  db.get(query, [id_empleado], (err, row) => {
-    if (err) {
-      console.error("❌ Error al verificar entrada activa:", err);
-      return callback(err);
-    }
-    if (!row) {
-      console.log("🔍 No hay registros en timeRecord para este empleado.");
-      return callback(null, false, "sin_registro"); 
-      // hasActiveEntry = false, lastStatus = "sin_registro"
-    }
-    console.log("✅ Última acción en timeRecord:", row);
 
-    const isEntryActive = (row.status === "entrada" && row.hora_fin === null);
-    return callback(null, isEntryActive, row.status); 
-    // hasActiveEntry, lastStatus
+  db.get(query, [id_empleado, today], (err, row) => {
+    if (err) return callback(err);
+
+    if (!row) {
+      return callback(null, false, "sin_registro");
+    }
+
+    const isActive = (row.status === "entrada" && row.hora_fin == null);
+    return callback(null, isActive, row.status);
   });
 }
 function getShiftForToday(id_empleado, callback) {
@@ -893,6 +863,174 @@ cron.schedule('0 11 * * *', () => {
 });
 
 // the get zone
+app.get('/wallet/:id_repartidor/estado', (req, res) => {
+  const { id_repartidor } = req.params;
+
+  const sqlQuery = `
+    SELECT 
+      estado, 
+      SUM(COALESCE(monto_por_cobrar, 0)) AS total_por_cobrar, 
+      SUM(COALESCE(monto_pagado, 0)) AS total_pagado 
+    FROM wallet_repartidores 
+    WHERE id_repartidor = ? 
+    GROUP BY estado
+  `;
+
+  db.all(sqlQuery, [id_repartidor], (err, rows) => {
+    if (err) {
+      console.error('Error al obtener resumen de wallet:', err);
+      return res.status(500).json({ success: false, message: 'Error al obtener resumen de wallet' });
+    }
+
+    let resumen = {
+      PorCobrar: 0,
+      Consolidado: 0,
+      Pagado: 0
+    };
+
+    rows.forEach((r) => {
+      const estado = r.estado ? r.estado.trim() : '';
+      if (estado === 'Por Cobrar') resumen.PorCobrar = r.total_por_cobrar;
+      if (estado === 'Consolidado') resumen.Consolidado = r.total_por_cobrar;
+      if (estado === 'Pagado') resumen.Pagado = r.total_pagado;
+    });
+
+    return res.json({ success: true, resumen });
+  });
+});
+app.get('/wallet/resumen/:id_repartidor', (req, res) => {
+  const { id_repartidor } = req.params;
+
+  // Query: sumar porCobrar y consolidado/pagado
+  // En este ejemplo, nos enfocamos en 'Por Cobrar' y 'Consolidado' y 'Pagado'
+  const sql = `
+    SELECT
+      COALESCE(SUM(CASE WHEN estado = 'Por Cobrar' THEN monto_por_cobrar ELSE 0 END), 0) AS totalPorCobrar,
+      COALESCE(SUM(CASE WHEN estado = 'Consolidado' THEN monto_por_cobrar ELSE 0 END), 0) AS totalConsolidado,
+      COALESCE(SUM(CASE WHEN estado = 'Pagado' THEN monto_pagado ELSE 0 END), 0) AS totalPagado
+    FROM wallet_repartidores
+    WHERE id_repartidor = ?
+  `;
+
+  db.get(sql, [id_repartidor], (err, row) => {
+    if (err) {
+      console.error('Error al obtener resumen de wallet:', err);
+      return res.status(500).json({ success: false, message: 'Error al obtener el resumen de wallet' });
+    }
+    // row tendrá por ejemplo { totalPorCobrar: 10, totalConsolidado: 0, totalPagado: 5 }
+    res.json({ success: true, data: row });
+  });
+});
+app.get('/wallet/:id_repartidor/total-diario', (req, res) => {
+  const { id_repartidor } = req.params;
+
+  db.get(
+    `SELECT SUM(monto_pagado) as totalPagadoHoy 
+     FROM wallet_repartidores 
+     WHERE id_repartidor = ? 
+     AND estado = 'Pagado' 
+     AND DATE(fecha_consolidacion) = DATE('now')`,
+    [id_repartidor],
+    (err, row) => {
+      if (err) {
+        console.error('Error al obtener monto pagado hoy:', err);
+        return res.status(500).json({ success: false });
+      }
+      res.json({ success: true, totalPagadoHoy: row?.totalPagadoHoy || 0 });
+    }
+  );
+});
+app.get("/api/google/distancia-single", async (req, res) => {
+  console.log("📍 [Distance API - SINGLE] Solicitud recibida");
+
+  const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
+  const { origen, destino, tiendaNombre } = req.query;
+
+  if (!origen || !destino) {
+    console.warn("⚠️ Faltan parámetros: origen o destino");
+    return res.status(400).json({ error: "Faltan parámetros requeridos" });
+  }
+
+  console.log("🏪 Tienda de salida:", decodeURIComponent(tiendaNombre || "Desconocida"));
+  console.log("➡️ Origen:", origen);
+  console.log("🎯 Destino:", destino);
+
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&mode=driving&origins=${origen}&destinations=${destino}&key=${googleMapsApiKey}`;
+  console.log("🌐 URL construida:", url);
+
+  const start = Date.now();
+  try {
+    const response = await axios.get(url);
+    const element = response.data.rows[0].elements[0];
+
+    if (element.status !== "OK") {
+      console.warn("⚠️ Google respondió con status:", element.status);
+      return res.status(500).json({ error: `Google Distance Matrix error: ${element.status}` });
+    }
+
+    const distancia = element.distance;
+    const duracion = element.duration;
+    const elapsed = Date.now() - start;
+
+    console.log("✅ Distancia:", distancia);
+    console.log("⏳ Duración estimada:", duracion);
+    console.log("⏱️ Tiempo de consulta:", elapsed, "ms");
+
+    res.json({
+      distancia_m: distancia.value,
+      duracion_s: duracion.value,
+      texto_distancia: distancia.text,
+      texto_duracion: duracion.text
+    });
+  } catch (err) {
+    console.error("❌ Error consultando Distance Matrix API:", err.message);
+    res.status(500).json({ error: "Error consultando Distance Matrix API" });
+  }
+});
+app.get("/api/google/distancia-ruta", async (req, res) => {
+  const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
+  const { puntos } = req.query;
+
+  try {
+    console.log("📍 [Ruta API] Solicitud recibida");
+    const puntosArr = JSON.parse(puntos); // Array de strings: ["lat1,lng1", "lat2,lng2", ...]
+
+    if (!Array.isArray(puntosArr) || puntosArr.length < 2) {
+      return res.status(400).json({ error: "Se requieren al menos 2 puntos para calcular la ruta" });
+    }
+
+    let distanciaTotal = 0;
+    let duracionTotal = 0;
+
+    for (let i = 0; i < puntosArr.length - 1; i++) {
+      const origen = puntosArr[i];
+      const destino = puntosArr[i + 1];
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origen}&destinations=${destino}&key=${googleMapsApiKey}`;
+
+      const start = Date.now();
+      const response = await axios.get(url);
+      const element = response.data.rows[0].elements[0];
+
+      if (element.status === "OK") {
+        distanciaTotal += element.distance.value;
+        duracionTotal += element.duration.value;
+        console.log(`➡️ Tramo ${i + 1}: ${origen} → ${destino} = ${element.distance.text}, ${element.duration.text}`);
+      } else {
+        console.warn(`⚠️ Error en tramo ${i + 1}:`, element.status);
+      }
+      const elapsed = Date.now() - start;
+      console.log(`⏱️ Tiempo de consulta tramo ${i + 1}: ${elapsed} ms`);
+    }
+
+    console.log("✅ Total distancia (m):", distanciaTotal);
+    console.log("⏳ Total duración (s):", duracionTotal);
+
+    res.json({ distancia_m: distanciaTotal, duracion_s: duracionTotal });
+  } catch (e) {
+    console.error("❌ Error general:", e.message);
+    res.status(500).json({ error: "Error calculando la ruta" });
+  }
+});
 app.get("/api/clientes-ventas", (req, res) => {
   let period = req.query.period || 'all';
   if (!['7', '15', '30', 'all'].includes(period)) {
@@ -1687,21 +1825,31 @@ app.get("/rutas", (req, res) => {
       }
   });
 });
+
 app.get('/delivery/price', (req, res) => {
-  db.get('SELECT precio FROM precio_delivery WHERE id_precio = 1', (err, row) => {
+  db.get('SELECT * FROM precio_delivery WHERE id_precio = 1', (err, row) => {
     if (err) {
-      console.error('Error al obtener el precio del delivery:', err);
-      res.status(500).json({ error: 'Error al obtener el precio del delivery' });
-      return;
+      console.error('Error al obtener precio_delivery:', err);
+      return res.status(500).json({ error: 'Error al obtener precio_delivery' });
     }
 
     if (!row) {
-      res.status(404).json({ error: 'No se encontró el precio del delivery' });
+      // Si no existe registro, podrías devolver valores por defecto o un error 404
+      return res.status(404).json({ error: 'No se encontró el precio de delivery (id_precio=1)' });
     } else {
-      res.json({ success: true, precio: row.precio });
+      // Devolver todos los valores (puedes omitir columnas si deseas)
+      return res.json({
+        success: true,
+        precio: row.precio,              // precio por km
+        precioBase: row.precioBase,
+        over23hFee: row.over23hFee,
+        weekendFee: row.weekendFee,
+        weatherFee: row.weatherFee
+      });
     }
   });
 });
+
 app.get('/wallet/:id_repartidor', (req, res) => {
   const { id_repartidor } = req.params;
   const filtro = req.query.filtro;
@@ -2635,6 +2783,7 @@ app.get('/ubicaciones', (req, res) => {
     res.json(rows);
   });
 });
+
 //the post zone // 
 app.post('/notificaciones/pedido_entregado', (req, res) => {
   const { id_order, email } = req.body;
@@ -3361,112 +3510,144 @@ app.post("/registro_ventas/finalizar_ruta", async (req, res) => {
 });
 app.post("/rutas", (req, res) => {
   const {
+    id_ruta,
+    id_repartidor,
+    costo_total,
+    distancia_total,
+    tiempo_estimado,
+    numero_paradas,
+    id_pedidos,
+    direcciones,
+    express,
+    tienda_salida,
+    estado = "Pendiente",
+    observaciones = null,
+    prioridad = "Media"
+  } = req.body;
+
+  // 👇 Esto toma la hora local formateada
+  const fecha_creacion = moment().format('YYYY-MM-DD HH:mm:ss');
+
+  const query = `
+    INSERT INTO rutas (
+      id_ruta, fecha_creacion, costo_total, distancia_total, tiempo_estimado,
+      numero_paradas, id_repartidor, id_pedidos, direcciones, express, tienda_salida,
+      estado, observaciones, prioridad
+    ) VALUES (
+      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    )
+  `;
+
+  db.run(
+    query,
+    [
       id_ruta,
+      fecha_creacion, // 👈 Hora local
       costo_total,
       distancia_total,
       tiempo_estimado,
       numero_paradas,
+      id_repartidor,
       id_pedidos,
       direcciones,
       express,
       tienda_salida,
-      estado = "Pendiente",
-      observaciones = null,
-      prioridad = "Media"
-  } = req.body;
-
-  const query = `
-      INSERT INTO rutas (
-          id_ruta, fecha_creacion, costo_total, distancia_total, tiempo_estimado,
-          numero_paradas, id_pedidos, direcciones, express, tienda_salida,
-          estado, observaciones, prioridad
-      ) VALUES (
-          ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )
-  `;
-
-  db.run(
-      query,
-      [
-          id_ruta,
-          costo_total,
-          distancia_total,
-          tiempo_estimado,
-          numero_paradas,
-          id_pedidos,
-          direcciones,
-          express,
-          tienda_salida,
-          estado,
-          observaciones,
-          prioridad
-      ],
-      function (err) {
-          if (err) {
-              console.error("Error al crear una nueva ruta:", err);
-              res.status(500).json({ success: false, message: "Error al crear la ruta" });
-          } else {
-              res.json({ success: true, message: "Ruta creada con éxito", id: this.lastID });
-          }
+      estado,
+      observaciones,
+      prioridad
+    ],
+    function (err) {
+      if (err) {
+        console.error("Error al crear una nueva ruta:", err);
+        res.status(500).json({ success: false, message: "Error al crear la ruta" });
+      } else {
+        res.json({ success: true, message: "Ruta creada con éxito", id: this.lastID });
       }
+    }
   );
 });
 app.post('/precio-delivery', (req, res) => {
-  const { precio } = req.body;
+  const {
+    precio,        // <-- precio por km
+    precioBase,
+    over23hFee,
+    weekendFee,
+    weatherFee
+  } = req.body;
 
-  // Verificar si ya existe un registro en la tabla para actualizar o insertar uno nuevo
+  // Verificar si ya existe registro id_precio=1 en la tabla
   db.get('SELECT * FROM precio_delivery WHERE id_precio = 1', (err, row) => {
     if (err) {
-      console.error('Error al verificar el precio del delivery:', err);
-      res.status(500).json({ error: 'Error al verificar el precio del delivery' });
-      return;
+      console.error('Error al verificar el precio_delivery:', err);
+      return res.status(500).json({ error: 'Error al verificar precio_delivery' });
     }
 
     if (row) {
-      // Si el precio ya existe, se hace una actualización
+      // Si existe, se actualiza
       db.run(
-        'UPDATE precio_delivery SET precio = ? WHERE id_precio = 1',
-        [precio],
-        function (err) {
-          if (err) {
-            console.error('Error al actualizar el precio del delivery:', err);
-            res.status(500).json({ error: 'Error al actualizar el precio del delivery' });
-            return;
+        `UPDATE precio_delivery
+         SET precio = ?,
+             precioBase = ?,
+             over23hFee = ?,
+             weekendFee = ?,
+             weatherFee = ?,
+             fecha_actualizacion = CURRENT_TIMESTAMP
+         WHERE id_precio = 1`,
+        [precio, precioBase, over23hFee, weekendFee, weatherFee],
+        function (updateErr) {
+          if (updateErr) {
+            console.error('Error al actualizar precio_delivery:', updateErr);
+            return res.status(500).json({ error: 'Error al actualizar precio_delivery' });
           }
-          res.json({ success: true, message: 'Precio actualizado correctamente' });
+          return res.json({ success: true, message: 'Parámetros de delivery actualizados correctamente' });
         }
       );
     } else {
-      // Si no existe un registro, se inserta uno nuevo
+      // Si no existe registro, se inserta
       db.run(
-        'INSERT INTO precio_delivery (id_precio, zona, precio) VALUES (1, "General", ?)',
-        [precio],
-        function (err) {
-          if (err) {
-            console.error('Error al insertar el precio del delivery:', err);
-            res.status(500).json({ error: 'Error al insertar el precio del delivery' });
-            return;
+        `INSERT INTO precio_delivery (
+          id_precio, zona, precio, precioBase, over23hFee, weekendFee, weatherFee
+        ) VALUES (
+          1, 'General', ?, ?, ?, ?, ?
+        )`,
+        [precio, precioBase, over23hFee, weekendFee, weatherFee],
+        function (insertErr) {
+          if (insertErr) {
+            console.error('Error al insertar en precio_delivery:', insertErr);
+            return res.status(500).json({ error: 'Error al insertar precio_delivery' });
           }
-          res.json({ success: true, message: 'Precio insertado correctamente' });
+          return res.json({ success: true, message: 'Parámetros de delivery insertados correctamente' });
         }
       );
     }
   });
 });
+
 app.post('/wallet/guardar_precio_delivery', (req, res) => {
   const { id_order, id_repartidor, monto_por_cobrar } = req.body;
   const fechaConsolidacion = new Date().toISOString();
+
+  console.log("📥 Request a /wallet/guardar_precio_delivery:", req.body);
+
   db.run(
-      'INSERT INTO wallet_repartidores (id_order, id_repartidor, monto_por_cobrar, fecha_consolidacion, estado) VALUES (?, ?, ?, ?, ?)',
-      [id_order, id_repartidor, monto_por_cobrar, fechaConsolidacion, 'Por Cobrar'],
-      (err) => {
-          if (err) {
-              console.error('Error al guardar el precio del delivery:', err);
-              res.status(500).json({ success: false, message: 'Error al guardar el precio del delivery' });
-          } else {
-              res.json({ success: true });
-          }
+    'INSERT INTO wallet_repartidores (id_order, id_repartidor, monto_por_cobrar, fecha_consolidacion, estado) VALUES (?, ?, ?, ?, ?)',
+    [id_order, id_repartidor, monto_por_cobrar, fechaConsolidacion, 'Por Cobrar'],
+    function (err) {
+      if (err) {
+        console.error('❌ Error al guardar el precio del delivery:', err.message);
+        return res.status(500).json({ success: false, message: 'Error al guardar el precio del delivery' });
       }
+
+      // Log para confirmar que se insertó bien
+      db.get('SELECT * FROM wallet_repartidores WHERE rowid = last_insert_rowid()', (selectErr, row) => {
+        if (selectErr) {
+          console.error("❌ Error al consultar último registro:", selectErr.message);
+          return res.status(500).json({ success: false, message: 'Error en verificación post-insert' });
+        }
+        console.log("✅ Registro insertado en wallet_repartidores:", row);
+        res.json({ success: true });
+      });
+    }
   );
 });
 app.post('/repartidores/login', (req, res) => {
@@ -3726,6 +3907,7 @@ app.post('/api/info-empresa',
   upload.fields([
     { name: 'logo_url', maxCount: 1 },
     { name: 'notification_img_url', maxCount: 1 },
+    { name: 'video_promocional_file', maxCount: 1 }, // ✅ agregado
   ]),
   (req, res) => {
     const { 
@@ -3741,27 +3923,28 @@ app.post('/api/info-empresa',
       nombre_empresa, 
       correo_contacto, 
       telefono_contacto, 
-      redes_sociales 
+      redes_sociales,
+      video_promocional_url 
     } = req.body;
 
-    // Si te interesa, puedes hacer lo mismo con el logo:
     const logo_url = req.files.logo_url
       ? `${myDomain}/uploads/${req.files.logo_url[0].filename}`
       : null;
 
-    // Aquí viene el cambio importante:
     const notification_img_url = req.files.notification_img_url
       ? `${myDomain}/uploads/${req.files.notification_img_url[0].filename}`
       : null;
 
-    console.log("🔹 Notification IMG URL calculada:", notification_img_url);
+    const videoPromocionalLocal = req.files.video_promocional_file
+      ? `${myDomain}/uploads/${req.files.video_promocional_file[0].filename}`
+      : null;
 
-    // Validaciones...
+    const videoFinal = videoPromocionalLocal || video_promocional_url || null;
+
     if (!pais || !region || !codigo_postal || !direccion || !nombre_empresa || !correo_contacto || !telefono_contacto) {
       return res.status(400).json({ error: 'Faltan datos para completar la operación' });
     }
 
-    // Conversión de redes_sociales a JSON si aplica
     let redesJson = null;
     if (redes_sociales) {
       try {
@@ -3781,9 +3964,9 @@ app.post('/api/info-empresa',
         coordenadas_latitud, coordenadas_longitud, 
         ciudad, ciudad_latitud, ciudad_longitud, 
         logo_url, notification_img_url,
-        nombre_empresa, correo_contacto, telefono_contacto, redes_sociales
+        nombre_empresa, correo_contacto, telefono_contacto, redes_sociales, video_promocional_url
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.run(query, [
@@ -3801,7 +3984,8 @@ app.post('/api/info-empresa',
       nombre_empresa, 
       correo_contacto, 
       telefono_contacto,
-      redesJson
+      redesJson,
+      videoFinal
     ], function(err) {
       if (err) {
         console.error('Error al guardar la información de la empresa:', err);
@@ -3811,6 +3995,7 @@ app.post('/api/info-empresa',
     });
   }
 );
+
 app.post('/api/reviews', (req, res) => {
   const { email, review, rating } = req.body; // Asegurarse de que el email se pase correctamente desde el frontend
 
@@ -4765,8 +4950,44 @@ app.post('/limites', async (req, res) => {
   });
 });
 
+/*the patch zone*/ 
 
-// the patch zone //
+app.patch('/registro_ventas/asignar_ruta', (req, res) => {
+  console.log("📥 [PATCH] /registro_ventas/asignar_ruta - Solicitud recibida");
+
+  const { id_ruta, id_repartidor, id_orders } = req.body;
+
+  // Validación
+  if (!id_ruta || !id_repartidor || !Array.isArray(id_orders) || id_orders.length === 0) {
+    console.warn("⚠️ Datos incompletos:", { id_ruta, id_repartidor, id_orders });
+    return res.status(400).json({ success: false, message: "Datos incompletos" });
+  }
+
+  console.log("📦 Datos recibidos:", {
+    id_ruta,
+    id_repartidor,
+    pedidos: id_orders.join(', ')
+  });
+
+  const placeholders = id_orders.map(() => '?').join(', ');
+  const query = `
+    UPDATE registro_ventas
+    SET enRuta = ?, estado_entrega = 'Asignado', id_repartidor = ?
+    WHERE id_order IN (${placeholders})
+  `;
+
+  const params = [id_ruta, id_repartidor, ...id_orders];
+
+  db.run(query, params, function (err) {
+    if (err) {
+      console.error("❌ Error al actualizar pedidos:", err.message);
+      return res.status(500).json({ success: false, message: "Error en la actualización" });
+    }
+
+    console.log(`✅ Pedidos actualizados: ${this.changes}`);
+    res.json({ success: true, updated: this.changes });
+  });
+});
 app.patch('/api/info-empresa/:id/estado', (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -5002,7 +5223,6 @@ app.patch('/api/offers/:id/reset-coupons', async (req, res) => {
     res.status(500).json({ error: 'Error al resetear los cupones' });
   }
 });
-
 app.patch('/api/offers/reset-all-today', async (req, res) => {
   const diaActual = moment().format('dddd').toLowerCase(); // ejemplo: "friday"
   const horaActual = moment(); // ahora mismo
@@ -5054,7 +5274,6 @@ app.patch('/api/offers/reset-all-today', async (req, res) => {
     res.status(500).json({ error: 'Error inesperado' });
   }
 });
-
 app.patch('/repartidores/:id/estado', async (req, res) => {
   const { id } = req.params;
   const { estado } = req.body;
@@ -5256,25 +5475,65 @@ app.patch('/registro_ventas/finalizar_pedido/:pedidoId', (req, res) => {
       }
   });
 });
+
 app.patch('/registro_ventas/tomar_ruta/:enRuta', (req, res) => {
   const { enRuta } = req.params;
-  const { id_repartidor } = req.body;
+  const { id_repartidor, id_orders } = req.body;
 
+  // Validaciones básicas
+  if (!enRuta || !id_repartidor || !Array.isArray(id_orders) || id_orders.length === 0) {
+    console.warn("⚠️ Petición incompleta:", { enRuta, id_repartidor, id_orders });
+    return res.status(400).json({
+      success: false,
+      message: "Faltan datos: enRuta, id_repartidor o id_orders"
+    });
+  }
+
+  // Crear placeholders seguros (?, ?, ?, ...) según cantidad de pedidos
+  const placeholders = id_orders.map(() => '?').join(', ');
   const query = `
-      UPDATE registro_ventas
-      SET estado_entrega = 'Asignado', id_repartidor = ?
-      WHERE enRuta = ?
+    UPDATE registro_ventas
+    SET enRuta = ?, estado_entrega = 'Asignado', id_repartidor = ?
+    WHERE id_order IN (${placeholders})
   `;
 
-  db.run(query, [id_repartidor, enRuta], function (err) {
-      if (err) {
-          console.error("Error al tomar la ruta:", err.message);
-          return res.status(500).json({ success: false, message: "Error al tomar la ruta" });
-      }
+  const params = [enRuta, id_repartidor, ...id_orders];
 
-      res.json({ success: true });
+  db.run(query, params, function (err) {
+    if (err) {
+      console.error("❌ Error al ejecutar query tomar_ruta:", err.message);
+      return res.status(500).json({
+        success: false,
+        message: "Error al asignar la ruta. Consulta no ejecutada.",
+        error: err.message
+      });
+    }
+
+    if (this.changes === 0) {
+      console.warn("⚠️ Ningún pedido fue actualizado. ¿IDs incorrectos?");
+      return res.status(404).json({
+        success: false,
+        message: "No se actualizaron pedidos. Verifica los ID de pedidos."
+      });
+    }
+
+    console.log("✅ Ruta asignada correctamente:", {
+      enRuta,
+      id_repartidor,
+      id_orders,
+      updatedRows: this.changes
+    });
+
+    res.json({
+      success: true,
+      message: `Ruta asignada a ${this.changes} pedido(s).`,
+      updated: this.changes
+    });
   });
 });
+
+
+
 app.patch("/rutas/:id", (req, res) => {
   const { id } = req.params;
   const updates = req.body;
@@ -5300,26 +5559,39 @@ app.patch("/rutas/:id", (req, res) => {
   });
 });
 app.patch('/precio-delivery', (req, res) => {
-  const { precio } = req.body;
+  const {
+    precio,
+    precioBase,
+    over23hFee,
+    weekendFee,
+    weatherFee
+  } = req.body;
 
   db.run(
-    'UPDATE precio_delivery SET precio = ? WHERE id = 1', // Asumiendo que siempre queremos actualizar el precio en el registro con ID 1
-    [precio],
+    `UPDATE precio_delivery
+     SET precio = COALESCE(?, precio),
+         precioBase = COALESCE(?, precioBase),
+         over23hFee = COALESCE(?, over23hFee),
+         weekendFee = COALESCE(?, weekendFee),
+         weatherFee = COALESCE(?, weatherFee),
+         fecha_actualizacion = CURRENT_TIMESTAMP
+     WHERE id_precio = 1`,
+    [precio, precioBase, over23hFee, weekendFee, weatherFee],
     function (err) {
       if (err) {
-        console.error('Error al actualizar el precio del delivery:', err);
-        res.status(500).json({ error: 'Error al actualizar el precio del delivery' });
-        return;
+        console.error('Error al hacer PATCH precio_delivery:', err);
+        return res.status(500).json({ error: 'Error al actualizar precio_delivery' });
       }
 
       if (this.changes === 0) {
-        res.status(404).json({ error: 'No se encontró el registro para actualizar' });
+        return res.status(404).json({ error: 'No se encontró registro con id_precio=1' });
       } else {
-        res.json({ success: true, message: 'Precio actualizado correctamente' });
+        return res.json({ success: true, message: 'Parámetros de delivery actualizados correctamente' });
       }
     }
   );
 });
+
 app.patch('/registro_ventas', async (req, res) => {
   const { orders } = req.body;
 
@@ -5368,39 +5640,44 @@ app.patch('/wallet/consolidar/:id_repartidor', (req, res) => {
 app.patch('/wallet/pago/:id_repartidor', (req, res) => {
   const { id_repartidor } = req.params;
 
-  // Obtener todos los registros con estado "Consolidado" para el repartidor
   db.all(
     'SELECT * FROM wallet_repartidores WHERE id_repartidor = ? AND estado = ?',
     [id_repartidor, 'Consolidado'],
-    (err, rows) => {
+    async (err, rows) => {
       if (err) {
         console.error('Error al obtener los registros consolidados:', err);
-        res.status(500).json({ success: false, message: 'Error al obtener los registros consolidados' });
-        return;
+        return res.status(500).json({ success: false, message: 'Error al obtener los registros consolidados' });
       }
 
       if (rows.length === 0) {
-        res.status(400).json({ success: false, message: 'No hay montos por cobrar para este repartidor.' });
-        return;
+        return res.status(400).json({ success: false, message: 'No hay montos consolidados para pagar.' });
       }
 
-      // Actualizar cada registro de forma independiente
-      rows.forEach((row) => {
-        const nuevoMontoPagado = row.monto_por_cobrar; // El monto a pagar será igual al monto por cobrar actual de ese registro
-
-        db.run(
-          'UPDATE wallet_repartidores SET estado = ?, monto_por_cobrar = 0, monto_pagado = monto_pagado + ? WHERE id_wallet = ?',
-          ['Pagado', nuevoMontoPagado, row.id_wallet],
-          (err) => {
-            if (err) {
-              console.error('Error al actualizar el registro:', err);
-            }
-          }
+      try {
+        await Promise.all(
+          rows.map((row) => {
+            const nuevoMontoPagado = row.monto_por_cobrar;
+            return new Promise((resolve, reject) => {
+              db.run(
+                'UPDATE wallet_repartidores SET estado = ?, monto_por_cobrar = 0, monto_pagado = monto_pagado + ? WHERE id_wallet = ?',
+                ['Pagado', nuevoMontoPagado, row.id_wallet],
+                (err) => {
+                  if (err) {
+                    console.error('Error al actualizar el registro:', err);
+                    reject(err);
+                  } else {
+                    resolve();
+                  }
+                }
+              );
+            });
+          })
         );
-      });
 
-      // Responder cuando todos los registros hayan sido actualizados
-      res.json({ success: true });
+        res.json({ success: true });
+      } catch (updateError) {
+        res.status(500).json({ success: false, message: 'Error al actualizar los registros.' });
+      }
     }
   );
 });
@@ -5712,11 +5989,11 @@ app.patch('/api/daily-challenge/:id/claim-coupon', (req, res) => {
     });
   });
 });
-
 app.patch('/api/info-empresa/:id', 
   upload.fields([
     { name: 'logo_url', maxCount: 1 },
     { name: 'notification_img_url', maxCount: 1 },
+    { name: 'video_promocional_file', maxCount: 1 },
   ]),
   (req, res) => {
     const { id } = req.params;
@@ -5734,10 +6011,15 @@ app.patch('/api/info-empresa/:id',
       correo_contacto, 
       telefono_contacto, 
       redes_sociales,
+      video_promocional_url,
       estado
     } = req.body;
 
-    // ⬇️ Ajuste principal: usamos URL completa
+    if (!id) {
+      console.error('Error: El ID no es válido');
+      return res.status(400).json({ error: 'El ID no es válido' });
+    }
+
     const logo_url = req.files.logo_url
       ? `${myDomain}/uploads/${req.files.logo_url[0].filename}`
       : null;
@@ -5746,21 +6028,20 @@ app.patch('/api/info-empresa/:id',
       ? `${myDomain}/uploads/${req.files.notification_img_url[0].filename}`
       : null;
 
-    // Resto del código igual:
-    if (!id) {
-      console.error('Error: El ID no es válido');
-      return res.status(400).json({ error: 'El ID no es válido' });
-    }
+    const videoPromocionalLocal = req.files.video_promocional_file
+      ? `${myDomain}/uploads/${req.files.video_promocional_file[0].filename}`
+      : null;
 
-    console.log('Datos recibidos para actualizar:', {
+    const videoFinal = videoPromocionalLocal || video_promocional_url || null;
+
+    console.log('📦 PATCH InfoEmpresa recibido:', {
       id, pais, region, codigo_postal, direccion, 
       coordenadas_latitud, coordenadas_longitud, ciudad, 
       ciudad_latitud, ciudad_longitud, nombre_empresa, 
-      correo_contacto, telefono_contacto, logo_url, 
-      notification_img_url, redes_sociales, estado
+      correo_contacto, telefono_contacto, estado,
+      video_promocional_url, videoPromocionalLocal, videoFinal
     });
 
-    // Convertir redes_sociales a JSON si llega
     let redesJson = null;
     try {
       if (redes_sociales) {
@@ -5780,31 +6061,23 @@ app.patch('/api/info-empresa/:id',
     let updateFields = [];
     let params = [];
 
-    if (pais) { updateFields.push("pais = ?"); params.push(pais); }
-    if (region) { updateFields.push("region = ?"); params.push(region); }
-    if (codigo_postal) { updateFields.push("codigo_postal = ?"); params.push(codigo_postal); }
-    if (direccion) { updateFields.push("direccion = ?"); params.push(direccion); }
-    if (coordenadas_latitud) { updateFields.push("coordenadas_latitud = ?"); params.push(coordenadas_latitud); }
-    if (coordenadas_longitud) { updateFields.push("coordenadas_longitud = ?"); params.push(coordenadas_longitud); }
-    if (ciudad) { updateFields.push("ciudad = ?"); params.push(ciudad); }
-    if (ciudad_latitud) { updateFields.push("ciudad_latitud = ?"); params.push(ciudad_latitud); }
-    if (ciudad_longitud) { updateFields.push("ciudad_longitud = ?"); params.push(ciudad_longitud); }
-    if (nombre_empresa) { updateFields.push("nombre_empresa = ?"); params.push(nombre_empresa); }
-    if (correo_contacto) { updateFields.push("correo_contacto = ?"); params.push(correo_contacto); }
-    if (telefono_contacto) { updateFields.push("telefono_contacto = ?"); params.push(telefono_contacto); }
-    if (redesJson !== null) { updateFields.push("redes_sociales = ?"); params.push(redesJson); }
-    if (logo_url) { updateFields.push("logo_url = ?"); params.push(logo_url); }
-
-    // ⬇️ También para notification_img_url
-    if (notification_img_url) {
-      updateFields.push("notification_img_url = ?");
-      params.push(notification_img_url);
-    }
-
-    if (estado) {
-      updateFields.push("estado = ?");
-      params.push(estado);
-    }
+    if (pais) updateFields.push("pais = ?"), params.push(pais);
+    if (region) updateFields.push("region = ?"), params.push(region);
+    if (codigo_postal) updateFields.push("codigo_postal = ?"), params.push(codigo_postal);
+    if (direccion) updateFields.push("direccion = ?"), params.push(direccion);
+    if (coordenadas_latitud) updateFields.push("coordenadas_latitud = ?"), params.push(coordenadas_latitud);
+    if (coordenadas_longitud) updateFields.push("coordenadas_longitud = ?"), params.push(coordenadas_longitud);
+    if (ciudad) updateFields.push("ciudad = ?"), params.push(ciudad);
+    if (ciudad_latitud) updateFields.push("ciudad_latitud = ?"), params.push(ciudad_latitud);
+    if (ciudad_longitud) updateFields.push("ciudad_longitud = ?"), params.push(ciudad_longitud);
+    if (nombre_empresa) updateFields.push("nombre_empresa = ?"), params.push(nombre_empresa);
+    if (correo_contacto) updateFields.push("correo_contacto = ?"), params.push(correo_contacto);
+    if (telefono_contacto) updateFields.push("telefono_contacto = ?"), params.push(telefono_contacto);
+    if (redesJson !== null) updateFields.push("redes_sociales = ?"), params.push(redesJson);
+    if (logo_url) updateFields.push("logo_url = ?"), params.push(logo_url);
+    if (notification_img_url) updateFields.push("notification_img_url = ?"), params.push(notification_img_url);
+    if (videoFinal) updateFields.push("video_promocional_url = ?"), params.push(videoFinal);
+    if (estado) updateFields.push("estado = ?"), params.push(estado);
 
     if (updateFields.length === 0) {
       return res.status(400).json({ error: "No se proporcionaron datos para actualizar" });
@@ -5826,7 +6099,6 @@ app.patch('/api/info-empresa/:id',
     });
   }
 );
-
 app.patch('/ofertas/:Oferta_Id', upload.single('Imagen'), (req, res) => {
   console.log('Request received for PATCH /ofertas/:Oferta_Id');
   console.log('Request body:', req.body);
@@ -6494,6 +6766,6 @@ app.put('/clientes/reactivar/:id_cliente', (req, res) => {
 });
 //-------------------//
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on http://192.168.1.33:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
   console.log(`Server started at ${new Date().toISOString()}`);
 });

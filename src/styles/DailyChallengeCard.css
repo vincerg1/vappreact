@@ -93,6 +93,10 @@
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   }
+
+  .daily-challenge-card ref{
+color: red;
+  }
   
   .challenge-image {
     max-width: 100%;
@@ -108,7 +112,25 @@
   }
   
   .participation-form {
-    margin-top: 20px;
+    background-color: #ffffff;
+    margin: 15px auto;
+    padding: 12px;
+    width: 95%;
+    max-width: 250px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    text-align: left;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+  .participation-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    width: 95%;
+  }
+  
+  .participation-list li {
+    margin-bottom: 12px;
   }
   
   .input-label {
@@ -134,7 +156,11 @@
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    display: block;
+    margin: 12px auto 0 auto; /* Centrado horizontal con un poco de espacio arriba */
+    font-size: 0.9rem;
   }
+  
   
   .submit-participation-button:hover {
     background-color: #333;
@@ -151,4 +177,88 @@
     font-weight: bold;
     text-align: center;
   }
-  
+  /* ============================== */
+/* MEDIA QUERY: VERSIÓN ESCRITORIO */
+/* ============================== */
+@media (max-width: 768px) {
+  .daily-challenge-card {
+    width: 92%;
+    max-width: 360px;
+    margin: 15px auto;
+    padding: 15px;
+    background-color: #fdfcdd;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  .daily-challenge-card img {
+    width: 70px;
+    margin-bottom: 10px;
+  }
+
+  .challenge-details {
+    width:80%;
+    background-color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    margin: 10px auto;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .challenge-details p {
+    margin: 4px 0;
+    font-size: 0.85rem;
+  }
+
+  .participate-button,
+  .submit-participation-button,
+  .claim-coupon-container button {
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 6px;
+    margin-top: 10px;
+  }
+
+  .input-field {
+    font-size: 0.85rem;
+    padding: 8px;
+  }
+
+  .input-label {
+    font-size: 0.8rem;
+  }
+
+  .time-left {
+    font-size: 0.85rem;
+    color: #222;
+    margin: 8px auto;
+  }
+
+  .error-message {
+    font-size: 0.8rem;
+  }
+
+  .modal {
+    padding: 20px;
+    font-size: 0.95rem;
+  }
+
+  .modal h2 {
+    font-size: 1.25rem;
+  }
+
+  .modal p {
+    font-size: 0.95rem;
+  }
+
+  .modal button {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+  }
+}
+
+.Instrucciones_Link {
+  font-size: 10px;
+}

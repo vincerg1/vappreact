@@ -1,16 +1,18 @@
 /* Footer.css */
-footer {
-    color: rgb(90, 90, 90);
-    font-weight: bold;
-    font-style: italic;
-    padding: 2.5px;
-    text-align: center;  
-    line-height: .75px;
-    background: linear-gradient(to bottom, #ffffff 0%, rgb(90, 90, 90) 100%);
-    font-size: 12px;
-    height: 100vh;
-    margin-top: 50px;
-  }
+    footer {
+      color: #686868;
+      font-weight: bold;
+      font-style: italic;
+      text-align: center;
+      line-height: 1;
+      background: linear-gradient(to bottom, #fcfbfb 0%, #f4e9ce 100%);
+      font-size: 12px;
+      height: auto;
+      margin: 0 auto 0 auto; /* 👉 centra horizontalmente */
+      max-width: 1200px;
+      width: 100%;
+      box-sizing: border-box;
+    }
   .icon_ins_footer {
     width: 20px;
     height: 20px;
@@ -29,3 +31,32 @@ footer {
     margin: 0 5px;
     color: rgb(90, 90, 90)
   }
+
+  @media (max-width: 768px) {
+    footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #000;
+      background: transparent;
+      z-index: 2;
+      position: relative;
+      background: linear-gradient(to bottom, #fcfbfb 0%, #f4e9ce 100%);
+      margin-top: auto;
+    }
+  
+
+  
+    .footer-name {
+      font-style: italic;
+      font-weight: bold;
+      color: rgb(90, 90, 90);
+    }
+  
+    .footer-icons i {
+      width: 18px;
+      height: 18px;
+      margin: 0 2px;
+      color: rgb(90, 90, 90);
+    }
+  }
+  

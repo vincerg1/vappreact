@@ -1,5 +1,4 @@
 import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
-
 import { _PizzaContext } from './_PizzaContext';
 import { useLocation } from 'react-router-dom';  
 import { GoogleMap, Marker, Autocomplete, LoadScriptNext } from "@react-google-maps/api";
@@ -46,7 +45,18 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [triggerUpdate, setTriggerUpdate] = useState(false);
   const [incentivos, setIncentivos] = useState([]);
-  
+  const [formularioVisible, setFormularioVisible] = useState(true);
+  const [rainProbability, setRainProbability] = useState(0);
+  const [triggerUpdateRain, setTriggerUpdateRain] = useState(false);
+  const [deliveryConfig, setDeliveryConfig] = useState({
+    precio: 0,         // por km extra
+    precioBase: 0,     // base fee
+    over23hFee: 0,     // recargo nocturno
+    weekendFee: 0,     // fin de semana
+    weatherFee: 0,     // lluvia
+    rainThreshold: 85  // fijo
+  });
+
   useEffect(() => {
     const loadPreviousInfo = async () => {
       try {
@@ -165,7 +175,7 @@ const DeliveryForm = ({ setCompra, compra }) => {
     } else {
         console.error('❌ No se pudo encontrar una tienda cercana.');
     }
-}, [selectedOption, addressInfo.lat, addressInfo.lng, storeLocations]);
+  }, [selectedOption, addressInfo.lat, addressInfo.lng, storeLocations]);
   useEffect(() => {
     const fetchPedidosEnColaPorUbicacion = async (ubicacionId) => {
       try {
@@ -207,15 +217,78 @@ const DeliveryForm = ({ setCompra, compra }) => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/incentivos`);
         const incentivosActivos = response.data.filter((inc) => inc.activo === 1);
-        setIncentivos(incentivosActivos); // 🛠️ Guardamos los incentivos en el estado local
+        setIncentivos(incentivosActivos); 
       } catch (error) {
         console.error('Error al obtener incentivos:', error);
       }
     };
     fetchIncentivos();
-}, []);
+  }, []);
+  useEffect(() => {
+    if (storeLocation?.lat && storeLocation?.lng) {
+      setTriggerUpdateRain(true); // activamos manualmente
+    }
+  }, [storeLocation]);
+  useEffect(() => {
+    if (!triggerUpdateRain) return;
+  
+    const fetchClimaDesdeTienda = async () => {
+      try {
+        console.log("🌦️ [FETCH] Clima desde tienda:", storeLocation);
+  
+        const response = await axios.get(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${storeLocation.lat}&lon=${storeLocation.lng}&appid=7bce86c608f5e6da4ec8c8a3f60040e5&units=metric`
+        );
+  
+        const forecastData = response.data;
+        const nextSlot = forecastData?.list?.[0];
+        const popValue = Math.round((nextSlot?.pop || 0) * 100);
+  
+        setRainProbability(popValue);
+  
+        const fechaPronostico = moment.unix(nextSlot.dt).format("YYYY-MM-DD HH:mm:ss");
+        const clima = nextSlot.weather?.[0]?.description || 'N/A';
+  
+        console.log(`🌧️ Pronóstico: ${popValue}% | Clima: ${clima} | Hora: ${fechaPronostico}`);
+      } catch (error) {
+        console.error("❌ Error al obtener clima:", error);
+      } finally {
+        setTriggerUpdateRain(false); // evitamos múltiples disparos
+      }
+    };
+  
+    fetchClimaDesdeTienda();
+  }, [triggerUpdateRain]);
 
+  // useEffect(() => {
+  //   if (process.env.NODE_ENV === 'development') {
+  //     console.log('⚠️ Simulación manual: forzando rainProbability al 90%');
+  //     setRainProbability(90);
+  //   }
+  // }, []);
 
+  useEffect(() => {
+    const fetchDeliveryConfig = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
+        if (response.data.success) {
+          setDeliveryConfig({
+            precio: parseFloat(response.data.precio) || 0,         // precio por km
+            precioBase: parseFloat(response.data.precioBase) || 0, // tarifa base
+            over23hFee: parseFloat(response.data.over23hFee) || 0,
+            weekendFee: parseFloat(response.data.weekendFee) || 0,
+            weatherFee: parseFloat(response.data.weatherFee) || 0,
+          });
+        } else {
+          console.warn('No success flag in /delivery/price response');
+        }
+      } catch (error) {
+        console.error('Error fetching delivery config:', error);
+      }
+    };
+  
+    fetchDeliveryConfig();
+  }, []);
 
   function applyFreePassIfAny(compra, incentivos = []) {
   // 📌 Asegurar que `incentivos` es un array válido
@@ -356,37 +429,98 @@ const DeliveryForm = ({ setCompra, compra }) => {
       setError('Error al obtener las coordenadas. Inténtalo de nuevo.');
     }
   };
-  const calcularPrecioDelivery = () => {
-
+  const calcularPrecioDelivery = async () => {
+    const precioBase = deliveryConfig.precioBase;
   
-    let precioDelivery = 2;
+    try {
+      if (!storeLocation || !addressInfo.lat || !addressInfo.lng) {
+        console.error('❌ Faltan datos para calcular el delivery (storeLocation o coordenadas del cliente).');
+        return { cost: 0, debugBreakdown: null };
+      }
   
-    // Obtén la tienda más cercana en función de las coordenadas del cliente
-    const tiendaMasCercana = calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng);
-    if (!tiendaMasCercana) {
-      console.error('No se pudo calcular la tienda más cercana, cálculo de precio de delivery fallido.');
-      return 0;
+      const origen = `${storeLocation.lat},${storeLocation.lng}`;
+      const destino = `${addressInfo.lat},${addressInfo.lng}`;
+  
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/google/distancia-single`, {
+        params: { origen, destino, tiendaNombre: storeLocation.nombre_empresa }
+      });
+  
+      const distanciaKM = response.data.distancia_m / 1000;
+      let precioDelivery = precioBase;
+  
+      const extraDistancia = distanciaKM > 1 ? (distanciaKM - 1) * deliveryConfig.precio : 0;
+      precioDelivery += extraDistancia;
+  
+      const weekendApplied = esFinDeSemana() ? deliveryConfig.weekendFee : 0;
+      precioDelivery += weekendApplied;
+  
+      const nightApplied = esDespuesDeLas23() ? deliveryConfig.over23hFee : 0;
+      precioDelivery += nightApplied;
+  
+      const rainApplied = (rainProbability >= (deliveryConfig.rainThreshold || 85))
+        ? deliveryConfig.weatherFee
+        : 0;
+      precioDelivery += rainApplied;
+  
+      const debugBreakdown = {
+        baseFee: precioBase,
+        distanciaKM: distanciaKM.toFixed(2),
+        extraDistancia: extraDistancia.toFixed(2),
+        nightFee: nightApplied,
+        rainFee: rainApplied,
+        weekendFee: weekendApplied,
+        rainProbability,
+        fallback: false
+      };
+  
+      console.log("🧾 Breakdown del Delivery:", debugBreakdown);
+ 
+      return {
+        cost: parseFloat(precioDelivery.toFixed(2)),
+        debugBreakdown
+      };
+  
+    } catch (error) {
+      console.warn("⚠️ Error con la API de distancia. Usando fallback Haversine.");
+  
+      const distancia = calcularDistancia(
+        addressInfo.lat, addressInfo.lng,
+        storeLocation.lat, storeLocation.lng
+      );
+  
+      let precioDelivery = precioBase;
+      const extraDistancia = distancia > 1 ? (distancia - 1) * deliveryConfig.precio : 0;
+      precioDelivery += extraDistancia;
+  
+      const weekendApplied = esFinDeSemana() ? deliveryConfig.weekendFee : 0;
+      precioDelivery += weekendApplied;
+  
+      const nightApplied = esDespuesDeLas23() ? deliveryConfig.over23hFee : 0;
+      precioDelivery += nightApplied;
+  
+      const rainApplied = (rainProbability >= (deliveryConfig.rainThreshold || 85))
+        ? deliveryConfig.weatherFee
+        : 0;
+      precioDelivery += rainApplied;
+  
+      const debugBreakdown = {
+        baseFee: precioBase,
+        distanciaKM: distancia.toFixed(2),
+        extraDistancia: extraDistancia.toFixed(2),
+        nightFee: nightApplied,
+        rainFee: rainApplied,
+        weekendFee: weekendApplied,
+        rainProbability,
+        fallback: true
+      };
+  
+      console.log("🧾 Breakdown (fallback):", debugBreakdown);
+  
+      return {
+        cost: parseFloat(precioDelivery.toFixed(2)),
+        debugBreakdown
+      };
     }
-  
-    // Calcula la distancia entre la tienda más cercana y la dirección del cliente
-    const distancia = calcularDistancia(addressInfo.lat, addressInfo.lng, tiendaMasCercana.lat, tiendaMasCercana.lng);
-    console.log(`Distancia entre cliente y tienda más cercana: ${distancia} km`);
-  
-    // Cálculo del precio del delivery basado en la distancia
-    if (distancia > 1) {
-      precioDelivery += (distancia - 1) * 0.75;
-    }
-  
-    // Incrementos por fin de semana y horario nocturno
-    if (esFinDeSemana()) {
-      precioDelivery += 0.5;
-    }
-  
-    if (esDespuesDeLas23()) {
-      precioDelivery += 0.5;
-    }
-  
-    return parseFloat(precioDelivery.toFixed(2));
   };
   const calcularDistancia = (lat1, lng1, lat2, lng2) => {
     if (!lat1 || !lng1 || !lat2 || !lng2) return 0;
@@ -416,87 +550,80 @@ const DeliveryForm = ({ setCompra, compra }) => {
   const handleDeliveryTimeChange = async (e) => {
     const nuevaTemporalidad = e.target.value;
     setDeliveryTimeOption(nuevaTemporalidad);
-
-    const esProgramado = (nuevaTemporalidad === 'custom');
+  
+    const esProgramado = nuevaTemporalidad === 'custom';
+  
     let extraMinutes = 0;
     if (nuevaTemporalidad === '30min') extraMinutes = 30;
     else if (nuevaTemporalidad === '45min') extraMinutes = 45;
     else if (nuevaTemporalidad === 'Express') extraMinutes = 20;
-
+  
     const horaPrometida = calcularHoraPrometida(extraMinutes);
-    let costoDelivery = selectedOption === 'delivery' ? calcularPrecioDelivery() : 0;
     const costoTicketExpress = nuevaTemporalidad === 'Express' ? calcularCostoTicketExpress() : 0;
-
-    // 🔥 Leer el estado actual del Free Pass para no perderlo
+  
     const freePassActual = compra.Entrega?.Delivery?.freePassApplied ?? false;
-
-    // 🔹 Evaluar si se debe aplicar el Free Pass
-    const { newDeliveryCost, newFreePassApplied } = applyFreePassIfAny(
-        compra,
-        compra.total_a_pagar_con_descuentos || 0,
-        incentivos
-    );
-
-    // 📌 Mantener el estado actual del Free Pass si ya estaba aplicado
+    const { newDeliveryCost, newFreePassApplied } = applyFreePassIfAny(compra, incentivos);
+  
+    // ✅ Llamamos una sola vez a calcularPrecioDelivery
+    const { cost: rawCost, debugBreakdown } = selectedOption === 'delivery'
+      ? await calcularPrecioDelivery()
+      : { cost: 0, debugBreakdown: null };
+  
+    // ✅ Aplicar Free Pass si corresponde
     const freePassFinal = freePassActual || newFreePassApplied;
-
-    // ✅ Si el Free Pass sigue activo, el Delivery debe ser 0
-    if (freePassFinal) {
-        costoDelivery = 0;
-    }
-
+    const costoDelivery = freePassFinal ? 0 : rawCost;
+  
     console.log("🔄 Estado final del Free Pass:", freePassFinal, "| Costo de Delivery:", costoDelivery);
-
-    // 🚀 **Actualizar el estado de compra SIN perder `freePassApplied`**
+  
     setCompra((prevCompra) => {
-        const updatedCompra = {
-            ...prevCompra,
-            is_scheduled_order: esProgramado, 
-            Entrega: selectedOption === 'pickup'
-                ? {
-                    PickUp: {
-                        id_cliente: sessionData?.id_cliente,
-                        nombre: pickupInfo.nombre,
-                        telefono: pickupInfo.telefono,
-                        fechaYHoraPrometida: horaPrometida,
-                        TicketExpress: nuevaTemporalidad === 'Express',
-                        fechaYHoraPrometida: esProgramado ,
-                        costoTicketExpress: costoTicketExpress,
-                        puntoRecogida: storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
-                    }
-                }
-                : {
-                    Delivery: {
-                        id_cliente: sessionData?.id_cliente,
-                        nombre: pickupInfo.nombre,
-                        telefono: pickupInfo.telefono,
-                        fechaYHoraPrometida: horaPrometida,
-                        address: addressInfo.address,
-                        postalCode: addressInfo.postalCode,
-                        latitud: addressInfo.lat, // 🔹 Agregar coordenadas
-                        longitud: addressInfo.lng, // 🔹 Agregar coordenadas
-                        costo: costoDelivery,  // ✅ Aquí aplicamos el valor corregido
-                        costoReal: calcularPrecioDelivery(),
-                        TicketExpress: nuevaTemporalidad === 'Express',
-                        fechaYHoraPrometida: esProgramado,
-                        costoTicketExpress: costoTicketExpress,
-                        tiendaSalida: storeLocation,
-                        freePassApplied: freePassFinal,  
-                    }
-                },
-            totalTicketExpress: costoTicketExpress,
-            totalDelivery: costoDelivery,  
-            cliente: {
-                name: pickupInfo.nombre,
-                phone: pickupInfo.telefono,
+      const updatedCompra = {
+        ...prevCompra,
+        is_scheduled_order: esProgramado,
+        Entrega: selectedOption === 'pickup'
+          ? {
+              PickUp: {
+                id_cliente: sessionData?.id_cliente,
+                nombre: pickupInfo.nombre,
+                telefono: pickupInfo.telefono,
+                fechaYHoraPrometida: horaPrometida,
+                TicketExpress: nuevaTemporalidad === 'Express',
+                costoTicketExpress,
+                puntoRecogida: storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
+              }
+            }
+          : {
+              Delivery: {
+                id_cliente: sessionData?.id_cliente,
+                nombre: pickupInfo.nombre,
+                telefono: pickupInfo.telefono,
+                fechaYHoraPrometida: horaPrometida,
+                address: addressInfo.address,
+                postalCode: addressInfo.postalCode,
+                latitud: addressInfo.lat,
+                longitud: addressInfo.lng,
+                costo: costoDelivery,
+                costoReal: rawCost,
+                TicketExpress: nuevaTemporalidad === 'Express',
+                costoTicketExpress,
+                tiendaSalida: storeLocation,
+                freePassApplied: freePassFinal,
+                debugBreakdown
+              }
             },
-            observaciones: selectedOption === 'pickup'
-                ? pickupInfo.observations
-                : addressInfo.observations
-        };
-
-        console.log("🛒 Estado de compra actualizado en handleDeliveryTimeChange:", updatedCompra);
-        return updatedCompra;
+        totalTicketExpress: costoTicketExpress,
+        totalDelivery: costoDelivery,
+        deliveryBreakdown: debugBreakdown,
+        cliente: {
+          name: pickupInfo.nombre,
+          phone: pickupInfo.telefono,
+        },
+        observaciones: selectedOption === 'pickup'
+          ? pickupInfo.observations
+          : addressInfo.observations
+      };
+  
+      console.log("🛒 Estado de compra actualizado en handleDeliveryTimeChange:", updatedCompra);
+      return updatedCompra;
     });
   };
   const calcularHoraPrometida = (minutosExtra) => {
@@ -628,137 +755,149 @@ const DeliveryForm = ({ setCompra, compra }) => {
   };
   const handleSaveDelivery = async () => {
     console.log('handleSaveDelivery called');
-
-    setError(''); // Limpiar errores previos
-
-    // Validación de datos básicos
-    if (!pickupInfo.nombre || !pickupInfo.telefono || !deliveryTimeOption) {
-        setError('Por favor completa todos los campos obligatorios.');
-        return;
+    setError('');
+  
+    /* ───────── Validaciones ───────── */
+    const required = [];
+    if (!pickupInfo.nombre)   required.push('nombre');
+    if (!pickupInfo.telefono) required.push('telefono');
+    if (!deliveryTimeOption)  required.push('deliveryTimeOption');
+  
+    if (selectedOption === 'delivery') {
+      if (!addressInfo.address || !addressInfo.lat || !addressInfo.lng || !isAddressConfirmed) {
+        required.push('address');
+      }
+    } else if (selectedOption === 'pickup') {
+      if (!selectedPickupLocation) required.push('selectedPickupLocation');
     }
-
-    // Validación de dirección en caso de delivery
-    if (selectedOption === 'delivery' && (!addressInfo.address || !addressInfo.lat || !addressInfo.lng || !isAddressConfirmed)) {
-        setError('Confirma la dirección antes de continuar.');
-        return;
+  
+    setMissingFields(required);
+    setIsAddressRequired(required.includes('address'));
+    if (required.length > 0) {
+      setError('Por favor completa o confirma los campos obligatorios.');
+      return;
     }
-
-    // Obtener ID del cliente
+  
     const idCliente = sessionData?.id_cliente;
     if (!idCliente) {
-        setError('No se encontró un cliente en la sesión.');
-        return;
+      setError('No se encontró un cliente en la sesión.');
+      return;
     }
-
-    // 🛠️ **Actualizar la información del cliente en la tabla `clientes` (solo si es `delivery`)**
+  
+    /* ─── Si es delivery, actualizamos la dirección del cliente ─── */
     if (selectedOption === 'delivery') {
-        const clienteData = {
-            name: pickupInfo.nombre,
-            phone: pickupInfo.telefono,
-            address_1: addressInfo.address,
-            lat: addressInfo.lat,
-            lng: addressInfo.lng, // 🚀 **Asegurando que guardamos las coordenadas**
-            observations: addressInfo.observations,
-        };
-
-        try {
-            await axios.put(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`, clienteData);
-            console.log('✅ Cliente actualizado correctamente con coordenadas:', clienteData);
-        } catch (error) {
-            console.error('❌ Error al actualizar la dirección del cliente:', error);
-            setError('Error al actualizar la dirección. Inténtalo de nuevo.');
-            return;
-        }
-    }
-
-    // Calcular tienda más cercana si es delivery
-    let tiendaMasCercana = selectedOption === 'delivery' ? calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng) : null;
-    if (selectedOption === 'delivery' && !tiendaMasCercana) {
-        setError('No se pudo encontrar una tienda cercana para el delivery.');
+      const clienteData = {
+        name         : pickupInfo.nombre,
+        phone        : pickupInfo.telefono,
+        address_1    : addressInfo.address,
+        lat          : addressInfo.lat,
+        lng          : addressInfo.lng,
+        observations : addressInfo.observations,
+      };
+  
+      try {
+        await axios.put(`${process.env.REACT_APP_API_URL}/clientes/${idCliente}`, clienteData);
+        console.log('✅ Cliente actualizado correctamente', clienteData);
+      } catch (error) {
+        console.error('❌ Error al actualizar la dirección:', error);
+        setError('Error al actualizar la dirección. Inténtalo de nuevo.');
         return;
+      }
     }
-
-    // Determinar la fecha y hora prometida
+  
+    const tiendaMasCercana = selectedOption === 'delivery'
+      ? calcularTiendaMasCercana(addressInfo.lat, addressInfo.lng)
+      : null;
+  
+    if (selectedOption === 'delivery' && !tiendaMasCercana) {
+      setError('No se pudo encontrar una tienda cercana para el delivery.');
+      return;
+    }
+  
+    /* ─── Fecha/Hora prometida ─── */
     let fechaYHoraPrometida = '';
     if (deliveryTimeOption === 'custom') {
-        if (!customTime.fecha || !customTime.hora) {
-            setError('Debes seleccionar una fecha y hora válida.');
-            return;
-        }
-        fechaYHoraPrometida = `${customTime.fecha} ${customTime.hora}`;
+      if (!customTime.fecha || !customTime.hora) {
+        setError('Debes seleccionar una fecha y hora válida.');
+        return;
+      }
+      fechaYHoraPrometida = `${customTime.fecha} ${customTime.hora}`;
     } else {
-        const extraMinutes = deliveryTimeOption === '30min' ? 30 :
-                             deliveryTimeOption === '45min' ? 45 :
-                             deliveryTimeOption === 'Express' ? 20 : 0;
-        fechaYHoraPrometida = calcularHoraPrometida(extraMinutes);
+      const extraMinutes =
+        deliveryTimeOption === '30min'  ? 30 :
+        deliveryTimeOption === '45min'  ? 45 :
+        deliveryTimeOption === 'Express'? 20 : 0;
+      fechaYHoraPrometida = calcularHoraPrometida(extraMinutes);
     }
-
-    // Calcular costos adicionales
-    const costoDelivery = (selectedOption === 'delivery' && isAddressConfirmed) ? calcularPrecioDelivery() : 0;
-    const costoTicketExpress = (deliveryTimeOption === 'Express') ? calcularCostoTicketExpress() : 0;
-
-    // Aplicar Free Pass si corresponde
-    const { newDeliveryCost, newFreePassApplied } = applyFreePassIfAny(
-        compra,
-        incentivos
-    );
-
-    // Si ya tenía Free Pass activo, mantenerlo
-    const freePassFinal = newFreePassApplied || (compra.Entrega?.Delivery?.freePassApplied ?? false);
-
-    if (freePassFinal) {
-        console.log("✅ Aplicando Free Pass: Delivery gratis");
-    }
-
-    // Actualizar el estado de compra
-    setCompra((prevCompra) => ({
-        ...prevCompra,
-        is_scheduled_order: deliveryTimeOption === 'custom',
-        Entrega: selectedOption === 'pickup'
-            ? {
-                PickUp: {
-                    id_cliente: idCliente,
-                    nombre: pickupInfo.nombre,
-                    telefono: pickupInfo.telefono,
-                    fechaYHoraPrometida,
-                    TicketExpress: deliveryTimeOption === 'Express',
-                    costoTicketExpress,
-                    puntoRecogida: storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
-                }
+  
+    /* ─── Costes ─── */
+    /** 👉 NUEVO: desestructuramos para obtener solo el número y el breakdown */
+    const { cost: rawCost, debugBreakdown } =
+      (selectedOption === 'delivery' && isAddressConfirmed)
+        ? await calcularPrecioDelivery()
+        : { cost: 0, debugBreakdown: null };
+  
+    const costoTicketExpress = deliveryTimeOption === 'Express'
+      ? calcularCostoTicketExpress()
+      : 0;
+  
+    const { newFreePassApplied } = applyFreePassIfAny(compra, incentivos);
+    const freePassFinal = newFreePassApplied ||
+                          (compra.Entrega?.Delivery?.freePassApplied ?? false);
+  
+    if (freePassFinal) console.log('✅ Aplicando Free Pass: Delivery gratis');
+  
+    /* ─── Set state ─── */
+    setCompra(prevCompra => ({
+      ...prevCompra,
+      is_scheduled_order: deliveryTimeOption === 'custom',
+      Entrega: selectedOption === 'pickup'
+        ? {
+            PickUp: {
+              id_cliente: idCliente,
+              nombre    : pickupInfo.nombre,
+              telefono  : pickupInfo.telefono,
+              fechaYHoraPrometida,
+              TicketExpress     : deliveryTimeOption === 'Express',
+              costoTicketExpress,
+              puntoRecogida     : storeLocations.find(loc => loc.id === parseInt(selectedPickupLocation)) || null,
             }
-            : {
-                Delivery: {
-                    id_cliente: idCliente,
-                    nombre: pickupInfo.nombre,
-                    telefono: pickupInfo.telefono,
-                    fechaYHoraPrometida,
-                    address: addressInfo.address,
-                    latitud: addressInfo.lat,  
-                    longitud: addressInfo.lng,  
-                    postalCode: addressInfo.postalCode,
-                    costo: freePassFinal ? 0 : costoDelivery,  
-                    costoReal: calcularPrecioDelivery(),
-                    TicketExpress: deliveryTimeOption === 'Express',
-                    costoTicketExpress,
-                    tiendaSalida: tiendaMasCercana,
-                    freePassApplied: freePassFinal
-                }
-            },
-        totalTicketExpress: costoTicketExpress,
-        totalDelivery: freePassFinal ? 0 : costoDelivery, // Aplicar Free Pass si corresponde
-        cliente: {
-            name: pickupInfo.nombre,
-            phone: pickupInfo.telefono,
-        },
-        observaciones: selectedOption === 'pickup' ? pickupInfo.observations : addressInfo.observations
+          }
+        : {
+            Delivery: {
+              id_cliente: idCliente,
+              nombre    : pickupInfo.nombre,
+              telefono  : pickupInfo.telefono,
+              fechaYHoraPrometida,
+              address   : addressInfo.address,
+              latitud   : addressInfo.lat,
+              longitud  : addressInfo.lng,
+              postalCode: addressInfo.postalCode,
+              costo     : freePassFinal ? 0 : rawCost,
+              costoReal : rawCost,
+              TicketExpress     : deliveryTimeOption === 'Express',
+              costoTicketExpress,
+              tiendaSalida      : tiendaMasCercana,
+              freePassApplied   : freePassFinal,
+              debugBreakdown
+            }
+          },
+      totalTicketExpress : costoTicketExpress,
+      totalDelivery      : freePassFinal ? 0 : rawCost,
+      deliveryBreakdown  : debugBreakdown,
+      cliente: {
+        name : pickupInfo.nombre,
+        phone: pickupInfo.telefono,
+      },
+      observaciones: selectedOption === 'pickup'
+        ? pickupInfo.observations
+        : addressInfo.observations
     }));
-
-    console.log('✅ Estado de compra actualizado:', compra);
-
-    // Disparar actualización visual
+  
+    console.log('✅ Estado de compra actualizado (SaveDelivery)');
     setTriggerUpdate(prev => !prev);
-};
-
+    setFormularioVisible(false);
+  };  
   const handlePickupLocationChange = (e) => {
     setSelectedPickupLocation(e.target.value);
     const selectedLocation = storeLocations.find(location => location.id === parseInt(e.target.value));
@@ -845,354 +984,397 @@ const DeliveryForm = ({ setCompra, compra }) => {
   };
 
   return (
-    <div className="delivery-form-container">
-      <h3 className="delivery-form-title">Condiciones de Entrega</h3>
-
-      <div className="toggle-options">
-        <div
-          className={`toggle-button ${selectedOption === 'delivery' ? 'active' : ''}`}
-          onClick={() => handleOptionChange('delivery')}
-        >
-          Delivery
-        </div>
-        <div
-          className={`toggle-button ${selectedOption === 'pickup' ? 'active' : ''}`}
-          onClick={() => handleOptionChange('pickup')}
-        >
-          Pickup
-        </div>
-      </div>
-
-      {selectedOption === 'pickup' && (
-        <div className="pickup-fields">
-          {/* Lista desplegable para seleccionar el punto de recogida */}
-          <label>
-            Punto de Recogida:
-            <select
-              value={selectedPickupLocation}
-              onChange={handlePickupLocationChange}
-              style={{ width: '100%' }}
-              className={missingFields.includes('selectedPickupLocation') ? 'input-error' : ''}
+<>
+  {formularioVisible ? (
+    <>
+      {/* Selector del método de entrega (fuera del contenedor blanco) */}
+      {!selectedOption && (
+        <div className="delivery-method-selector">
+          <h3 className="delivery-form-title">Delivery & Pickup Info</h3>
+          <div className="toggle-options">
+            <div
+              className={`toggle-button ${selectedOption === 'delivery' ? 'active' : ''}`}
+              onClick={() => handleOptionChange('delivery')}
             >
-              <option value="" disabled>Selecciona un punto de recogida</option>
-              <option value="all">Todas las Ubicaciones</option>
-              {storeLocations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.ciudad} - {location.direccion}
-                </option>
-              ))}
-            </select>
-          </label>
+              Delivery
+            </div>
+            <div
+              className={`toggle-button ${selectedOption === 'pickup' ? 'active' : ''}`}
+              onClick={() => handleOptionChange('pickup')}
+            >
+              Pickup
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* Mapa que muestra las ubicaciones */}
-          <div className="map-container">
-            <LoadScriptNext googleMapsApiKey={googleMapsApiKey} libraries={['places']}>
-              <GoogleMap
-                center={markerPosition || { lat: 42.33757, lng: -7.87055 }}
-                zoom={selectedPickupLocation === 'all' ? 11 : mapZoom}
-                mapContainerStyle={{ height: "400px", width: "100%" }}
+      {/* Formulario principal con fondo blanco */}
+      {selectedOption && (
+        <div className="delivery-form-container">
+          <div className="delivery-form-sticky-top">
+            <h3 className="delivery-form-title">Delivery & Pickup Info</h3>
+            <div className="selected-option-info" style={{ marginBottom: '1rem' }}>
+              <button
+                onClick={() => setSelectedOption(null)}
+                className="change-delivery-method"
               >
-                {showMarkers && storeLocations.length > 0 && (
-                  <>
-                    {storeLocations.map((location) => (
-                      <Marker
-                        key={location.id}
-                        position={{
-                          lat: parseFloat(location.lat),
-                          lng: parseFloat(location.lng),
-                        }}
-                        title={`${location.ciudad}, ${location.direccion}`}
-                        icon={
-                          selectedPickupLocation === String(location.id)
-                            ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
-                            : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
-                        }
-                      />
-                    ))}
-                  </>
-                )}
-              </GoogleMap>
-            </LoadScriptNext>
+                SWITCH - METHOD
+              </button>
+            </div>
           </div>
 
-          <div className="ticket-express-section">
-            {(!selectedPickupLocation && selectedOption === 'pickup') || (!storeLocation && selectedOption === 'delivery') ? (
-              <div className="ticket-express-info">
-                <p>Selecciona tu punto de recogida o tienda para habilitar el cálculo del Ticket Express.</p>
+          {selectedOption === 'pickup' && (
+            <div className="pickup-fields">
+              {/* Lista desplegable para seleccionar el punto de recogida */}
+              <label>
+                Pick-up Location :
+                <select
+                  value={selectedPickupLocation}
+                  onChange={handlePickupLocationChange}
+                  style={{ width: '100%' }}
+                  className={missingFields.includes('selectedPickupLocation') ? 'input-error' : ''}
+                >
+                  <option value="" disabled>Selecciona un punto de recogida</option>
+                  <option value="all">Todas las Ubicaciones</option>
+                  {storeLocations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.ciudad} - {location.direccion}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="map-container" style={{ marginTop: '1rem' }}>
+                <LoadScriptNext googleMapsApiKey={googleMapsApiKey} libraries={["places"]}>
+                  <GoogleMap
+                    center={markerPosition || { lat: 42.33757, lng: -7.87055 }}
+                    zoom={selectedPickupLocation === 'all' ? 11 : mapZoom}
+                    mapContainerStyle={{
+                      height: '400px',
+                      width: '100%',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    {showMarkers && storeLocations.length > 0 && (
+                      <>
+                        {storeLocations.map((location) => (
+                          <Marker
+                            key={location.id}
+                            position={{
+                              lat: parseFloat(location.lat),
+                              lng: parseFloat(location.lng),
+                            }}
+                            title={`${location.ciudad}, ${location.direccion}`}
+                            icon={
+                              selectedPickupLocation === String(location.id)
+                                ? "http://maps.google.com/mapfiles/ms/icons/green-dot.png"
+                                : "http://maps.google.com/mapfiles/ms/icons/red-dot.png"
+                            }
+                          />
+                        ))}
+                      </>
+                    )}
+                  </GoogleMap>
+                </LoadScriptNext>
               </div>
-            ) : (
-              pedidosEnCola > 0 ? (
-                <div className="ticket-express-info">
-                  <p>Actualmente tienes {pedidosEnCola} pedidos por delante.</p>
-                  <p><b>Acelera tu pedido con un Ticket Express.</b> 🚀</p>
-                  <p><b>Precio Actual: {calcularCostoTicketExpress().toFixed(2)}€</b></p>
+
+              <div className="ticket-express-section-df" style={{ marginTop: '1rem' }}>
+                {(!selectedPickupLocation && selectedOption === 'pickup') || (!storeLocation && selectedOption === 'delivery') ? (
+                  <div className="ticket-express-info">
+                    <p>Select your pickup spot or store to enable Express Ticket calculation.</p>
+                  </div>
+                ) : (
+                  pedidosEnCola > 0 ? (
+                    <div className="ticket-express-info">
+                      <p>You currently have  {pedidosEnCola} orders ahead of you</p>
+                      <p><b>Want it faster? Get an Express Ticket.</b> 🚀</p>
+                      <p><b>Price Right Now: {calcularCostoTicketExpress().toFixed(2)}€</b></p>
+                    </div>
+                  ) : (
+                    <div className="ticket-express-info">
+                      <p><b>Ticket Express is free right now!</b> 🚀</p>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <label style={{ marginTop: '1rem', display: 'block' }}>
+                Delivery Time:
+                <select
+                  value={deliveryTimeOption}
+                  onChange={handleDeliveryTimeChange}
+                  style={{ width: '100%' }}
+                  className={missingFields.includes('deliveryTimeOption') ? 'input-error' : ''}
+                >
+                  <option value="" disabled>Choose your time</option>
+                  <option value="30min">30 min</option>
+                  <option value="45min">45 min</option>
+                  <option value="Express">Ticket Express ({calcularCostoTicketExpress().toFixed(2)}€)</option>
+                  <option value="custom">Choose date and time</option>
+                </select>
+              </label>
+
+              {deliveryTimeOption === 'custom' && (
+                <div className="custom-time-fields">
+                  <label>
+                    Delivery Date:
+                    <input
+                      type="date"
+                      name="fecha"
+                      value={customTime.fecha}
+                      onChange={handleCustomTimeChange}
+                      min={today}
+                      style={{ width: '100%' }}
+                    />
+                  </label>
+                  <label>
+                    Delivery Time:
+                    <input
+                      type="time"
+                      name="hora"
+                      value={customTime.hora}
+                      onChange={handleCustomTimeChange}
+                      style={{ width: '100%' }}
+                    />
+                  </label>
                 </div>
-              ) : (
-                <div className="ticket-express-info">
-                  <p><b>Ticket Express Gratis en este momento.</b> 🚀</p>
-                </div>
-              )
-            )}
-          </div>
+              )}
 
-
-          <label>
-            Tiempo de Entrega:
-            <select
-              value={deliveryTimeOption}
-              onChange={handleDeliveryTimeChange}
-              style={{ width: '100%' }}
-              className={missingFields.includes('deliveryTimeOption') ? 'input-error' : ''}
-            >
-              <option value="" disabled>Selecciona un tiempo</option>
-              <option value="30min">30 min</option>
-              <option value="45min">45 min</option>
-              <option value="Express">Ticket Express ({calcularCostoTicketExpress().toFixed(2)}€)</option>
-              <option value="custom">Escoger fecha y hora</option>
-            </select>
-          </label>
-
-          {deliveryTimeOption === 'custom' && (
-            <div className="custom-time-fields">
-              <label>
-                Fecha de Entrega:
+              <label style={{ marginTop: '1rem', display: 'block' }}>
+                Name:
                 <input
-                  type="date"
-                  name="fecha"
-                  value={customTime.fecha}
-                  onChange={handleCustomTimeChange}
-                  min={today}
+                  type="text"
+                  name="nombre"
+                  value={pickupInfo.nombre}
+                  onChange={handleInputChange}
+                  placeholder="Your name, please"
+                  style={{ width: '100%' }}
+                  className={missingFields.includes('nombre') ? 'input-error' : ''}
+                />
+              </label>
+
+              <label style={{ marginTop: '1rem', display: 'block' }}>
+                Phone Number:
+                <input
+                  type="text"
+                  name="telefono"
+                  value={pickupInfo.telefono}
+                  onChange={handleInputChange}
+                  placeholder="Type your phone number"
+                  style={{ width: '100%' }}
+                  className={missingFields.includes('telefono') ? 'input-error' : ''}
+                />
+              </label>
+
+              <label style={{ marginTop: '1rem', display: 'block' }}>
+                Notes (optional):
+                <input
+                  type="text"
+                  name="observations"
+                  value={pickupInfo.observations}
+                  onChange={(e) => setPickupInfo({ ...pickupInfo, observations: e.target.value })}
+                  placeholder="Notes (optional)"
                   style={{ width: '100%' }}
                 />
               </label>
-              <label>
-                Hora de Entrega:
-                <input
-                  type="time"
-                  name="hora"
-                  value={customTime.hora}
-                  onChange={handleCustomTimeChange}
-                  style={{ width: '100%' }}
-                />
-              </label>
+
+              <button
+                className="save-button"
+                onClick={handleSaveDelivery}
+                style={{ marginTop: '1rem' }}
+              >
+                Save
+              </button>
             </div>
           )}
 
-          <label>
-            Nombre:
-            <input
-              type="text"
-              name="nombre"
-              value={pickupInfo.nombre}
-              onChange={handleInputChange}
-              placeholder="Ingresa tu nombre"
-              style={{ width: '100%' }}
-              className={missingFields.includes('nombre') ? 'input-error' : ''}
-            />
-          </label>
+          {selectedOption === 'delivery' && loadGoogleMaps && (
+            <LoadScriptNext googleMapsApiKey={googleMapsApiKey} libraries={["places"]}>
+              <div className="delivery-fields">
+                {/* Dirección */}
+                <label>
+                  Address:
+                  <input
+                    type="text"
+                    placeholder="Your Selected Address"
+                    value={addressInfo.address}
+                    readOnly
+                    style={{ width: '100%', backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                    className={missingFields.includes('address') ? 'input-error' : ''}
+                  />
+                </label>
 
-          <label>
-            Teléfono:
-            <input
-              type="text"
-              name="telefono"
-              value={pickupInfo.telefono}
-              onChange={handleInputChange}
-              placeholder="Ingresa tu teléfono"
-              style={{ width: '100%' }}
-              className={missingFields.includes('telefono') ? 'input-error' : ''}
-            />
-          </label>
+                <div className="button-group">
+                  {!isAddressConfirmed ? (
+                    <>
+                      <button
+                        className={`manual-address-button ${isAddressRequired ? 'button-error' : ''}`}
+                        onClick={geocodeAddress}
+                      >
+                        Confirm Your Address
+                      </button>
 
-          <label>
-            Observaciones (opcional):
-            <input
-              type="text"
-              name="observations"
-              value={pickupInfo.observations}
-              onChange={(e) => setPickupInfo({ ...pickupInfo, observations: e.target.value })}
-              placeholder="Observaciones (opcional)"
-              style={{ width: '100%' }}
-            />
-          </label>
+                      <button onClick={handleOpenModal} className="add-address-button">
+                        {addressInfo.address ? 'Update Address' : 'Add Address'}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="confirmed-message">
+                      <p>¡Success! You're all set.!🥳</p>
+                    </div>
+                  )}
+                </div>
 
-          <button className="save-button" onClick={handleSaveDelivery}>
-            Guardar
-          </button>
+                {isModalOpen && (
+                  <AddressFormModal
+                    onClose={handleCloseModal}
+                    onSave={(direccion) => {
+                      handleSaveAddress(direccion);
+                      setIsModalOpen(false);
+                    }}
+                  />
+                )}
+
+                <div className="map-container" style={{ marginTop: '1rem' }}>
+                  <GoogleMap
+                    center={addressInfo.lat && addressInfo.lng ? { lat: addressInfo.lat, lng: addressInfo.lng } : { lat: 42.75508, lng: -7.86621 }}
+                    zoom={isAddressConfirmed ? 15 : 6}
+                    mapContainerStyle={{
+                      height: '400px',
+                      width: '100%',
+                      borderRadius: '10px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    {markerPosition && <Marker position={markerPosition} />}
+                  </GoogleMap>
+                </div>
+
+                <div className="ticket-express-section-df" style={{ marginTop: '1rem' }}>
+                  {pedidosEnCola > 0 ? (
+                    <div className="ticket-express-info">
+                      <p>You currently have  {pedidosEnCola} orders ahead of you</p>
+                      <p><b>Want it faster? Get an Express Ticket.</b> 🚀</p>
+                      <p><b>Price Right Now: {calcularCostoTicketExpress().toFixed(2)}€</b></p>
+                    </div>
+                  ) : (
+                    <div className="ticket-express-info">
+                      <p><b>Ticket Express Free right now.</b> 🚀</p>
+                    </div>
+                  )}
+                </div>
+
+                <label style={{ marginTop: '1rem', display: 'block' }}>
+                  Delivery Time:
+                  <select
+                    value={deliveryTimeOption}
+                    onChange={handleDeliveryTimeChange}
+                    style={{ width: '100%' }}
+                    className={missingFields.includes('deliveryTimeOption') ? 'input-error' : ''}
+                  >
+                    <option value="" disabled>Choose your time</option>
+                    <option value="30min">30 min</option>
+                    <option value="45min">45 min</option>
+                    <option value="Express">Ticket Express ({calcularCostoTicketExpress().toFixed(2)}€)</option>
+                    <option value="custom">Choose data and time</option>
+                  </select>
+                </label>
+
+                {deliveryTimeOption === 'custom' && (
+                  <div className="custom-time-fields">
+                    <label>
+                      Fecha de Entrega:
+                      <input
+                        type="date"
+                        name="fecha"
+                        value={customTime.fecha}
+                        onChange={handleCustomTimeChange}
+                        min={today}
+                        style={{ width: '100%' }}
+                      />
+                    </label>
+                    <label>
+                      Hora de Entrega:
+                      <input
+                        type="time"
+                        name="hora"
+                        value={customTime.hora}
+                        onChange={handleCustomTimeChange}
+                        style={{ width: '100%' }}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                <label style={{ marginTop: '1rem', display: 'block' }}>
+                  Name:
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={pickupInfo.nombre}
+                    onChange={handleInputChange}
+                    placeholder="Enter your name"
+                    style={{ width: '100%' }}
+                  />
+                </label>
+
+                <label style={{ marginTop: '1rem', display: 'block' }}>
+                  Phone Number::
+                  <input
+                    type="text"
+                    name="telefono"
+                    value={pickupInfo.telefono}
+                    onChange={handleInputChange}
+                    placeholder="Type your phone number"
+                    style={{ width: '100%' }}
+                  />
+                </label>
+
+                <label style={{ marginTop: '1rem', display: 'block' }}>
+                  Notes (optional): 
+                  <input
+                    type="text"
+                    name="observations"
+                    value={addressInfo.observations}
+                    onChange={(e) => setAddressInfo({ ...addressInfo, observations: e.target.value })}
+                    placeholder="Notes (optional)"
+                    style={{ width: '100%' }}
+                  />
+                </label>
+
+                <button
+                  className="save-button"
+                  onClick={handleSaveDelivery}
+                  style={{ marginTop: '1rem' }}
+                >
+                  Save
+                </button>
+
+                {error && <p className="error-message">{error}</p>}
+              </div>
+            </LoadScriptNext>
+          )}
+          <div className="save-delivery-section"></div>
         </div>
       )}
-
-      {selectedOption === 'delivery' && loadGoogleMaps && (
-        <LoadScriptNext googleMapsApiKey={googleMapsApiKey} libraries={['places']}>
-          <div className="delivery-fields">
-            <label>
-              Dirección:
-              {/* <Autocomplete
-                onLoad={(autocomplete) => (autocompleteRef.current = autocomplete)}
-                onPlaceChanged={handleAddressChange}
-              > */}
-                 <input
-                type="text"
-                placeholder="Dirección seleccionada"
-                value={addressInfo.address}
-                readOnly // Evita que el usuario escriba manualmente
-                style={{ width: '100%', backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                className={missingFields.includes('address') ? 'input-error' : ''}
-              />
-              {/* </Autocomplete> */}
-            </label>
-
-            <div className="button-group">
-              <button onClick={handleOpenModal} className="add-address-button">
-                {addressInfo.address ? 'Cambiar Dirección' : 'Agregar Dirección'}
-              </button>
-
-              {!isAddressConfirmed ? (
-                <button
-                  className={`manual-address-button ${isAddressRequired ? 'button-error' : ''}`}
-                  onClick={geocodeAddress}
-                  style={{
-                    backgroundColor: isAddressRequired ? 'red' : 'initial',
-                    color: 'black',
-                    border: '2px solid #ccc',
-                    padding: '10px 15px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Confirmar Dirección
-                </button>
-              ) : (
-                <div className="confirmed-message">
-                  <p>¡Confirmación Exitosa!</p>
-                </div>
-              )}
-            </div>
-
-            {isModalOpen && (
-              <AddressFormModal
-              onClose={handleCloseModal}
-              onSave={(direccion) => {
-                handleSaveAddress(direccion); // Llamar a la función handleSaveAddress directamente
-                setIsModalOpen(false); // Cerrar el modal después de guardar
-              }}
-            />
-            )}
-
-            <div className="map-container">
-              <GoogleMap
-                center={addressInfo.lat && addressInfo.lng ? { lat: addressInfo.lat, lng: addressInfo.lng } : { lat: 42.7550800, lng: -7.8662100 }}
-                zoom={isAddressConfirmed ? 15 : 6}
-                mapContainerStyle={{ height: '400px', width: '100%' }}
-              >
-                {console.log('Center Coordinates for Delivery:', addressInfo.lat && addressInfo.lng ? { lat: addressInfo.lat, lng: addressInfo.lng } : { lat: 42.7550800, lng: -7.8662100 })}
-                {markerPosition && <Marker position={markerPosition} />}
-              </GoogleMap>
-            </div>
-
-            <div className="ticket-express-section">
-              {pedidosEnCola > 0 ? (
-                <div className="ticket-express-info">
-                  <p>Actualmente tienes {pedidosEnCola} pedidos por delante.</p>
-                  <p><b>Acelera tu pedido con un Ticket Express.</b> 🚀</p>
-                  <p><b>Precio Actual: {calcularCostoTicketExpress().toFixed(2)}€</b></p>
-                </div>
-              ) : (
-                <div className="ticket-express-info">
-                  <p><b>Ticket Express Gratis en este momento.</b> 🚀</p>
-                </div>
-              )}
-            </div>
-
-            <label>
-              Tiempo de Entrega:
-              <select
-                value={deliveryTimeOption}
-                onChange={handleDeliveryTimeChange}
-                style={{ width: '100%' }}
-                className={missingFields.includes('deliveryTimeOption') ? 'input-error' : ''}
-              >
-                <option value="" disabled>Selecciona un tiempo</option>
-                <option value="30min">30 min</option>
-                <option value="45min">45 min</option>
-                <option value="Express">Ticket Express ({calcularCostoTicketExpress().toFixed(2)}€)</option>
-                <option value="custom">Escoger fecha y hora</option>
-              </select>
-            </label>
-
-            {deliveryTimeOption === 'custom' && (
-              <div className="custom-time-fields">
-                <label>
-                  Fecha de Entrega:
-                  <input
-                    type="date"
-                    name="fecha"
-                    value={customTime.fecha}
-                    onChange={handleCustomTimeChange}
-                    min={today}
-                    style={{ width: '100%' }}
-                  />
-                </label>
-                <label>
-                  Hora de Entrega:
-                  <input
-                    type="time"
-                    name="hora"
-                    value={customTime.hora}
-                    onChange={handleCustomTimeChange}
-                    style={{ width: '100%' }}
-                  />
-                </label>
-              </div>
-            )}
-
-            <label>
-              Nombre:
-              <input
-                type="text"
-                name="nombre"
-                value={pickupInfo.nombre}
-                onChange={handleInputChange}
-                placeholder="Ingresa tu nombre"
-                style={{ width: '100%' }}
-              />
-            </label>
-
-            <label>
-              Teléfono:
-              <input
-                type="text"
-                name="telefono"
-                value={pickupInfo.telefono}
-                onChange={handleInputChange}
-                placeholder="Ingresa tu teléfono"
-                style={{ width: '100%' }}
-              />
-            </label>
-
-            <label>
-              Observaciones (opcional):
-              <input
-                type="text"
-                name="observations"
-                value={addressInfo.observations}
-                onChange={(e) => setAddressInfo({ ...addressInfo, observations: e.target.value })}
-                placeholder="Observaciones (opcional)"
-                style={{ width: '100%' }}
-              />
-            </label>
-
-            <button className="save-button" onClick={handleSaveDelivery}>
-              Guardar
-            </button>
-
-            {error && <p className="error-message">{error}</p>}
-          </div>
-        </LoadScriptNext>
-      )}
-      <div className="save-delivery-section"></div>
+    </>
+  ) : (
+    <div className="form-success-message">
+      <h2>✅ Ready to go!</h2>
+      <p className="message-content">
+        Just <strong>confirm & pay</strong>.<br />
+        <span className="emoji">🧾🍕</span>
+      </p>
     </div>
+  )}
+</>
   );
+  
+
+
 };
 
 export default DeliveryForm;

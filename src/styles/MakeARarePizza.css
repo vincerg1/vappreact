@@ -1,7 +1,6 @@
 .make-a-rare-pizza {
   text-align: center;
 }
-
 .make-a-rare-pizza .floating-cart {
   text-align: left;
 }
@@ -10,18 +9,15 @@
   color: #333;
   margin-bottom: 10px;
 }
-
 .cupones-info {
   font-size: 18px;
   font-weight: bold;
   color: #333;
   margin-bottom: 15px;
 }
-
 .size-selector {
   margin: 15px 0;
 }
-
 .size-selector select {
   font-size: 14px;
   padding: 8px;
@@ -29,8 +25,6 @@
   border: 1px solid #ccc;
   width: 33%;
 }
-
-/* Botón para generar pizza */
 .generate-button {
   background-color: #4caf50;
   color: white;
@@ -41,18 +35,14 @@
   cursor: pointer;
   transition: transform 0.3s, background-color 0.3s;
 }
-
 .generate-button:hover {
   background-color: #45a049;
   transform: scale(1.05);
 }
-
 .generate-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
-
-/* Botón para añadir al carrito */
 .fc-button {
   margin-top: 20px;
   background-color: #007bff;
@@ -64,42 +54,34 @@
   cursor: pointer;
   transition: transform 0.3s, background-color 0.3s;
 }
-
 .fc-button:hover {
   background-color: #0056b3;
   transform: scale(1.05);
 }
-
-/* Estilo de la tarjeta para la pizza generada */
 .pizza-card {
   text-align: center;
   margin: 20px auto;
   padding: 20px;
-  width: 500px;
+  width: 300px;
   background-color: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 12px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
-
 .pizza-card h3 {
   font-size: 20px;
   color: #333;
   margin-bottom: 10px;
 }
-
 .pizza-card p {
   font-size: 14px;
   color: #555;
   margin: 5px 0;
 }
-
 .pizza-card strong {
   color: #000;
 }
-
-/* Botón para añadir desde la tarjeta */
 .pizza-card .add-to-cart {
   display: block;
   margin: 15px auto 0;
@@ -112,18 +94,13 @@
   cursor: pointer;
   transition: transform 0.3s, background-color 0.3s;
 }
-
 .pizza-card .add-to-cart:hover {
   background-color: #0056b3;
   transform: scale(1.05);
 }
-
-/* Asegurar que el contenedor principal no desborde */
 .make-a-rare-pizza {
   overflow-x: hidden;
 }
-
-/* Rare Pizza Offer Banner */
 .rare-pizza-offer-banner {
   background-color: #f9f9f9;
   border: 1px solid #d1d1d1;
@@ -131,35 +108,29 @@
   padding: 15px;
   margin: 20px auto;
   text-align: center;
-  max-width: 600px;
-  font-family: 'Arial', sans-serif;
+  max-width: 300px;
+  font-family: 'Poppins', sans-serif;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-
 .rare-pizza-offer-banner.warning {
   background-color: #fff4f4;
   border: 1px solid #f5c6cb;
   color: #721c24;
 }
-
 .rare-pizza-offer-banner strong {
   color: #2b8a3e; /* Verde llamativo */
 }
-
 .time-left-banner {
   font-size: 14px;
   margin-top: 10px;
   color: #555;
 }
-
-/* Size Selector */
 .size-selector {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin: 20px auto;
 }
-
 .size-selector select {
   padding: 10px;
   font-size: 16px;
@@ -168,13 +139,11 @@
   width: 300px;
   text-align: center;
 }
-
 .size-selector select:focus {
   border-color: #2b8a3e;
   outline: none;
   box-shadow: 0 0 5px rgba(43, 138, 62, 0.5);
 }
-
 .generate-button {
   background-color: #2b8a3e;
   color: #fff;
@@ -186,14 +155,43 @@
   margin-top: 10px;
   transition: background-color 0.3s ease;
 }
-
 .generate-button:hover {
   background-color: #216930;
 }
-
 .generate-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
 
 
+@media (max-width: 768px) {  
+
+  .generate-button {
+    background-color: #d7d408;
+    color: white;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.3s, background-color 0.3s;
+    width: 300px;
+  }
+  .generate-button:hover {
+    background-color: #a08345;
+    transform: scale(1.05);
+  }
+  .pizza-card .add-to-cart {
+    display: block;
+    margin: 15px auto 0;
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #d2ea24;
+    color: rgb(29, 29, 29);
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.3s, background-color 0.3s;
+  }
+ }

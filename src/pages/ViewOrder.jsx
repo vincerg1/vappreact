@@ -15,7 +15,6 @@ const ViewOrder = () => {
   const [selectedLocation, setSelectedLocation] = useState(''); 
   const [updateTime, setUpdateTime] = useState(Date.now());
 
-
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -23,16 +22,15 @@ const ViewOrder = () => {
         if (Array.isArray(response.data.data)) {
           const pendingOrders = response.data.data.filter(order => order.venta_procesada === 0);
           setOrders(pendingOrders);
-          
-          // Extraer ubicaciones de las órdenes
-          const extractedLocations = new Set(); // Usamos un Set para evitar duplicados
+
+          const extractedLocations = new Set();
           pendingOrders.forEach(order => {
             const metodoEntrega = JSON.parse(order.metodo_entrega);
             let nombreEmpresa = '';
 
-            if (metodoEntrega.PickUp && metodoEntrega.PickUp.puntoRecogida && metodoEntrega.PickUp.puntoRecogida.nombre_empresa) {
+            if (metodoEntrega.PickUp?.puntoRecogida?.nombre_empresa) {
               nombreEmpresa = metodoEntrega.PickUp.puntoRecogida.nombre_empresa;
-            } else if (metodoEntrega.Delivery && metodoEntrega.Delivery.tiendaSalida && metodoEntrega.Delivery.tiendaSalida.nombre_empresa) {
+            } else if (metodoEntrega.Delivery?.tiendaSalida?.nombre_empresa) {
               nombreEmpresa = metodoEntrega.Delivery.tiendaSalida.nombre_empresa;
             }
 
@@ -41,7 +39,7 @@ const ViewOrder = () => {
             }
           });
 
-          setLocations([...extractedLocations]); // Convertimos el Set en un array y lo guardamos en el estado
+          setLocations([...extractedLocations]);
         } else {
           console.error('La respuesta no es un array:', response.data);
         }
@@ -52,9 +50,9 @@ const ViewOrder = () => {
 
     const fetchPizzas = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`); // Ajusta la URL según tu API
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
         if (Array.isArray(response.data.data)) {
-          setPizzas(response.data.data); // Almacena las pizzas en el estado
+          setPizzas(response.data.data);
         } else {
           console.error('La respuesta no contiene un array de pizzas:', response.data);
         }
@@ -66,51 +64,45 @@ const ViewOrder = () => {
     fetchOrders();
     fetchPizzas();
   }, []);
+
   useEffect(() => {
     const intervalId = setInterval(() => {
-      // Con esto forzamos un re-render marcando el estado
-      setUpdateTime(Date.now()); 
-    }, 60000); // cada 60 segundos
-  
+      setUpdateTime(Date.now());
+    }, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
   const markOrderAsProcessed = async (id_venta) => {
     try {
-      // 1) Descontar ingredientes
-      await axios.patch(`${process.env.REACT_APP_API_URL}/inventario/descontar`, 
-        { id_venta }, 
-        { headers: { "Content-Type": "application/json" } }
-      );
+      await axios.patch(`${process.env.REACT_APP_API_URL}/inventario/descontar`, { id_venta }, { headers: { "Content-Type": "application/json" } });
       alert('Ingredientes descontados correctamente.');
-  
-      // 2) Marcar la orden como completada
+
       await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/${id_venta}/procesar`);
       alert('Orden marcada como completada.');
-  
-      // 3) Enviar correo "Pizza Lista" usando tu nuevo endpoint de /registro_ventas
+
       await axios.post(`${process.env.REACT_APP_API_URL}/notificaciones/pizza_ready`, {
         id_order: id_venta,
         email: sessionData.email
       });
       alert('Correo enviado al cliente notificando que su pizza está lista.');
-  
-      // 4) Actualizar los pedidos en cola
+
       await axios.patch(`${process.env.REACT_APP_API_URL}/api/update-pedidos-en-cola`);
       alert('Pedidos en cola actualizados correctamente.');
-  
-      // 5) Remover la orden del estado local
+
       setOrders((prev) => prev.filter((order) => order.id_venta !== id_venta));
-  
+
     } catch (error) {
       console.error('Error en la actualización:', error);
       alert('Hubo un error al procesar la orden o al actualizar los pedidos en cola.');
     }
-  };  
+  };
+
   const showTicketModal = (order) => {
-    setSelectedOrder(order);
+    const partners = order.partners && order.partners !== 'null' ? JSON.parse(order.partners) : [];
+    setSelectedOrder({ ...order, partners });
     setShowModal(true);
   };
+
   const closeModal = () => {
     setShowModal(false);
     setSelectedOrder(null);
@@ -119,198 +111,158 @@ const ViewOrder = () => {
   const sortedOrders = orders.sort((a, b) => {
     const metodoEntregaA = JSON.parse(a.metodo_entrega);
     const metodoEntregaB = JSON.parse(b.metodo_entrega);
-    
+
     const isTicketExpressA = metodoEntregaA.PickUp?.TicketExpress || metodoEntregaA.Delivery?.TicketExpress;
     const isTicketExpressB = metodoEntregaB.PickUp?.TicketExpress || metodoEntregaB.Delivery?.TicketExpress;
-    
-    return isTicketExpressB - isTicketExpressA; // Primero los express
+
+    return isTicketExpressB - isTicketExpressA;
   });
+
   const filteredOrders = selectedLocation
     ? sortedOrders.filter(order => {
         const metodoEntrega = JSON.parse(order.metodo_entrega);
-        let nombreEmpresa = '';
-
-        if (metodoEntrega.PickUp && metodoEntrega.PickUp.puntoRecogida && metodoEntrega.PickUp.puntoRecogida.nombre_empresa) {
-          nombreEmpresa = metodoEntrega.PickUp.puntoRecogida.nombre_empresa;
-        } else if (metodoEntrega.Delivery && metodoEntrega.Delivery.tiendaSalida && metodoEntrega.Delivery.tiendaSalida.nombre_empresa) {
-          nombreEmpresa = metodoEntrega.Delivery.tiendaSalida.nombre_empresa;
-        }
-
+        const nombreEmpresa = metodoEntrega.PickUp?.puntoRecogida?.nombre_empresa || metodoEntrega.Delivery?.tiendaSalida?.nombre_empresa;
         return nombreEmpresa === selectedLocation;
       })
     : sortedOrders;
 
-    return (
-      <div>
-        <h2>Pending Orders</h2>
-    
-        {/* Mostrar el filtro solo si hay órdenes pendientes */}
-        {filteredOrders.length > 0 && (
-          <div className="filter-container2">
-            <select
-              id="location-filter"
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-            >
-              <option value="">Todas las ubicaciones</option>
-              {locations.map((location, index) => (
-                <option key={index} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-    
-        {filteredOrders.length === 0 ? (
-          <div style={{ textAlign: "center", marginTop: "10rem" }}>
-            <div style={{ fontSize: "80px" }}>🐒</div>
-            <p>No hay órdenes pendientes...! </p>
-          </div>
-        ) : (
-          <div className="table-container"> 
-            <table>
-              <thead>
-                <tr>
-                  <th>ID Orden</th>
-                  <th>Fecha</th>
-                  <th>Hora</th>
-                  <th>Cliente</th>
-                  <th>Productos</th>
-                  <th>Total</th>
-                  <th>TicketExpress</th>
-                  <th>Programado</th>
-                  <th>Incentivos</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map((order) => {
-                  const productos = JSON.parse(order.productos);
-                  const metodoEntrega = JSON.parse(order.metodo_entrega);
-                  const isPickup = metodoEntrega.PickUp;
-                  const isDelivery = metodoEntrega.Delivery;
-                  const isTicketExpress = isPickup
-                    ? metodoEntrega.PickUp.TicketExpress
-                    : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false);
+  return (
+    <div>
+      <h2>Pending Orders</h2>
 
-                  const fechaYHoraPrometida = isPickup
-                    ? metodoEntrega.PickUp.fechaYHoraPrometida
-                    : isDelivery
-                      ? metodoEntrega.Delivery.fechaYHoraPrometida
-                      : 'N/A';
+      {filteredOrders.length > 0 && (
+        <div className="filter-container2">
+          <select id="location-filter" value={selectedLocation} onChange={(e) => setSelectedLocation(e.target.value)}>
+            <option value="">Todas las ubicaciones</option>
+            {locations.map((location, index) => (
+              <option key={index} value={location}>{location}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
-                  const metodo = isPickup ? 'Pickup' : 'Delivery';
+      {filteredOrders.length === 0 ? (
+        <div style={{ textAlign: "center", marginTop: "10rem" }}>
+          <div style={{ fontSize: "80px" }}>🐒</div>
+          <p>No hay órdenes pendientes...! </p>
+        </div>
+      ) : (
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>ID Orden</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Cliente</th>
+                <th>Productos</th>
+                <th>Partners</th>
+                <th>Total</th>
+                <th>TicketExpress</th>
+                <th>Programado</th>
+                <th>Incentivos</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.map((order) => {
+                const productos = JSON.parse(order.productos);
+                const partners = order.partners && order.partners !== 'null' ? JSON.parse(order.partners) : [];
+                const metodoEntrega = JSON.parse(order.metodo_entrega);
+                const isPickup = metodoEntrega.PickUp;
+                const isDelivery = metodoEntrega.Delivery;
+                const isTicketExpress = isPickup ? metodoEntrega.PickUp.TicketExpress : (isDelivery ? metodoEntrega.Delivery.TicketExpress : false);
+                const fechaYHoraPrometida = isPickup ? metodoEntrega.PickUp.fechaYHoraPrometida : isDelivery ? metodoEntrega.Delivery.fechaYHoraPrometida : 'N/A';
+                const metodo = isPickup ? 'Pickup' : 'Delivery';
 
-                  // Leer incentivos
-                  const incentivos = order.incentivos ? JSON.parse(order.incentivos) : [];
-                  const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0
-                    ? incentivos.map(inc => inc.id).join(', ')
-                    : 'No';
+                const incentivos = order.incentivos ? JSON.parse(order.incentivos) : [];
+                const incentivosIds = Array.isArray(incentivos) && incentivos.length > 0 ? incentivos.map(inc => inc.id).join(', ') : 'No';
 
-                  // 1) Ver si el pedido es programado
-                  const isScheduled = (order.is_scheduled_order === 1);
-                  let canProcess = true; 
-                  if (isScheduled && fechaYHoraPrometida !== 'N/A') {
+                const isScheduled = (order.is_scheduled_order === 1);
+                let canProcess = true;
+                if (isScheduled && fechaYHoraPrometida !== 'N/A') {
                   const diffInMinutes = moment(fechaYHoraPrometida, 'YYYY-MM-DD HH:mm').diff(moment(updateTime), 'minutes');
+                  canProcess = (diffInMinutes <= 60);
+                }
 
-                    
-                    // Si faltan más de 60 min, NO podemos procesar
-                    canProcess = (diffInMinutes <= 60);
-                  }
+                return (
+                  <tr key={order.id_venta}>
+                    <td>{order.id_venta}</td>
+                    <td>{new Date(order.fecha).toLocaleDateString('es-ES')}</td>
+                    <td>{order.hora}</td>
+                    <td>{`${order.id_cliente} - (${fechaYHoraPrometida}) - ${metodo}`}</td>
+                    <td>
+                      <ul>
+                        {productos.map((producto) => {
+                          const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
+                          const customPizzaNames = { 101: 'PP1', 102: 'PP2', 103: 'PP3' };
+                          const nombrePizza = pizza ? pizza.nombre : customPizzaNames[producto.id_pizza] || 'Desconocida';
 
-                  return (
-                    <tr key={order.id_venta}>
-                      <td>{order.id_venta}</td>
-                      <td>{new Date(order.fecha).toLocaleDateString('es-ES')}</td>
-                      <td>{order.hora}</td>
-                      <td>{`${order.id_cliente} - (${fechaYHoraPrometida}) - ${metodo}`}</td>
-                      <td>
-                        <ul>
-                          {productos.map((producto) => {
-                            // Buscar la pizza en tu lista
-                            const pizza = pizzas.find(p => p.id === Number(producto.id_pizza));
-                            const customPizzaNames = { 101: 'PP1', 102: 'PP2', 103: 'PP3' };
-                            
-                            let nombrePizza = 'Desconocida';
-                            if (pizza) {
-                              nombrePizza = pizza.nombre;
-                            } else if (customPizzaNames[producto.id_pizza]) {
-                              nombrePizza = customPizzaNames[producto.id_pizza];
-                            }
-
-                            // Manejar mitad y mitad
-                            if (producto.id_pizza === 102 && producto.halfAndHalf) {
-                              return (
-                                <li key={producto.id_pizza}>
-                                  Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
-                                  <ul>
-                                    <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre}</li>
-                                    <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
-                                  </ul>
-                                </li>
-                              );
-                            }
-
-                            // Caso normal
+                          if (producto.id_pizza === 102 && producto.halfAndHalf) {
                             return (
                               <li key={producto.id_pizza}>
                                 Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
-                                {producto.extraIngredients && producto.extraIngredients.length > 0 && (
-                                  <ul>
-                                    {producto.extraIngredients.map((extra, idx) => (
-                                      <li key={idx}>
-                                        +IE: {extra.nombre} ({extra.precio.toFixed(2)}€)
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
+                                <ul>
+                                  <li>Mitad Izquierda: {producto.halfAndHalf.izquierda.nombre}</li>
+                                  <li>Mitad Derecha: {producto.halfAndHalf.derecha.nombre}</li>
+                                </ul>
                               </li>
                             );
-                          })}
+                          }
+
+                          return (
+                            <li key={producto.id_pizza}>
+                              Cant: {producto.cantidad}, Size: {producto.size}, Nombre: {nombrePizza}
+                              {producto.extraIngredients && producto.extraIngredients.length > 0 && (
+                                <ul>
+                                  {producto.extraIngredients.map((extra, idx) => (
+                                    <li key={idx}>
+                                      +IE: {extra.nombre} ({extra.precio.toFixed(2)}€)
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </td>
+                    <td>
+                      {partners.length > 0 ? (
+                        <ul>
+                          {partners.map((p, idx) => (
+                            <li key={idx}>Cant: {p.cantidad}, Nombre: {p.producto}</li>
+                          ))}
                         </ul>
-                      </td>
-                      <td>{parseFloat(order.total_con_descuentos).toFixed(2)}€</td>
-                      <td>{isTicketExpress ? 'Sí' : 'No'}</td>
-                      <td>{order.is_scheduled_order === 1 ? 'Sí' : 'No'}</td>
-                      <td>{incentivosIds}</td>
+                      ) : 'No'}
+                    </td>
+                    <td>{parseFloat(order.total_con_descuentos).toFixed(2)}€</td>
+                    <td>{isTicketExpress ? 'Sí' : 'No'}</td>
+                    <td>{order.is_scheduled_order === 1 ? 'Sí' : 'No'}</td>
+                    <td>{incentivosIds}</td>
+                    <td className="table-container-button">
+                      <button onClick={() => markOrderAsProcessed(order.id_venta)} disabled={!canProcess}>Ready</button>
+                      <button onClick={() => showTicketModal(order)}>Print</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-                      {/* 3) Botones: Ready se deshabilita si !canProcess */}
-                      <td className="table-container-button">
-                        <button
-                          onClick={() => markOrderAsProcessed(order.id_venta)}
-                          disabled={!canProcess}
-                        >
-                          Ready
-                        </button>
-                        <button onClick={() => showTicketModal(order)}>Print</button>
-
-                        {/* 4) Mensaje si faltan > 1 hora */}
-                        {!canProcess && (
-                          <span style={{ marginLeft: '5px', color: 'red', fontSize: '0.85rem' }}>
-                         
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-    
-          {showModal && selectedOrder && (
+      {showModal && selectedOrder && (
         <div className="order-modal">
           <div className="order-modal-content">
-            <Ticket order={selectedOrder} />
+            <Ticket order={selectedOrder} partners={selectedOrder.partners || []} />
             <button onClick={() => window.print()}>Imprimir</button>
             <button onClick={closeModal}>Cerrar</button>
           </div>
         </div>
       )}
-      </div>
-    );    
+    </div>
+  );
 };
 
 export default ViewOrder;

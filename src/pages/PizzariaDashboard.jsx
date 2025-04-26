@@ -23,7 +23,9 @@ const PizzariaDashboard = () => {
   const [showTimeAttendanceModal, setShowTimeAttendanceModal] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [ubicaciones, setUbicaciones] = useState([]);
-  const [selectedUbicacion, setSelectedUbicacion] = useState(null);
+  const [selectedUbicacion, setSelectedUbicacion] = useState(() =>
+    localStorage.getItem('dash_selectedUbicacion') || null
+  )
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [estado, setEstado] = useState(false); 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -34,6 +36,12 @@ const PizzariaDashboard = () => {
   const [warningsDashboard, setWarningsDashboard] = useState([]);
   const [scheduledOrders, setScheduledOrders] = useState([]);      
   const [showScheduledModal, setShowScheduledModal] = useState(false);
+  const [selectedLatitud, setSelectedLatitud] = useState(null);
+  const [selectedLongitud, setSelectedLongitud] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [rainProbability, setRainProbability] = useState(0);
+  const [showWeatherModal, setShowWeatherModal] = useState(false);
+
   const navigate = useNavigate();  
 
   
@@ -240,7 +248,82 @@ const PizzariaDashboard = () => {
   
     return () => clearInterval(interval);
   }, []);
+  useEffect(() => {
+    if (selectedLatitud !== null && selectedLongitud !== null) {
+      console.log("🌦️ Disparando clima desde efecto de coordenadas...");
+      fetchWeatherData(selectedLatitud, selectedLongitud);
+    }
+  }, [selectedLatitud, selectedLongitud]);
+  useEffect(() => {
+    if (selectedUbicacion) {
+      console.log("🔁 Cargando datos de empresa automáticamente con ID:", selectedUbicacion);
+      fetch(`http://localhost:3001/api/info-empresa/${selectedUbicacion}`)
+        .then(resp => resp.json())
+        .then(response => {
+          const empresa = response.data;
+          if (!empresa) {
+            console.error("❌ Empresa no encontrada:", response);
+            return;
+          }
   
+          setEstado(empresa.estado === 'activo');
+          setSelectedLatitud(empresa.ciudad_latitud);
+          setSelectedLongitud(empresa.ciudad_longitud);
+        })
+        .catch(err => console.error("❌ Error al obtener datos de empresa:", err));
+    }
+  }, [selectedUbicacion]);
+  useEffect(() => {
+    console.log("⏳ [INIT] Cargando empresas al montar…");
+    fetch("http://localhost:3001/api/info-empresa")
+      .then((resp) => resp.json())
+      .then((data) => {
+        console.log("🏢 Empresas recibidas (init):", data);
+        setUbicaciones(data);
+  
+        /* 1️⃣  ¿Hay algo guardado en localStorage?           */
+        const storedId = localStorage.getItem("dash_selectedUbicacion");
+  
+        /* 2️⃣  Determinamos la ID que debe quedar seleccionada */
+        let targetId = storedId || selectedUbicacion;
+  
+        if (!targetId && data.length > 0) {
+          // Nada guardado → usamos la primera empresa
+          targetId = String(data[0].id);
+          localStorage.setItem("dash_selectedUbicacion", targetId);
+        }
+  
+        if (!targetId) return; // aún no hay datos, salimos
+  
+        /* 3️⃣  Buscamos la empresa correspondiente           */
+        const empresaSel = data.find((e) => String(e.id) === String(targetId));
+        if (!empresaSel) {
+          console.warn("⚠️ La empresa guardada no existe. Usando la primera.");
+          if (data.length === 0) return;
+          localStorage.removeItem("dash_selectedUbicacion");
+          setSelectedUbicacion(String(data[0].id));
+          setEstado(data[0].estado === "activo");
+          setSelectedLatitud(data[0].ciudad_latitud);
+          setSelectedLongitud(data[0].ciudad_longitud);
+          return;
+        }
+  
+        /* 4️⃣  Actualizamos estados si ha cambiado           */
+        setSelectedUbicacion(String(empresaSel.id));
+        setEstado(empresaSel.estado === "activo");
+        setSelectedLatitud(empresaSel.ciudad_latitud);
+        setSelectedLongitud(empresaSel.ciudad_longitud);
+      })
+      .catch((err) =>
+        console.error("❌ Error al obtener las empresas (init):", err)
+      );
+  }, []);
+  useEffect(() => {
+    const savedUbic = localStorage.getItem('dash_selectedUbicacion');
+    if (savedUbic) {
+      setSelectedUbicacion(savedUbic);
+    }
+  }, []);
   
   const irAListaIngredientes = () => {
     navigate('/_Inicio/_InvIngDB/_ListaIngredientes');
@@ -409,54 +492,66 @@ const PizzariaDashboard = () => {
   };
   const handleSelectUbicacion = (event) => {
     const idSeleccionado = event.target.value;
+  
+    /* 1️⃣  Guardamos selección en estado + localStorage */
     setSelectedUbicacion(idSeleccionado);
+    localStorage.setItem('dash_selectedUbicacion', idSeleccionado);
   
     console.log("📌 ID seleccionado:", idSeleccionado);
   
-    fetch(`http://localhost:3001/api/info-empresa/${idSeleccionado}/estado`)
+    /* 2️⃣  Traemos los datos de la empresa elegida */
+    fetch(`http://localhost:3001/api/info-empresa/${idSeleccionado}`)
       .then(resp => {
-        if (!resp.ok) {
-          throw new Error(`HTTP error! Status: ${resp.status}`);
-        }
+        if (!resp.ok) throw new Error(`HTTP error! Status: ${resp.status}`);
         return resp.json();
       })
-      .then(data => {
-        if (!data || !data.estado) {
-          console.error("❌ Error: La respuesta del servidor no contiene `estado`", data);
+      .then(response => {
+        const empresa = response.data;
+        if (!empresa) {
+          console.error("❌ No se recibió información de la empresa:", response);
           return;
         }
   
-        console.log("📌 Estado en DB:", data.estado);
-        setEstado(data.estado === 'activo');
+        console.log("📌 Estado en DB:", empresa.estado);
+        console.log("📍 Coordenadas:", empresa.ciudad_latitud, empresa.ciudad_longitud);
+  
+        /* 3️⃣  Actualizamos estado y coordenadas */
+        setEstado(empresa.estado === 'activo');
+        setSelectedLatitud(empresa.ciudad_latitud);
+        setSelectedLongitud(empresa.ciudad_longitud);
       })
       .catch(err => console.error("❌ Error al obtener la empresa:", err));
   };
   const handleSaveLocation = () => {
     if (!selectedUbicacion) {
-      console.error("❌ Error: ID de ubicación no válido:", selectedUbicacion);
+      console.error("❌ ID de ubicación no válido:", selectedUbicacion);
       return;
     }
   
     fetch(`http://localhost:3001/api/info-empresa/${selectedUbicacion}/estado`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: estado ? 'activo' : 'inactivo' })  // ✅ Solo enviamos el estado
+      body: JSON.stringify({ estado: estado ? 'activo' : 'inactivo' })
     })
-    .then(resp => {
-      if (!resp.ok) {
-        throw new Error(`HTTP error! Status: ${resp.status}`);
-      }
-      return resp.json();
-    })
-    .then(responseData => {
-      if (responseData.error) {
-        console.error("❌ Error al actualizar la ubicación:", responseData.error);
-        return;
-      }
-      console.log("✅ Ubicación actualizada:", responseData);
-      setShowLocationModal(false);
-    })
-    .catch(err => console.error("❌ Error al actualizar la ubicación:", err));
+      .then(resp => {
+        if (!resp.ok) throw new Error(`HTTP error! Status: ${resp.status}`);
+        return resp.json();
+      })
+      .then(responseData => {
+        if (responseData.error) {
+          console.error("❌ Error al actualizar la ubicación:", responseData.error);
+          return;
+        }
+  
+        console.log("✅ Ubicación actualizada:", responseData);
+  
+        /* 1️⃣  Cerramos modal */
+        setShowLocationModal(false);
+  
+        /* 2️⃣  Persistimos la ubicación elegida */
+        localStorage.setItem('dash_selectedUbicacion', selectedUbicacion);
+      })
+      .catch(err => console.error("❌ Error al actualizar la ubicación:", err));
   };
   const handleToggleEstado = () => {
     setEstado((prevEstado) => !prevEstado);
@@ -494,15 +589,42 @@ const PizzariaDashboard = () => {
     setWarningActive(false);
     setShowWarningModal(false);
   };
+  const fetchWeatherData = async (lat, lon) => {
+    try {
+      console.log("📡 Consultando clima para:", lat, lon);
+      
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=7bce86c608f5e6da4ec8c8a3f60040e5&units=metric`
+      );
+  
+      const data = response.data;
+      console.log("🌦️ Datos climáticos recibidos:", data);
+      
+      setWeatherData(data);
+      console.log("✅ Estado `weatherData` seteado:", data);
+  
+      if (data.rain || data.snow) {
+        console.log("☔ Probabilidad alta de lluvia detectada.");
+        setRainProbability(100);
+      } else {
+        setRainProbability(0);
+      }
+  
+    } catch (error) {
+      console.error("❌ Error al consultar el clima:", error);
+    }
+  };
+  
+  
 
-  
-  
   return (
     <div className="dashboard-container">
       <div className={`overlay ${isServiceSuspended ? 'active' : ''}`} />
       <div className="top-bar">
         <div className="icon-group">
-          <div className="icon weather-icon" title="Clima">🌤️</div>
+        <div className="icon weather-icon" title="Clima" onClick={() => setShowWeatherModal(true)}>
+          {rainProbability > 85 ? "🌧️" : "☀️"}
+        </div>
           <div
             className={`icon calendar-icon ${
               scheduledOrders.length > 0 ? 'scheduled-active' : ''
@@ -698,6 +820,39 @@ const PizzariaDashboard = () => {
               orders={scheduledOrders}
               onClose={() => setShowScheduledModal(false)}
             />
+          </div>
+        </div>
+      )}
+      {showWeatherModal && (
+        <div className="modal-overlay">
+          <div className="modal-content weather-modal">
+            <div className="modal-header">
+              <h2>🌦️ Clima Actual</h2>
+              <button className="close-button-ch" onClick={() => setShowWeatherModal(false)}>
+                Cerrar
+              </button>
+            </div>
+
+            <div className="modal-body">
+            {weatherData ? (
+                <>
+                  <p><strong>Ubicación:</strong> {weatherData.name}</p>
+                  <p><strong>Temperatura:</strong> {Math.round(weatherData.main.temp)}°C</p>
+                  <p><strong>Clima:</strong> {weatherData.weather[0].description}</p>
+                  {rainProbability >= 85 && (
+                    <p style={{ color: 'red' }}>⚠️ Alta probabilidad de lluvia</p>
+                  )}
+                </>
+              ) : (
+                <p>No hay datos climáticos disponibles.</p>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-primary" onClick={() => setShowWeatherModal(false)}>
+                Entendido
+              </button>
+            </div>
           </div>
         </div>
       )}

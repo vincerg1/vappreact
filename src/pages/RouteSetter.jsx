@@ -1,26 +1,115 @@
+
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import moment from "moment-timezone";
-import QRCode from "qrcode.react";
-import "../styles/RouteSetter.css";
+import geohash from "ngeohash";
+import axios from "axios";
+import "../styles/RouteSetter.css"; 
 
 
 const RouteSetter = () => {
-  const [orders, setOrders] = useState([]); 
-  const [originalOrders, setOriginalOrders] = useState([]); 
-  const [generatedRoutes, setGeneratedRoutes] = useState([]); 
-  const [rutasDisponibles, setRutasDisponibles] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [selectedChain, setSelectedChain] = useState("");
+  const [rutasSelladas, setRutasSelladas] = useState([]);
+  const [asignandoCadena, setAsignandoCadena] = useState(null);
+  const [repartidorSeleccionado, setRepartidorSeleccionado] = useState("");
   const [repartidoresActivos, setRepartidoresActivos] = useState([]);
-  const [cantidadRutas, setCantidadRutas] = useState(0);
-  const [nuevasRutasDisponibles, setNuevasRutasDisponibles] = useState(false);
-  const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8";
-  const coordinateCache = {}; 
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [cadenasAprobadas, setCadenasAprobadas] = useState([]);
+  const [generatedRoutes, setGeneratedRoutes] = useState([]);
+  const googleMapsApiKey = "AIzaSyAi1A8DDiBPGA_KQy2G47JVhFnt_QF0fN8"; 
+  const geoHashColors = {};
+  const coordinateCache = {};
 
 
-  const calcularCantidadRutas = () => {
-    const agrupables = orders.filter(order => order.estadoEntrega === "Pendiente");
-    const rutasPotenciales = Math.floor(agrupables.length / 2); // Ejemplo: 2 pedidos = 1 ruta
-    setCantidadRutas(rutasPotenciales);
+
+  useEffect(() => {
+    fetchOrders();
+    fetchRepartidoresActivos();
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setOrders((prev) =>
+        prev.map((o) => ({
+          ...o,
+          timeLeft: calculateTimeLeft(o.fechaYHoraPrometida),
+        }))
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 30000); // cada 30 segundos
+    return () => clearInterval(interval);
+  }, []);
+
+  const getGeoHashColor = (hash) => {
+    if (!geoHashColors[hash]) {
+      const colors = [
+        "red", "blue", "green", "orange",
+        "purple", "teal", "pink", "brown",
+        "yellow", "gray", "coral", "gold"
+      ];
+      geoHashColors[hash] = colors[Math.floor(Math.random() * colors.length)];
+    }
+    return geoHashColors[hash];
+  };
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
+      const data = response.data.data || [];
+
+      const pedidos = await Promise.all(
+        data
+          .filter((venta) => {
+            try {
+              const metodoEntrega = JSON.parse(venta.metodo_entrega || "{}");
+              return metodoEntrega.Delivery && venta.estado_entrega !== "Entregado";
+            } catch (err) {
+              console.error("Error al parsear metodo_entrega:", err);
+              return false;
+            }
+          })
+          .map(async (venta) => {
+            const metodoEntrega = JSON.parse(venta.metodo_entrega);
+            const delivery = metodoEntrega.Delivery || {};
+
+            const address = delivery.address || "Sin dirección";
+            const fechaYHoraPrometida = delivery.fechaYHoraPrometida || null;
+            const lat = delivery.latitud;
+            const lng = delivery.longitud;
+
+            const hasValidCoords =
+              typeof lat === "number" &&
+              typeof lng === "number" &&
+              !isNaN(lat) &&
+              !isNaN(lng);
+
+            // Calculamos geohash. Si no hay coords, forzamos un "xxxxx"
+            const hash = hasValidCoords ? geohash.encode(lat, lng, 5) : "xxxxx";
+
+            // Retornamos el pedido con todos sus datos
+            return {
+              id_order: venta.id_order,
+              address,
+              fechaYHoraPrometida,
+              timeLeft: calculateTimeLeft(fechaYHoraPrometida),
+              estado_entrega: venta.estado_entrega,
+              metodo_entrega: venta.metodo_entrega,
+              isExpress: delivery.TicketExpress || false,
+              delivery_chain_id: null, 
+              repartidor: venta.id_repartidor || null,
+              geoHash: hash,
+              color: getGeoHashColor(hash),
+            };
+          })
+      );
+
+      setOrders(pedidos);
+    } catch (error) {
+      console.error("Error al obtener pedidos:", error);
+    }
   };
   const fetchRepartidoresActivos = async () => {
     try {
@@ -28,114 +117,15 @@ const RouteSetter = () => {
       if (response.data.success) {
         setRepartidoresActivos(response.data.data);
       } else {
-        console.warn('No se pudieron obtener los repartidores activos:', response.data.message);
+        console.warn("No se pudieron obtener los repartidores activos:", response.data.message);
       }
     } catch (error) {
-      console.error('Error al obtener repartidores activos:', error);
-    }
-  };
-  const fetchOrders = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
-      const registroVentas = response.data.data || [];
-  
-      // Filtrar pedidos pendientes o pedidos no procesados (venta_procesada !== 1), excluyendo PickUp
-      const filteredOrders = registroVentas
-        .filter((order) => {
-          const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
-          return (
-            metodoEntrega.Delivery && 
-            !metodoEntrega.PickUp &&  
-            (order.estado_entrega === "Pendiente" || order.venta_procesada !== 1)
-          );
-        })
-        .map((order) => {
-          const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
-          const tiendaSalida = metodoEntrega.Delivery.tiendaSalida || {};
-          const costoDelivery = metodoEntrega.Delivery.costoReal || 0;
-  
-          return {
-            id_order: order.id_order,
-            address: metodoEntrega.Delivery.address || "Sin dirección",
-            fechaYHoraPrometida: metodoEntrega.Delivery.fechaYHoraPrometida || null,
-            timeLeft: calculateTimeLeft(metodoEntrega.Delivery.fechaYHoraPrometida),
-            isExpress: metodoEntrega.Delivery.TicketExpress || false,
-            estadoEntrega: order.estado_entrega || "Sin estado",
-            ventaProcesada: order.venta_procesada || 0, // Indicar si fue procesada
-            enRuta: order.enRuta || false,
-            repartidorAsignado:
-              order.id_repartidor && order.id_repartidor !== "null"
-                ? `Repartidor ${order.id_repartidor}`
-                : "No asignado",
-            puntoSalida: tiendaSalida.nombre_empresa || "Desconocido",
-            puntoSalidaCoordinates:
-              tiendaSalida.lat && tiendaSalida.lng
-                ? { lat: tiendaSalida.lat, lng: tiendaSalida.lng }
-                : null,
-            costoDelivery: parseFloat(costoDelivery.toFixed(2)),
-          };
-        });
-  
-      setOrders(filteredOrders); // Actualizar estado de orders
-      setOriginalOrders(filteredOrders); // Mantener referencia estática
-    } catch (error) {
-      console.error("Error al sincronizar las órdenes desde registro_ventas:", error);
-    }
-  };
-  // const geocodeAddress = async (address) => {
-  //   try {
-  //     const response = await axios.get(
-  //       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-  //         address
-  //       )}&key=${googleMapsApiKey}`
-  //     );
-  //     const results = response.data.results;
-  //     if (results.length > 0) {
-  //       const { lat, lng } = results[0].geometry.location;
-  //       return { lat, lng };
-  //     }
-  //     console.warn(`No se encontraron coordenadas para la dirección: ${address}`);
-  //     return null;
-  //   } catch (error) {
-  //     console.error("Error al geocodificar la dirección:", error);
-  //     return null;
-  //   }
-  // };
-  const calculateHaversineDistance = (coord1, coord2) => {
-    const toRadians = (degrees) => (degrees * Math.PI) / 180;
-    const R = 6371;
-    const dLat = toRadians(coord2.lat - coord1.lat);
-    const dLng = toRadians(coord2.lng - coord1.lng);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRadians(coord1.lat)) *
-        Math.cos(toRadians(coord2.lat)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-  const fetchPrecioDelivery = async () => {
-    try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
-        if (response.data.success) {
-            console.log("Precio por km obtenido:", response.data.precio);
-            return response.data.precio;
-        } else {
-            console.error("Error al obtener precio por km:", response.data.message);
-            return 0;
-        }
-    } catch (error) {
-        console.error("Error en fetchPrecioDelivery:", error);
-        return 0;
+      console.error("Error al obtener repartidores activos:", error);
     }
   };
   const geocodeAddressWithCache = async (address) => {
-    if (coordinateCache[address]) {
-      console.log(`Coordenadas obtenidas del caché para: ${address}`);
-      return coordinateCache[address];
-    }
-  
+    if (coordinateCache[address]) return coordinateCache[address];
+
     try {
       const response = await axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleMapsApiKey}`
@@ -143,461 +133,463 @@ const RouteSetter = () => {
       const results = response.data.results;
       if (results.length > 0) {
         const { lat, lng } = results[0].geometry.location;
-        const coords = { lat, lng };
-        coordinateCache[address] = coords; // Guardar en caché
-        console.log(`Coordenadas obtenidas de la API para: ${address}`, coords);
-        return coords;
+        coordinateCache[address] = { lat, lng };
+        return coordinateCache[address];
       } else {
-        console.warn(`No se encontraron coordenadas para la dirección: ${address}`);
-        coordinateCache[address] = null; // Guardar como null para evitar solicitudes futuras
+        coordinateCache[address] = null;
         return null;
       }
     } catch (error) {
-      console.error("Error al geocodificar la dirección:", error);
-      coordinateCache[address] = null; // Guardar como null para evitar solicitudes futuras
+      console.error("Error al geocodificar:", error);
+      coordinateCache[address] = null;
       return null;
     }
   };
-  const generateRoute = async () => {
-    const precioPorKm = await fetchPrecioDelivery(); // Obtener el precio por km
-    console.log("Precio por km:", precioPorKm);
-
-    const pendingOrders = orders.filter(
-        (order) => order.estadoEntrega === "Pendiente"
-    );
-
-    const groupedByPoint = {};
-    pendingOrders.forEach((order) => {
-        console.log("Procesando pedido para agrupación:", order);
-        const puntoSalida = order.puntoSalida || "Default";
-        if (!groupedByPoint[puntoSalida]) groupedByPoint[puntoSalida] = [];
-        groupedByPoint[puntoSalida].push(order);
-    });
-
-    const rutas = [];
-    for (const puntoSalida in groupedByPoint) {
-        const pedidos = groupedByPoint[puntoSalida];
-
-        const puntoSalidaCoordinates = pedidos[0]?.puntoSalidaCoordinates;
-        if (!puntoSalidaCoordinates) {
-            console.warn(`Punto de salida no definido para ${puntoSalida}.`);
-            continue;
-        }
-
-        pedidos.sort((a, b) => {
-            if (a.isExpress !== b.isExpress) return a.isExpress ? -1 : 1;
-            return moment(a.fechaYHoraPrometida).diff(moment(b.fechaYHoraPrometida));
-        });
-
-        let currentRoute = [];
-        let currentRoutes = [];
-
-        for (let i = 0; i < pedidos.length; i++) {
-            const pedido = pedidos[i];
-
-            if (currentRoute.length === 0) {
-                currentRoute.push(pedido);
-            } else {
-                const lastOrder = currentRoute[currentRoute.length - 1];
-                const distanceToLast = calculateHaversineDistance(
-                    lastOrder.puntoSalidaCoordinates,
-                    pedido.puntoSalidaCoordinates
-                );
-
-                if (distanceToLast <= 3 && currentRoute.length < 3) {
-                    currentRoute.push(pedido);
-                } else {
-                    if (currentRoute.length > 1) currentRoutes.push([...currentRoute]);
-                    currentRoute = [pedido];
-                }
-            }
-        }
-
-        if (currentRoute.length > 1) {
-            currentRoutes.push([...currentRoute]);
-        }
-
-        // Procesar cada ruta generada
-        for (const ruta of currentRoutes) {
-            const enrichedAddresses = await Promise.all(
-                ruta.map(async (pedido) => {
-                    const coordinates = await geocodeAddressWithCache(pedido.address);
-                    return {
-                        address: pedido.address,
-                        coordinates,
-                    };
-                })
-            );
-
-            const costoTotalDelivery = ruta.reduce((total, pedido) => {
-                return total + (pedido.costoDelivery || 0);
-            }, 0);
-
-            const tiemposEstimados = ruta.map((pedido) => {
-                const timeLeft = pedido.timeLeft;
-                if (timeLeft && timeLeft !== "Tiempo agotado") {
-                    const match = timeLeft.match(/(\d+)h\s*(\d+)m\s*(\d+)s?/);
-                    if (match) {
-                        const [_, hours, minutes, seconds] = match.map(Number);
-                        return hours * 3600 + minutes * 60 + seconds; // Convertir a segundos
-                    }
-                }
-                return 0; // Usar 0 si no hay tiempo válido
-            });
-
-            const tiempoEstimadoEnSegundos =
-                tiemposEstimados.length > 0
-                    ? tiemposEstimados.reduce((total, tiempo) => total + tiempo, 0) / tiemposEstimados.length
-                    : 0;
-
-            const horas = Math.floor(tiempoEstimadoEnSegundos / 3600);
-            const minutos = Math.floor((tiempoEstimadoEnSegundos % 3600) / 60);
-            const segundos = Math.round(tiempoEstimadoEnSegundos % 60);
-
-            const tiempoEstimadoFormateado =
-                tiempoEstimadoEnSegundos === 0
-                    ? "Tiempo Agotado"
-                    : `${horas}h ${minutos}m ${segundos}s`;
-
-            console.log("Tiempo estimado calculado:", tiempoEstimadoFormateado);
-
-            const distanciaEnKm = parseFloat((costoTotalDelivery / precioPorKm).toFixed(2));
-
-            const rutaFinal = {
-                idRuta: `R${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-                pedidos: ruta.map((pedido) => pedido.id_order),
-                direcciones: enrichedAddresses,
-                costoTotalDelivery: parseFloat(costoTotalDelivery.toFixed(2)),
-                express: ruta.some((pedido) => pedido.isExpress),
-                numeroDeParadas: ruta.length,
-                repartidorAsignado: "No asignado",
-                estado: "Pendiente",
-                tiempoEstimado: tiempoEstimadoFormateado,
-                distanciaEnKm: distanciaEnKm,
-                tiendaSalida: {
-                    nombre_empresa: puntoSalida,
-                    coordenadas: puntoSalidaCoordinates,
-                },
-            };
-
-            rutas.push(rutaFinal);
-        }
-    }
-
-    console.log("Rutas generadas:", rutas);
-    return rutas;
-  };
-  const formalizeRoute = (route) => {
-    setGeneratedRoutes((prevRoutes) =>
-      prevRoutes.map((r) =>
-        r.idRuta === route.idRuta ? { ...r, estado: "Asignado" } : r
-      )
-    );
-  };
-  const handleGenerateRoute = async () => {
-    console.log("Iniciando generación de rutas...");
-
-    const rutas = await generateRoute();
-    console.log("Rutas generadas:", rutas);
-
-    if (!Array.isArray(rutas) || rutas.length === 0) {
-        console.warn("No se generaron rutas válidas.");
-        return;
-    }
-
-    const nuevasRutas = rutas.map((ruta) => ({
-        ...ruta,
-        idRuta: ruta.idRuta,
-    }));
-
-    console.log("Nuevas rutas procesadas:", nuevasRutas);
-
-    setGeneratedRoutes((prevRoutes) => {
-        const updatedRoutes = [...prevRoutes, ...nuevasRutas];
-        console.log("Estado actualizado de generatedRoutes:", updatedRoutes);
-        return updatedRoutes;
-    });
-
-    const pedidosUsados = nuevasRutas.flatMap((ruta) =>
-        ruta.pedidos.map((pedido) => ({ pedidoId: pedido, idRuta: ruta.idRuta }))
-    );
-
-    setOrders((prevOrders) => {
-        const updatedOrders = prevOrders.map((order) => {
-            const rutaAsignada = pedidosUsados.find((p) => p.pedidoId === order.id_order);
-            return rutaAsignada
-                ? { ...order, enRuta: rutaAsignada.idRuta }
-                : order;
-        });
-        console.log("Estado actualizado de orders:", updatedOrders);
-        return updatedOrders;
-    });
-
-    try {
-        const payload = pedidosUsados.map((p) => ({
-            id_order: p.pedidoId,
-            enRuta: p.idRuta,
-        }));
-
-        await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas`, { orders: payload });
-        console.log("Actualización exitosa en la base de datos.");
-    } catch (error) {
-        console.error("Error al actualizar el estado enRuta en la base de datos:", error);
-    }
-
-    // NUEVA SECCIÓN: Enviar las rutas a la base de datos
-    try {
-        for (const ruta of nuevasRutas) {
-            const rutaPayload = {
-                id_ruta: ruta.idRuta,
-                costo_total: ruta.costoTotalDelivery,
-                distancia_total: ruta.distanciaEnKm,
-                tiempo_estimado: ruta.tiempoEstimado,
-                numero_paradas: ruta.numeroDeParadas,
-                id_pedidos: JSON.stringify(ruta.pedidos),
-                direcciones: JSON.stringify(ruta.direcciones),
-                express: ruta.express,
-                tienda_salida: JSON.stringify(ruta.tiendaSalida),
-                estado: ruta.estado,
-            };
-
-            await axios.post(`${process.env.REACT_APP_API_URL}/rutas`, rutaPayload);
-            console.log(`Ruta ${ruta.idRuta} almacenada en la base de datos.`);
-        }
-    } catch (error) {
-        console.error("Error al almacenar rutas en la base de datos:", error);
-    }
-  };
-  const calculateTimeLeft = (fechaYHoraPrometida) => {
-    if (!fechaYHoraPrometida) {
-      console.error("Fecha y hora prometida no definida");
-      return "Fecha inválida";
-    }
-
-    const deliveryTime = moment(fechaYHoraPrometida, "YYYY-MM-DD HH:mm", true); // Validación estricta
-    if (!deliveryTime.isValid()) {
-      console.error("Formato de fecha inválido:", fechaYHoraPrometida);
-      return "Formato de fecha inválido";
-    }
-
+  const calculateTimeLeft = (fecha) => {
     const now = moment();
-    const diff = deliveryTime.diff(now, "seconds");
-
-    if (diff <= 0) return "Tiempo agotado";
-
-    const hours = Math.floor(diff / 3600);
-    const minutes = Math.floor((diff % 3600) / 60);
-    const seconds = diff % 60;
-
-    return `${hours}h ${minutes}m ${seconds}s`;
+    const diff = moment(fecha).diff(now, "seconds");
+    if (diff <= 0) return "Agotado";
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    return `${h}h ${m}m ${s}s`;
   };
-  const undoRoute = async (idRuta) => {
-    const routeToUndo = generatedRoutes.find((route) => route.idRuta === idRuta);
+  const handleAsignarRepartidor = (chainId) => {
+    setAsignandoCadena(chainId);
+    setRepartidorSeleccionado(""); 
+  };
+  const confirmarAsignacion = () => {
+    if (!repartidorSeleccionado) return;
+
+    setOrders((prev) =>
+      prev.map((o) => {
+        // Si coincide con la cadena
+        const sameChain = o.geoHash === asignandoCadena;
+        if (sameChain) {
+          return {
+            ...o,
+            repartidor: repartidorSeleccionado,
+            estado_entrega: "Asignado",
+          };
+        }
+        return o;
+      })
+    );
+    setAsignandoCadena(null);
+  };
+  const handlePushToDB = async (chainId) => {
+    const pedidosCadena = orders.filter((o) => o.geoHash === chainId);
+    if (!pedidosCadena.length) return console.warn("⚠️ Ruta no encontrada para push:", chainId);
+    if (pedidosCadena.length > 3) return console.warn(`⚠️ No se puede pushear, +3 pedidos en la cadena: ${chainId}.`);
   
-    if (!routeToUndo) return;
+    let repartidorBase = pedidosCadena.find(p => p.repartidor)?.repartidor || "No asignado";
   
-    const pedidosRestaurados = routeToUndo.pedidos;
-  
-    // Actualizar estado local
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        pedidosRestaurados.includes(order.id_order)
-          ? { ...order, enRuta: null } // Eliminar el ID Reparto
-          : order
+    setOrders((prev) =>
+      prev.map((p) => p.geoHash === chainId
+        ? { ...p, estado_entrega: "Asignado", repartidor: p.repartidor || repartidorBase }
+        : p
       )
     );
   
-    setGeneratedRoutes((prevRoutes) =>
-      prevRoutes.filter((route) => route.idRuta !== idRuta)
-    );
+    const now = new Date();
+    const idRutaUnico = `${chainId}-${now.toTimeString().slice(0, 8).replace(/:/g, "")}`;
+    const geoHash = pedidosCadena[0].geoHash;
+    const color = pedidosCadena[0].color;
+    const tiempoEstimado = "—";
+    const estado = "Sellada";
   
-    // Actualizar estado en la base de datos
+    const costosReales = pedidosCadena.map((p) => {
+      try {
+        const metodo = JSON.parse(p.metodo_entrega || "{}");
+        return metodo.Delivery?.costoReal || 0;
+      } catch (err) {
+        console.warn("Error al parsear metodo_entrega:", err);
+        return 0;
+      }
+    });
+  
+    const direcciones = pedidosCadena.map((p) => {
+      try {
+        const metodo = JSON.parse(p.metodo_entrega || '{}');
+        const delivery = metodo?.Delivery || {};
+        return {
+          address: delivery.address || p.address || "Sin dirección",
+          coordinates: {
+            lat: delivery.latitud,
+            lng: delivery.longitud,
+          }
+        };
+      } catch (e) {
+        return {
+          address: p.address || "Sin dirección",
+          coordinates: null
+        };
+      }
+    });
+  
+    let tiendaSalida = { nombre: "Desconocida" };
     try {
-      await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas`, {
-        orders: pedidosRestaurados.map((id) => ({ id_order: id, enRuta: null })),
+      const metodo = JSON.parse(pedidosCadena[0].metodo_entrega || "{}");
+      tiendaSalida = metodo?.Delivery?.tiendaSalida || tiendaSalida;
+    } catch (e) {
+      console.warn("⚠️ Error parseando metodo_entrega para tiendaSalida:", e);
+    }
+  
+    // ✅ Calcular distancia real secuencial
+    let distanciaTotalReal = 0;
+    try {
+      const puntosRuta = [
+        `${tiendaSalida.lat},${tiendaSalida.lng}`,
+        ...direcciones.map((d) => `${d.coordinates.lat},${d.coordinates.lng}`).slice(0, 3)
+      ];
+  
+      const url = `http://localhost:3001/api/google/distancia-ruta?puntos=${encodeURIComponent(JSON.stringify(puntosRuta))}`;
+      console.log("🌐 URL enviada al backend:", url);
+  
+      const res = await axios.get(url);
+      const totalKm = res.data?.distancia_m / 1000;
+      distanciaTotalReal = parseFloat(totalKm?.toFixed(2)) || 0.01;
+      console.log("✅ Distancia total real (Google):", distanciaTotalReal, "km");
+    } catch (e) {
+      console.warn("❌ Error al calcular distancia real vía API:", e.message);
+    }
+  
+    const payload = {
+      id_ruta: idRutaUnico,
+      repartidor: repartidorBase,
+      id_repartidor: repartidorBase,
+      estado,
+      geoHash,
+      color,
+      tiempo_estimado: tiempoEstimado,
+      costo_total: JSON.stringify(costosReales),
+      distancia_total: distanciaTotalReal,
+      numero_paradas: pedidosCadena.length,
+      id_pedidos: JSON.stringify(pedidosCadena.map((p) => p.id_order)),
+      direcciones: JSON.stringify(direcciones),
+      express: 0,
+      tienda_salida: JSON.stringify(tiendaSalida),
+    };
+  
+    try {
+      // 1. Crear la ruta
+      await axios.post(`${process.env.REACT_APP_API_URL}/rutas`, payload);
+      console.log(`✅ Ruta ${chainId} creada en la DB.`);
+  
+      // 2. Asignar ruta y actualizar pedidos
+      await axios.patch(`${process.env.REACT_APP_API_URL}/registro_ventas/asignar_ruta`, {
+        id_ruta: idRutaUnico,
+        id_repartidor: repartidorBase,
+        id_orders: pedidosCadena.map(p => p.id_order)
       });
-      // console.log("Estado enRuta actualizado en la base de datos.");
-    } catch (error) {
-      console.error("Error al actualizar estado enRuta en la base de datos:", error);
+      console.log("✅ Pedidos actualizados con ID de ruta y repartidor.");
+  
+      setSuccessMessage(`✅ Ruta ${chainId} enviada correctamente a la DB.`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+      setRutasSelladas((prev) => [...prev, chainId]);
+    } catch (err) {
+      console.error("❌ Error en el proceso de push a DB:", err);
     }
   };
+  const determinarEstadoCadena = (c) => {
+    if (rutasSelladas.includes(c.id)) return "Sellada";
+    const asignados = c.pedidos.filter(p => p.estado_entrega === "Asignado").length;
+    const pendientes = c.pedidos.filter(p => p.estado_entrega === "Pendiente").length;
+    const total = c.pedidos.length;
   
+    if (asignados === total && total > 0) return "Activa";
+    if (asignados >= 1 || pendientes >= 1) return "Potencial";
+    return "Potencial"; // fallback para evitar cualquier otro estado
+  };
+  const handleAprobarCadena = (chainId, repartidor) => {
+    if (!repartidor) {
+      console.warn("❌ No se puede aprobar sin repartidor");
+      return;
+    }
   
-  useEffect(() => {
-    setNuevasRutasDisponibles(cantidadRutas > 0 && generatedRoutes.length === 0);
-  }, [cantidadRutas, generatedRoutes]);
-  useEffect(() => {
-    calcularCantidadRutas();
-  }, [orders]);
-  useEffect(() => {
-    fetchRepartidoresActivos(); 
-  }, []);
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/registro_ventas`);
-        const registroVentas = response.data.data || [];
-    
-        // Filtrar solo las órdenes de Delivery pendientes
-        const filteredOrders = registroVentas
-          .filter((order) => {
-            const metodoEntrega = JSON.parse(order.metodo_entrega || "{}");
-            return metodoEntrega.Delivery && order.estado_entrega === "Pendiente";
-          })
-          .map((order) => {
-            const metodoEntrega = JSON.parse(order.metodo_entrega);
-    
-            return {
-              id_order: order.id_order,
-              address: metodoEntrega.Delivery.address || "Sin dirección",
-              fechaYHoraPrometida: metodoEntrega.Delivery.fechaYHoraPrometida,
-              timeLeft: calculateTimeLeft(metodoEntrega.Delivery.fechaYHoraPrometida),
-              isExpress: metodoEntrega.Delivery.TicketExpress || false,
-              estadoEntrega: order.estado_entrega,
-              enRuta: order.enRuta || false,
-              repartidorAsignado: order.id_repartidor && order.id_repartidor !== "null"
-            ? `Repartidor ${order.id_repartidor}`
-            : "No asignado",
-            };
-          });
-    
-        setOrders(filteredOrders); // Actualizar `orders`
-        setOriginalOrders(filteredOrders); // Mantener referencia estática
-        // console.log("Órdenes sincronizadas:", filteredOrders);
-      } catch (error) {
-        console.error("Error al sincronizar las órdenes desde registro_ventas:", error);
-      }
-    };
-
-    fetchOrders();
-  }, []);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => ({
-          ...order,
-          timeLeft: calculateTimeLeft(order.fechaYHoraPrometida),
-        }))
-      );
-    }, 1000);
-  
-    return () => clearInterval(interval); 
-  }, []);
-  useEffect(() => {
-    fetchOrders(); 
-
-    const interval = setInterval(() => {
-      setOrders((prevOrders) =>
-        originalOrders.map((order) => ({
-          ...order,
-          timeLeft: calculateTimeLeft(order.fechaYHoraPrometida), 
-        }))
-      );
-    }, 1000); 
-
-    return () => clearInterval(interval); // Limpiar el intervalo al desmontar
-  }, [originalOrders]); 
+    setOrders((prev) =>
+      prev.map((p) =>
+        p.geoHash === chainId && p.estado_entrega === "Pendiente"
+          ? { ...p, estado_entrega: "Asignado", repartidor }
+          : p
+      )
+    );
+  };
 
 
-return (
-  <div className="route-setter-layout">
-    <h1>Route Setter</h1>
-    {/* Tabla Superior */}
-    <div className="table-section">
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Dirección</th>
-            <th>Tiempo Restante</th>
-            <th>Express</th>
-            <th>En Ruta</th>
-            <th>Estado</th>
-            <th>Repartidor Asignado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order.id_order} className={order.isExpress ? "express-row" : ""}>
-              <td>{order.id_order}</td>
-              <td>{order.address}</td>
-              <td>{order.timeLeft}</td>
-              <td>{order.isExpress ? "⭐" : "No"}</td>
-              <td>{order.enRuta ? order.enRuta : "No"}</td>
-              <td>{order.estadoEntrega}</td>
-              <td>{order.repartidorAsignado}</td>
-              <td>
-                {order.ventaProcesada
-                  ? "Procesado"
-                  : order.estadoEntrega === "Pendiente" && !order.enRuta && (
-                      <button onClick={() => console.log("Asignar pedido", order.id_order)}>
-                        Asignar
-                      </button>
-                    )}
-              </td>
+  const chainsObj = orders.reduce((acc, order) => {
+    if (["Entregado", "En Curso"].includes(order.estado_entrega)) {
+      return acc;
+    }
+    // Usamos geoHash como ID de la cadena
+    const chainId = order.geoHash;
+
+    if (!acc[chainId]) {
+      acc[chainId] = {
+        id: chainId,
+        geoHash: chainId,
+        color: order.color,
+        repartidor: order.repartidor || null,
+        pedidos: [],
+      };
+    }
+
+    acc[chainId].pedidos.push(order);
+
+    // Si la cadena no tiene repartidor, le ponemos el del pedido
+    if (!acc[chainId].repartidor && order.repartidor) {
+      acc[chainId].repartidor = order.repartidor;
+    }
+
+    return acc;
+  }, {});
+  const allChains = Object.values(chainsObj);
+  const filteredOrders = orders.filter((o) => {
+    // Quitamos Entregado y En Curso
+    if (["Entregado", "En Curso"].includes(o.estado_entrega)) return false;
+
+    // Si no hay selectedChain, lo mostramos
+    if (!selectedChain) return true;
+
+    // Si hay selectedChain, mostramos solo si coincide su geoHash
+    return o.geoHash === selectedChain;
+  });
+  const filteredChains = allChains.filter((c) => {
+    if (!selectedChain) return true;
+    return c.id === selectedChain;
+  });
+  const EMOJIS_REPARTIDORES = ["😎", "🤓", "🧐", "🤠", "🤖", "😇", "🔥", "🛵"];
+  const getRandomEmoji = () =>
+    EMOJIS_REPARTIDORES[Math.floor(Math.random() * EMOJIS_REPARTIDORES.length)];
+
+
+  return (
+    <div className="route-setter-layout">
+      {successMessage && (
+        <div className="success-toast">
+          {successMessage}
+        </div>
+      )}
+      <div className="row row1">
+        <div className="title-col">
+          <h1>🔗 DeliveryChain - Automático</h1>
+        </div>
+        <div className="input-col">
+          <label>🧩 Filtrar por GeoHash:</label>
+          <input
+            type="text"
+            value={selectedChain}
+            onChange={(e) => setSelectedChain(e.target.value)}
+            placeholder="Ej: ezd2v"
+          />
+        </div>
+      </div>
+      <div className="row row2">
+        <h2>📦 Pedidos Activos</h2>
+        <p style={{ fontSize: "0.9em", color: "#666" }}>
+          Se muestran todos los pedidos no entregados/en curso.
+          Puedes filtrar por GeoHash si deseas enfocarte en una zona.
+        </p>
+
+        <table className="orders-table">
+          <thead>
+            <tr>
+              <th>ID Pedido</th>
+              <th>Dirección</th>
+              <th>Tiempo</th>
+              <th>GeoHash</th>
+              <th>Zona</th>
+              <th>Estado</th>
+              <th>Repartidor</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {filteredOrders.map((o) => (
+              <tr key={o.id_order}>
+                <td>{o.id_order}</td>
+                <td>{o.address}</td>
+                <td>{o.timeLeft}</td>
+                <td>{o.geoHash}</td>
+                <td>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 16,
+                      height: 16,
+                      borderRadius: "50%",
+                      backgroundColor: o.color || "gray",
+                    }}
+                  />
+                </td>
+                <td>{o.estado_entrega}</td>
+                <td>{o.repartidor || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="row row3">
+        <div className="chains-col">
+          <h2>🔗 Cadenas de Entrega (Auto)</h2>
+          <p style={{ fontSize: "0.9em", color: "#666" }}>
+            Se generan automáticamente por <strong>geoHash</strong>. El operador puede
+            asignar un repartidor y luego presionar <strong>Push</strong> para sellarlas.
+          </p>
 
-    {/* Contenedor Inferior */}
-    <div className="widgets-container">
-      {/* Widget Izquierdo */}
-      <div className="widget">
-  <h3>Crear Ruta</h3>
-  {cantidadRutas > 0 && generatedRoutes.length === 0 ? (
-    <p className="new-route-message">
-      We Found ({cantidadRutas}) New {cantidadRutas === 1 ? "Route" : "Routes"}
-    </p>
-  ) : generatedRoutes.length > 0 ? (
-    <div className="routes-container">
-      <p>
-        Rutas{" "}
-        {generatedRoutes.map((route, index) => (
-          <span key={route.idRuta}>
-            {route.idRuta}
-            {index < generatedRoutes.length - 1 ? " y " : ""}
-          </span>
-        ))}{" "}
-        en proceso.
-      </p>
-    </div>
-  ) : (
-    <p className="no-route-message">No hay Rutas Disponibles</p>
-  )}
-  <button
-    onClick={handleGenerateRoute}
-    disabled={cantidadRutas === 0}
-    className={cantidadRutas > 0 ? "enabled-button" : "disabled-button"}
-  >
-    Generar Nueva Ruta
-  </button>
-</div>
+          <table className="orders-table">
+            <thead>
+              <tr>
+                <th>ID Cadena</th>
+                <th>GeoHash</th>
+                <th>Zona</th>
+                <th>Repartidor</th>
+                <th>Pedidos</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredChains.map((c) => {
+                const estadoCad = determinarEstadoCadena(c);
+                const sinRepartidor = !c.repartidor;
+                return (
+                  <tr key={c.id}>
+                    <td>{c.id}</td>
+                    <td>{c.geoHash}</td>
+                    <td>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: "50%",
+                          backgroundColor: c.color || "gray",
+                        }}
+                      />
+                    </td>
+                    <td>{c.repartidor || "—"}</td>
+                    <td>{c.pedidos.length}</td>
+                    <td>{estadoCad}</td>
+                    <td>
+                    {estadoCad !== "Sellada" ? (
+                      <>
+                        
+                        <button
+                          onClick={() => {
+                            if (estadoCad === "Potencial") {
+                              handleAprobarCadena(c.id, c.repartidor);
+                            } else if (estadoCad === "Activa" && !rutasSelladas.includes(c.id)) {
+                              handlePushToDB(c.id);
+                            }
+                          }}
+                          disabled={estadoCad === "Potencial" && !c.repartidor}
+                        >
+                          {estadoCad === "Potencial" ? "✅ Aprobar" : "📤 Push"}
+                        </button>
+                    
+                        <button
+                          onClick={() => sinRepartidor && handleAsignarRepartidor(c.id)}
+                          disabled={!sinRepartidor}
+               
+                        >
+                          👤 Asignar
+                        </button>
 
+                        {/* Selector desplegable al asignar */}
+                        {asignandoCadena === c.id && (
+                          <div
+                            style={{
+                              marginTop: "5px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "4px",
+                            }}
+                          >
+                            <select
+                              value={repartidorSeleccionado}
+                              onChange={(e) => setRepartidorSeleccionado(e.target.value)}
+                            >
+                              <option value="">Seleccionar</option>
+                              {repartidoresActivos.map((r) => (
+                                <option key={r.id_repartidor} value={r.id_repartidor}>
+                                  {r.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <button onClick={confirmarAsignacion}>✔</button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      "✅ Sellada"
+                    )}
+                  </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Widget Derecho */}
-      <div className="widget">
-        <h3>Repartidores Activos</h3>
-        {repartidoresActivos.length > 0 ? (
-          <ul className="active-delivery-list">
-            {repartidoresActivos.map((repartidor) => (
-              <li key={repartidor.id_repartidor}>
-                🚴 ✅ {repartidor.nombre}
+        {/* 7.4.2 - Lista de Repartidores Activos */}
+        <div className="drivers-col">
+          <h3>🛵 Repartidores Activos</h3>
+          <ul>
+            {repartidoresActivos.map((r) => (
+              <li key={r.id_repartidor}>
+                ✅ {getRandomEmoji()} {r.nombre} ({r.id_repartidor})
               </li>
             ))}
           </ul>
-        ) : (
-          <p>No hay repartidores activos en este momento.</p>
-        )}
+        </div>
+      </div>
+
+      {/* 7.5 - Espacio extra para logs o generatedRoutes */}
+      <div style={{ display: "none" }}>
+        {generatedRoutes.map((route, i) => (
+          <pre key={i}>{JSON.stringify(route)}</pre>
+        ))}
       </div>
     </div>
-  </div>
-);
-  };
+  );
+};
+
+
+function filterByMinTimeLeft(orders, minSeconds) {
+  return orders.filter((o) => {
+    const now = moment();
+    const diff = moment(o.fechaYHoraPrometida).diff(now, "seconds");
+    return diff > minSeconds;
+  });
+}
+function sortChainsByLength(chainsObj) {
+  return Object.values(chainsObj).sort(
+    (a, b) => b.pedidos.length - a.pedidos.length
+  );
+}
+function compactChainInfo(chain) {
+  return chain.pedidos.map((p) => `#${p.id_order}[${p.estado_entrega}]`);
+}
+function generateChainReport(chain) {
+  const items = chain.pedidos.map((p) => {
+    return `Pedido: ${p.id_order}, Estado: ${p.estado_entrega}, Repartidor: ${p.repartidor || 'N/A'}`;
+  }).join("\n");
+  return `Cadena: ${chain.id}\n` +
+         `GeoHash: ${chain.geoHash}\n` +
+         `Num Pedidos: ${chain.pedidos.length}\n` +
+         `Items:\n${items}\n`;
+}
+function logChainReport(chain) {
+  const report = generateChainReport(chain);
+  console.log(report);
+}
+function logAllChains(chainsObj) {
+  Object.values(chainsObj).forEach((chain) => {
+    logChainReport(chain);
+  });
+}
+
 
 export default RouteSetter;
+
+

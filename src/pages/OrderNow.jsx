@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import '../styles/OrderNow.css'; // Asegúrate de que este archivo esté enlazado correctamente
+import '../styles/OrderNow.css'; 
 
 const OrderNow = () => {
   const navigate = useNavigate();

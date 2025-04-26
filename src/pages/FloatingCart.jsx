@@ -1,28 +1,36 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { _PizzaContext } from './_PizzaContext';
 import axios from 'axios';
-import QRCode from 'qrcode.react';
 import moment from 'moment';
+import MiniTvCart from './MiniTvCart';
 import '../styles/FloatingCart.css';
 
-const generarOrderId = () => {
-  return 'ORD' + Math.floor(100000 + Math.random() * 9000);
-};
 
 const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) => {
   const { sessionData, activePartners } = useContext(_PizzaContext);
   const [incentivos, setIncentivos] = useState([]);
-  const [qrData, setQrData] = useState('');
   const [historial, setHistorial] = useState([]);
-  const [orderId, setOrderId] = useState(generarOrderId());
   const [isReadyToPay, setIsReadyToPay] = useState(false);
   const [ingredientExtraPrices, setIngredientExtraPrices] = useState([]);
   const [selectedSubcategoria, setSelectedSubcategoria] = useState(null);
   const [showComplementModal, setShowComplementModal] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [complementoQuantities, setComplementoQuantities] = useState({});
   const [complementoEnEdicion, setComplementoEnEdicion] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [dragging, setDragging] = useState(false);
+  const [bubblePos, setBubblePos] = useState(() => {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+  
+    return isMobile
+      ? { x: width - 75, y: height - 210 } // Móvil
+      : { x: width - 130, y: height - 180 }; // Escritorio
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const isScheduledOrder = compra?.is_scheduled_order ? 1 : 0;
+  const [compraFinalizada, setCompraFinalizada] = useState(false);
+
 
   useEffect(() => {
     const fetchIncentivos = async () => {
@@ -48,9 +56,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     fetchIngredientExtraPrices();
   }, []);
   useEffect(() => {
-    setCompra((prevCompra) => ({ ...prevCompra, id_order: orderId }));
-  }, [orderId, setCompra]);
-  useEffect(() => {
     if (compra?.venta?.length > 0) {
       guardarEnHistorial('venta', { ventaId: compra?.venta[compra?.venta?.length - 1].id });
     }
@@ -71,9 +76,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     }
   }, [compra.Entrega]); 
   useEffect(() => {
-    setQrData(getQRCodeData());
-  }, [compra?.Entrega]);
-  useEffect(() => {
     console.log("🔄 Detectando cambios en compra, recalculando totales...");
     setCompra((prevCompra) => {
         const nuevaCompra = calcularTotales(prevCompra, incentivos);
@@ -81,25 +83,76 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         return nuevaCompra;
     });
   }, [compra]);
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+  
+      setBubblePos(
+        width <= 768
+          ? { x: width - 75, y: height - 210 }
+          : { x: width - 130, y: height - 180 }
+      );
+    };
+  
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  useEffect(() => {
+    console.log("🔄 Detectando cambios en compra, recalculando totales...");
+    setCompra((prevCompra) => {
+      const nuevaCompra = calcularTotales(prevCompra, incentivos);
+      
+      // 👇 Aquí mostramos el breakdown si existe
+      if (nuevaCompra.deliveryBreakdown) {
+        console.log("🧾 Desglose detallado del Delivery (deliveryBreakdown):");
+        Object.entries(nuevaCompra.deliveryBreakdown).forEach(([key, value]) => {
+          console.log(`   • ${key}: ${typeof value === 'number' ? value.toFixed(2) : value}`);
+        });
+      }
+  
+      console.log("🟢 Estado actualizado de compra:", nuevaCompra);
+      return nuevaCompra;
+    });
+  }, [compra]);
 
-
+  const itemCount =
+  (compra?.venta?.length || 0) + (compra?.complementos?.length || 0);
 
   function getSubtotalYDescuentos(compra) {
-    // Pizzas + ingredientes extra
-    const totalPizzas = compra.venta.reduce((acc, pizza) => {
+    const totalPizzas = compra.venta.reduce((acc, pizza, idx) => {
+      console.log(
+        `[FloatingCart:getSubtotalYDescuentos] Pizza #${idx}`,
+        ` uuid=${pizza.uuid || '(no uuid)'}`,
+        ` id=${pizza.id} (typeOf: ${typeof pizza.id})`,
+        ` total=${pizza.total}`,
+        pizza.halfAndHalf ? 
+           ` halfAndHalf=(${pizza.halfAndHalf?.izquierda?.precio} + ${pizza.halfAndHalf?.derecha?.precio})` : ''
+      );
+  
+      const isPersonalizada = [101, 102, 103].includes(
+        typeof pizza.id === 'string' ? parseInt(pizza.id) : pizza.id
+      );
+  
+      if (isPersonalizada) {
+        return acc + ((pizza.total || 0) * (pizza.cantidad || 1));
+      }
+  
+      // Para pizzas tradicionales, sumar base + ingredientes extra
       const precioBase = pizza.total || 0;
       const precioExtras = pizza.extraIngredients
         ? pizza.extraIngredients.reduce((sum, ing) => sum + (ing.precio || 0), 0)
         : 0;
+  
       return acc + precioBase + precioExtras;
     }, 0);
-
+  
     // Complementos
     const totalComp = (compra.complementos ?? []).reduce((acc, comp) => acc + (comp.total || 0), 0);
-
+  
     // Subtotal sin descuentos
     let subtotalProductos = totalPizzas + totalComp;
-
+  
     // Descuentos
     let totalDescuentos = 0;
     if (compra?.cupones?.length > 0 && subtotalProductos > 0) {
@@ -109,10 +162,10 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         totalDescuentos += descuentoFinal;
       });
     }
-
+  
     let subtotalConDesc = subtotalProductos - totalDescuentos;
     if (subtotalConDesc < 0) subtotalConDesc = 0;
-
+  
     return {
       subtotalProductos,
       totalDescuentos,
@@ -172,30 +225,8 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   function guardarEnHistorial(tipo, contenido) {
     setHistorial((prevHistorial) => [
       ...prevHistorial,
-      { orderId, step: prevHistorial.length + 1, tipo, contenido },
+      { orderId: compra.id_order, step: prevHistorial.length + 1, tipo, contenido }
     ]);
-  }
-  function getQRCodeData() {
-    if (compra?.Entrega?.PickUp) {
-      const puntoRecogida = compra?.Entrega?.PickUp?.puntoRecogida;
-      const puntoRecogidaInfo = puntoRecogida
-        ? `\nPunto de Recogida: ${puntoRecogida.ciudad}, ${puntoRecogida.direccion}`
-        : '';
-      return `PickUp
-      Cliente: ${compra.cliente?.name}
-      Teléfono: ${compra.cliente?.phone}
-      Fecha y Hora: ${compra?.Entrega?.PickUp?.fechaYHoraPrometida}
-      TicketExpress: ${compra?.Entrega?.PickUp?.TicketExpress ? 'Sí' : 'No'}
-      ${puntoRecogidaInfo}`;
-    } else if (compra?.Entrega?.Delivery) {
-      return `Delivery
-      Cliente: ${compra.cliente?.name}
-      Teléfono: ${compra.cliente?.phone}
-      Dirección: ${compra?.Entrega?.Delivery?.address}
-      Fecha y Hora: ${compra?.Entrega?.Delivery?.fechaYHoraPrometida}
-      TicketExpress: ${compra?.Entrega?.Delivery?.TicketExpress ? 'Sí' : 'No'}`;
-    }
-    return 'No hay información de entrega disponible';
   }
   function shouldApplyFreePass(montoBase, incentivos) {
     const dfpIncentivo = Array.isArray(incentivos) ? incentivos.find((i) => i.incentivo === 'Delivery Free Pass') : null;
@@ -212,75 +243,77 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
   const actualizarEstadoCompra = (updates) => {
     setCompra((prevCompra) => calcularTotales({ ...prevCompra, ...updates }));
   };
+  const n = (v) => {
+    const num = Number(v);
+    return isNaN(num) ? 0 : num;
+  };
   const calcularTotales = (tempCompra, incentivos = []) => {
     console.log("🔵 Calculando totales para la compra:", tempCompra);
 
-    // 1️⃣ Extraer subtotales y descuentos
-    const { subtotalProductos, totalDescuentos, subtotalConDesc } = getSubtotalYDescuentos(tempCompra);
-    console.log("📊 Subtotal de productos:", subtotalProductos);
-    console.log("📉 Descuentos aplicados:", totalDescuentos);
-    console.log("✅ Subtotal después de descuentos:", subtotalConDesc);
+    /* 1️⃣ Subtotales y descuentos */
+    const {
+      subtotalProductos,
+      totalDescuentos,
+      subtotalConDesc,
+    } = getSubtotalYDescuentos(tempCompra);
 
-    // 2️⃣ Obtener costos adicionales (Delivery, Cupones, etc.)
-    tempCompra.Entrega = tempCompra.Entrega || {};
-    tempCompra.Entrega.Delivery = tempCompra.Entrega.Delivery || {};
+    const subProdNum   = n(subtotalProductos);
+    const descNum      = n(totalDescuentos);
+    const subConDesc   = n(subtotalConDesc);
 
-    const costoReal = tempCompra.Entrega.Delivery.costoReal ?? tempCompra.Entrega.Delivery.costo ?? 0;
+    /* 2️⃣ Costos adicionales (preparamos estructura por si falta) */
+    tempCompra.Entrega           = tempCompra.Entrega           || {};
+    tempCompra.Entrega.Delivery  = tempCompra.Entrega.Delivery  || {};
 
-    // 3️⃣ Evaluar si el usuario desbloquea el Delivery Free Pass
-    const dfpIncentivo = incentivos.find(i => i.incentivo === "Delivery Free Pass");
-    let freePassApplied = tempCompra.Entrega.Delivery.freePassApplied || false;
+    const costoReal = n(
+      tempCompra.Entrega.Delivery.costoReal ??
+      tempCompra.Entrega.Delivery.costo
+    );
+
+    /* 3️⃣ Delivery Free Pass */
+    const dfpIncentivo   = incentivos.find(i => i.incentivo === "Delivery Free Pass");
+    let   freePassApplied = !!tempCompra.Entrega.Delivery.freePassApplied;
 
     if (dfpIncentivo) {
-        const cumpleRequisito = subtotalConDesc >= dfpIncentivo.TO_minimo;
-        freePassApplied = cumpleRequisito;
+      freePassApplied = subConDesc >= n(dfpIncentivo.TO_minimo);
     }
 
-    // 4️⃣ Aplicar el Free Pass si es válido
+    /* 4️⃣ Coste de delivery actualizado */
     const totalDelivery = freePassApplied ? 0 : costoReal;
-    tempCompra.Entrega.Delivery.freePassApplied = freePassApplied;
-    tempCompra.Entrega.Delivery.costo = totalDelivery;
+    tempCompra.Entrega.Delivery = {
+      ...tempCompra.Entrega.Delivery,
+      freePassApplied,
+      costo: totalDelivery,
+    };
 
-    // 5️⃣ Obtener nuevamente los costos adicionales con el nuevo estado de Delivery
-    const costos = getCostosAdicionales(tempCompra);
-    console.log("💰 Costos adicionales recibidos desde el estado de compra:", costos);
+    /* 5️⃣ Costos adicionales */
+    const costos            = getCostosAdicionales(tempCompra);
+    const totalCostosNum    = n(costos.totalCostos);
+    console.log("💰 Costos adicionales:", costos);
 
-    // 6️⃣ Aplicar IVA (10% sobre subtotal con descuento)
-    const iva = subtotalConDesc * 0.10;
-    console.log("💡 IVA Calculado (10% sobre subtotal con descuento):", iva);
+    /* 6️⃣ IVA (10 %) */
+    const ivaNum = +(subConDesc * 0.10).toFixed(2); // +() fuerza a número
+    console.log("💡 IVA calculado:", ivaNum);
 
-    // 7️⃣ Calcular el total final con IVA
-    const totalConIVA = subtotalConDesc + iva + costos.totalCostos;
+    /* 7️⃣ Total final */
+    const totalConIVA = subConDesc + ivaNum + totalCostosNum;
     console.log("💰 Total final con IVA:", totalConIVA);
 
-    // 🔎 Log final para verificar todos los valores
-    console.log("📦 Resultado final de la compra en calcularTotales:", {
-        subtotalProductos,
-        totalDescuentos,
-        subtotalConDesc,
-        totalBase: subtotalConDesc + costos.totalCostos,
-        iva,
-        totalConIVA,
-        freePassApplied,  // 🔥 Estado actualizado del Free Pass
-        totalDelivery
-    });
-
-    // 8️⃣ Devolver el objeto actualizado
+    /* 8️⃣ Devolver el objeto actualizado (todo en número) */
     return {
-        ...tempCompra,
-        total_productos: parseFloat(subtotalProductos.toFixed(2)),
-        total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
-        iva: parseFloat(iva.toFixed(2)),
-        total_a_pagar_con_descuentos: parseFloat(totalConIVA.toFixed(2)),
-        totalDelivery,
-        totalTicketExpress: costos.totalTicketExpress,
-        totalCupones: costos.totalCupones,
-        freePassApplied
+      ...tempCompra,
+      total_productos                : +subProdNum.toFixed(2),
+      total_descuentos               : +descNum.toFixed(2),
+      iva                            : ivaNum,
+      total_a_pagar_con_descuentos   : +totalConIVA.toFixed(2),
+      totalDelivery,
+      totalTicketExpress             : +n(costos.totalTicketExpress).toFixed(2),
+      totalCupones                   : +n(costos.totalCupones).toFixed(2),
+      freePassApplied,
     };
   };
   const handleUndo = () => {
-    const qrActual = qrData;
-    // Borrar todo y restaurar QR
+
     actualizarEstadoCompra({
       venta: [],
       complementos: [],
@@ -292,29 +325,27 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       costos_adicionales: 0,
     });
     setHistorial([]);
-    setQrData(qrActual);
   };
   const handlePagar = async () => {
     try {
       const fecha = moment().format('YYYY-MM-DD');
       const hora = moment().format('HH:mm:ss');
       const metodo_pago = 'Tarjeta';
-
+  
       if (!compra?.venta?.length) throw new Error('No hay productos en la venta');
-
+  
       const totalDescuentosNum = parseFloat(compra.total_descuentos) || 0;
       const totalSinDescuentosNum = parseFloat(compra.total_productos) || 0;
-
+  
       const incentivosAlcanzados = incentivos.filter(
         (incentivo) => compra.total_a_pagar_con_descuentos >= incentivo.TO_minimo
       );
-
-      // Agregar email del cliente
+  
       const email = sessionData.email;
       const estadoEntrega = 'Pendiente';
-
+  
       const compraData = {
-        id_order: orderId,
+        id_order: compra.id_order,
         fecha,
         hora,
         id_cliente: sessionData.id_cliente,
@@ -325,7 +356,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         total_descuentos: totalDescuentosNum,
         is_scheduled_order: isScheduledOrder,
         productos: compra.venta.map((item) => {
-          // Manejo especial para pizzas mitad y mitad
           if (item.id === 102 && item.halfAndHalf) {
             return {
               id_pizza: item.id,
@@ -336,7 +366,6 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
               extraIngredients: item.extraIngredients || [],
             };
           }
-          // Caso general
           return {
             id_pizza: item.id || item.id_producto,
             cantidad: item.cantidad,
@@ -345,7 +374,7 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
             extraIngredients: item.extraIngredients || [],
           };
         }),
-        partners: compra.complementos, 
+        partners: compra.complementos,
         cupones: compra.cupones,
         incentivos: incentivosAlcanzados.map((inc) => ({ id: inc.id })),
         metodo_entrega: JSON.stringify({
@@ -357,19 +386,19 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
               : compra.Entrega?.Delivery?.costoReal,
             costoReal: compra.Entrega?.Delivery?.costoReal,
             freePassApplied: compra.Entrega?.Delivery?.freePassApplied || false,
-            latitud: compra.Entrega?.Delivery?.latitud, // 🔹 Agregamos coordenadas
-            longitud: compra.Entrega?.Delivery?.longitud // 🔹 Agregamos coordenadas
+            latitud: compra.Entrega?.Delivery?.latitud,
+            longitud: compra.Entrega?.Delivery?.longitud,
           },
         }),
         observaciones: compra.observaciones,
         venta_procesada: 0,
         estado_entrega: estadoEntrega,
       };
-
+  
       console.log('Datos de la compra:', compraData);
-
+  
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/registro_ventas`, compraData);
-
+  
       if (response.data.success) {
         // Actualiza pedidos en cola
         if (compra.Entrega?.Delivery) {
@@ -383,8 +412,11 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
             await axios.post(`${process.env.REACT_APP_API_URL}/fill_pedidos_encola`, {});
           }
         }
-
+  
         alert('Pago realizado y venta registrada con éxito');
+        handleUndo();
+        setIsReadyToPay(false);
+        setCompraFinalizada(true);
       } else {
         throw new Error('Error al registrar la venta en el servidor');
       }
@@ -397,13 +429,16 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     if (!isReadyToPay) {
       handleNextStep();
       setIsReadyToPay(true);
+      if (isMobile) {
+        setIsCartOpen(false); 
+      }
     } else {
       alert('Procesando pago...');
       handlePagar();
     }
   };
   const handleRemoveProduct = (productoAEliminar) => {
-    const nuevaVenta = compra.venta.filter((p) => p.id !== productoAEliminar.id);
+    const nuevaVenta = compra.venta.filter((p) => p.uuid !== productoAEliminar.uuid);
     actualizarEstadoCompra({ venta: nuevaVenta });
   };
   const handleRemoveExtraIngredient = (productoId, ingredientIDI) => {
@@ -412,31 +447,36 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
         const nuevosIngredientes = producto.extraIngredients.filter(
           (ing) => ing.IDI !== ingredientIDI
         );
-
-        // Recalcular total del producto
-        const ingredientePrecio = (ingID) => {
-          return (
-            ingredientExtraPrices.find(
-              (price) => price.IDI === ingID && price.size === producto.size
-            )?.precio || 0
-          );
-        };
+  
+        // Recalcular total base
+        let base = 0;
+  
+        if (producto.halfAndHalf) {
+          base =
+            (parseFloat(producto.halfAndHalf.izquierda.precio || 0) +
+              parseFloat(producto.halfAndHalf.derecha.precio || 0));
+        } else {
+          base = parseFloat(producto.basePrice || 0);
+        }
+  
+        // Calcular suma de los ingredientes restantes
         const sumExtras = nuevosIngredientes.reduce(
-          (acc, ing) => acc + ingredientePrecio(ing.IDI) * producto.cantidad,
+          (acc, ing) => acc + parseFloat(ing.precio || 0),
           0
         );
-
-        const base = producto.price * producto.cantidad; // O la lógica que uses
-        const nuevoTotal = base + sumExtras;
-
+  
+        const nuevoTotal = parseFloat((base + sumExtras).toFixed(2));
+  
         return {
           ...producto,
           extraIngredients: nuevosIngredientes,
-          total: parseFloat(nuevoTotal.toFixed(2)),
+          total: nuevoTotal,
         };
       }
+  
       return producto;
     });
+  
     actualizarEstadoCompra({ venta: nuevaVenta });
   };
   const handleRemoveComplemento = (complementoAEliminar) => {
@@ -530,9 +570,87 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
       )
     );
   };
-
+  const handlePointerDown = (e) => {
+    e.preventDefault(); 
+    // Guardamos la posición inicial del pointer 
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    
+    // Diferencia entre el click y la posición del bubble
+    offsetRef.current = {
+      x: e.clientX - bubblePos.x,
+      y: e.clientY - bubblePos.y,
+    };
+  
+    // Activamos los listeners globales al mover y soltar
+    document.addEventListener('pointermove', handlePointerMove);
+    document.addEventListener('pointerup', handlePointerUp);
+  };
+  const handlePointerMove = (e) => {
+    const dx = e.clientX - startPosRef.current.x;
+    const dy = e.clientY - startPosRef.current.y;
+  
+    // Si el dedo/mouse se movió suficiente, marcamos como arrastre
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      setDragging(true);
+      setBubblePos({
+        x: e.clientX - offsetRef.current.x,
+        y: e.clientY - offsetRef.current.y,
+      });
+    }
+  };
+  const handlePointerUp = (e) => {
+    // Quitamos los listeners para no filtrar movimientos futuros
+    document.removeEventListener('pointermove', handlePointerMove);
+    document.removeEventListener('pointerup', handlePointerUp);
+  
+    // Chequear si se movió poco, entonces fue un “tap”
+    const dx = e.clientX - startPosRef.current.x;
+    const dy = e.clientY - startPosRef.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+  
+    // Menos de 5px => un “tap” => abrir modal
+    if (distance < 5) {
+      setIsCartOpen(true);
+    }
+  
+    setDragging(false);
+  };
+  const getGroupedItems = (venta) => {
+    const grupos = [];
+  
+    venta.forEach((item) => {
+      const clave = JSON.stringify({
+        id: item.id,
+        nombre: item.nombre,
+        size: item.size,
+        price: item.basePrice || item.total || item.price,
+      });
+  
+      const grupoExistente = grupos.find((g) => g.clave === clave);
+  
+      if (grupoExistente) {
+        grupoExistente.items.push(item);
+        grupoExistente.cantidadTotal += item.cantidad || 1;
+      } else {
+        grupos.push({
+          clave,
+          nombre: item.nombre,
+          size: item.size,
+          price: item.basePrice || item.total || item.price,
+          items: [item],
+          cantidadTotal: item.cantidad || 1,
+        });
+      }
+    });
+  
+    return grupos;
+  };
+  
+  
   console.log('FloatingCart - Estado compra actualizado:', compra);
   const { totalDelivery, totalTicketExpress, totalCupones } = getCostosAdicionales(compra);
+  console.log("📦 Desglose detallado del Delivery (deliveryBreakdown):", compra.deliveryBreakdown);
+
   const hayCostosAdicionales = totalDelivery > 0 || totalTicketExpress > 0 || totalCupones > 0;
   const totalAPagar = compra.total_a_pagar_con_descuentos;
   const filteredComplementos = activePartners
@@ -542,312 +660,448 @@ const FloatingCart = ({ compra, setCompra, handleNextStep, handleEditProduct }) 
     const totalTicketExpressFixed = parseFloat((compra.totalTicketExpress || 0).toFixed(2));
     const totalDeliveryFixed = parseFloat((compra.totalDelivery || 0).toFixed(2));
     const totalCuponesFixed = parseFloat((compra.totalCupones || 0).toFixed(2));
+    const startPosRef = useRef({ x: 0, y: 0 });
+    const offsetRef = useRef({ x: 0, y: 0 });
+    const metodoEntregaSeleccionado =
+  (compra?.Entrega?.Delivery && compra?.Entrega?.Delivery?.tiendaSalida) ||
+  (compra?.Entrega?.PickUp && compra?.Entrega?.PickUp?.puntoRecogida);
+    
+    return (
+      <>
+        {isMobile && isCartOpen && (
+    <div
+        className="modal-overlay-mobile"
+        onClick={() => setIsCartOpen(false)}
+      />
+         )}
+        {!isCartOpen && (
+           <div
+           className={`mini-cart-bubble ${dragging ? 'dragging' : ''}`}
+           onPointerDown={handlePointerDown}
+           style={{
+            position: 'fixed',
+            left: bubblePos.x,
+            top: bubblePos.y,
+            cursor: dragging ? 'grabbing' : 'grab',
+            zIndex: 9999
+            }}
+           title="Open Cart"
+           >
+           <span className="cart-icon">🍕</span>
+           {itemCount > 0 && <span className="item-count">{itemCount}</span>}
+           </div>
+        )}
+        {isCartOpen && (
+          <div className={isMobile ? 'mobile-cart-modal' : 'floating-cart'}>
+            <button
+              className="close-button-FC"
+              onClick={() => setIsCartOpen(false)}
+            >
+              🔻hide
+            </button>
 
-  return (
-    <div className="floating-cart">
-      <div className="cart-header">
-        <h3>shopping cart</h3>
-        <button className="undo-button" onClick={handleUndo}>
-          undo
-        </button>
-      </div>
+            <div className="cart-header">
+              <h3>shopping cart</h3>
+              <button className="undo-button" onClick={handleUndo}>
+                undo
+              </button>
+            </div>
 
-      {(compra?.venta?.length > 0 || compra?.complementos?.length > 0) && (
-        <div className="detalles-compra">
-          <p>
-            <strong>Order Details:</strong>
-          </p>
-        </div>
-      )}
+            <div className="cart-body">
+              {(compra?.venta?.length > 0 || compra?.complementos?.length > 0) && (
+                <div className="detalles-compra">
+                  <p>
+                    <strong>Order Details:</strong>
+                  </p>
+                </div>
+              )}
 
-      <div className="detalles_pedidos">
-        {compra?.venta?.length === 0 && compra?.complementos?.length === 0 ? (
-          <p className="carrito-vacio bounce-effect">🍕¡Add some deliciousness!🍕</p>
-        ) : (
-          <ul>
-            {[...(compra.venta ?? []), ...(compra.complementos ?? [])].map((item, index) => {
-              const esComplemento = !!item.subcategoria;
-              const precioPrincipal = esComplemento
-                ? item.precio
-                : item.halfAndHalf
-                ? (item.halfAndHalf.izquierda.precio + item.halfAndHalf.derecha.precio).toFixed(2)
-                : item.basePrice || item.precioBase || item.price;
+                <div className="detalles_pedidos">
+                  {compra?.venta?.length === 0 && compra?.complementos?.length === 0 ? (
+                    <p className="carrito-vacio bounce-effect">
+                      🍕¡Add some deliciousness!🍕
+                    </p>
+                  ) : (
+                    <ul>
+                      {/* Agrupamos las pizzas */}
+                      {getGroupedItems(compra.venta ?? []).map((grupo, index) => {
+                        const item = grupo.items[0];
+                        const precioPrincipal = item.halfAndHalf
+                          ? (
+                              (parseFloat(item.halfAndHalf?.izquierda?.precio) || 0) +
+                              (parseFloat(item.halfAndHalf?.derecha?.precio) || 0)
+                            ).toFixed(2)
+                          : item.basePrice || item.precioBase || item.price;
 
-              return (
-                <li
-                  key={index}
-                  className={`pedido-item ${esComplemento ? 'complemento' : ''}`}
-                  style={{ listStyleType: 'none' }}
-                >
-                  <div className="detalles_pedidos_general">
-                    <span>
-                      {item.cantidad} x {esComplemento ? item.producto : item.nombre}
-                      {item.size ? ` (${item.size})` : ''} - {precioPrincipal}€
-                    </span>
-
-                    <button
-                      className="edit-button"
-                      onClick={() =>
-                        esComplemento ? handleEditComplemento(item) : handleEditProduct(item)
-                      }
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="delete-button"
-                      onClick={() =>
-                        esComplemento ? handleRemoveComplemento(item) : handleRemoveProduct(item)
-                      }
-                    >
-                      ❌
-                    </button>
-
-                    {item.extraIngredients?.length > 0 && (
-                      <ul style={{ listStyleType: 'none' }}>
-                        {item.extraIngredients.map((extra) => (
+                        return (
                           <li
-                            key={extra.nombre}
-                            className="extra-ingredient-item"
-                            style={{ margin: 0, padding: 0 }}
+                            key={`grupo-${index}`}
+                            className="pedido-item"
+                            style={{ listStyleType: 'none' }}
                           >
-                            +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
-                            <button
-                              className="extra-ingredient-button"
-                              onClick={() => handleRemoveExtraIngredient(item.id, extra.IDI)}
-                              title="Eliminar ingrediente"
-                            >
-                              Del
-                            </button>
+                            {/* Cabecera del ítem */}
+                            <div className="detalles_pedidos_general">
+                              <span>
+                                {grupo.cantidadTotal} x {item.nombre}
+                                {item.size ? ` (${item.size})` : ''} - {precioPrincipal}€
+                              </span>
+
+                              <div className="botones-acciones-fc">
+                                <button
+                                  className="edit-button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isMobile) setIsCartOpen(false);
+                                    handleEditProduct(grupo);
+                                    handleEditProduct(grupo.items[0]);
+                                  }}
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="delete-button"
+                                  onClick={() => handleRemoveProduct(item)}
+                                >
+                                  ❌
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Detalles tipo Half and Half */}
+                            {item.id === 102 && item.halfAndHalf && (
+                              <ul
+                                style={{
+                                  margin: '5px 0',
+                                  paddingLeft: '1.5rem',
+                                  listStyleType: 'disc',
+                                }}
+                              >
+                                <li style={{ fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                  Mitad: {item.halfAndHalf.izquierda.nombre} (
+                                  {item.halfAndHalf.izquierda.precio.toFixed(2)}€)
+                                </li>
+                                <li style={{ fontSize: '0.95rem', fontStyle: 'italic' }}>
+                                  Mitad: {item.halfAndHalf.derecha.nombre} (
+                                  {item.halfAndHalf.derecha.precio.toFixed(2)}€)
+                                </li>
+                              </ul>
+                            )}
+
+                            {/* Ingredientes extras visualmente debajo */}
+                            {item.extraIngredients?.length > 0 && (
+                              <div className="detalles_ingredientes_extra">
+                                <ul style={{ listStyleType: 'circle', paddingLeft: '1.5rem' }}>
+                                  {item.extraIngredients.map((extra) => (
+                                    <li
+                                      key={extra.nombre}
+                                      className="extra-ingredient-item"
+                                      
+                                    >
+                                      +IE: {extra.nombre} ({parseFloat(extra.precio).toFixed(2)}€)
+                                      <button
+                                        className="extra-ingredient-button"
+                                        onClick={() =>
+                                          handleRemoveExtraIngredient(item.id, extra.IDI)
+                                        }
+                                        title="Eliminar ingrediente"
+                                      >
+                                        Del
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </li>
-                        ))}
-                      </ul>
+                        );
+                      })}
+
+                      {/* Complementos uno por uno */}
+                      {(compra.complementos ?? []).map((item, index) => (
+                        <li
+                          key={`complemento-${index}`}
+                          className="pedido-item complemento"
+                          style={{ listStyleType: 'none' }}
+                        >
+                          <div className="detalles_pedidos_general">
+                            <span>
+                              {item.cantidad} x {item.producto} - {item.precio}€
+                            </span>
+                            <div className="botones-acciones-fc">
+                              <button
+                                className="edit-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (isMobile) setIsCartOpen(false);
+                                  handleEditComplemento(item);
+                                }}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className="delete-button"
+                                onClick={() => handleRemoveComplemento(item)}
+                              >
+                                ❌
+                              </button>
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+
+              {isReadyToPay && (
+                <>
+                  <div className="detalles-compra">
+                    <p>
+                      <strong>Extra Charges:</strong>
+                    </p>
+                  </div>
+                  <div className="additional-costs">
+                    {totalDeliveryFixed > 0 ||
+                    totalTicketExpressFixed > 0 ||
+                    totalCuponesFixed > 0 ||
+                    compra.Entrega?.Delivery?.freePassApplied ? (
+                      <>
+                        {compra.Entrega?.Delivery?.freePassApplied ? (
+                          <p>+Delivery: Today Free</p>
+                        ) : (
+                          totalDeliveryFixed > 0 && (
+                            <p>+Delivery: {totalDeliveryFixed.toFixed(2)}€</p>
+                          )
+                        )}
+                        {totalTicketExpressFixed > 0 && (
+                          <p>+Ticket Express: {totalTicketExpressFixed.toFixed(2)}€</p>
+                        )}
+                        {totalCuponesFixed > 0 && (
+                          <p>+Coupon Price: {totalCuponesFixed.toFixed(2)}€</p>
+                        )}
+                      </>
+                    ) : (
+                      <p style={{ fontStyle: 'italic', color: '#666' }}>
+                        No Additional Costs.
+                      </p>
                     )}
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+                </>
+              )}
 
-
-      {isReadyToPay && (
-          <>
-              <div className="detalles-compra">
-                  <p><strong>Extra Charges:</strong></p>
-              </div>
-              <div className="additional-costs">
-                  {(totalDeliveryFixed > 0 || totalTicketExpressFixed > 0 || totalCuponesFixed > 0 || compra.Entrega?.Delivery?.freePassApplied) ? (
-                      <>
-                          {/* Mostrar el costo de Delivery si aplica Free Pass o si tiene costo */}
-                          {compra.Entrega?.Delivery?.freePassApplied ? (
-                              <p>+Delivery: Today Free</p>
-                          ) : (
-                              totalDeliveryFixed > 0 && <p>+Delivery: {totalDeliveryFixed.toFixed(2)}€</p>
-                          )}
-
-                          {totalTicketExpressFixed > 0 && (
-                              <p>+Ticket Express: {totalTicketExpressFixed.toFixed(2)}€</p>
-                          )}
-
-                          {totalCuponesFixed > 0 && (
-                              <p>+Coupon Price: {totalCuponesFixed.toFixed(2)}€</p>
-                          )}
-                      </>
-                  ) : (
-                      <p style={{ fontStyle: 'italic', color: '#666' }}>
-                          No Additional Costs.
-                      </p>
-                  )}
-              </div>
-          </>
-      )}
-
-
-
-
-
-      <div className="complementos-section">
-        <button
-          className={`complemento-btn ${
-            showComplementModal && selectedSubcategoria === 'Bebidas' ? 'parpadeo' : ''
-          }`}
-          onClick={() => handleOpenComplementos('Bebidas')}
-        >
-          {selectedSubcategoria === 'Bebidas' && showComplementModal ? '🔙 Go Back' : '🥤 Drinks'}
-        </button>
-
-        <button
-          className={`complemento-btn ${
-            showComplementModal && selectedSubcategoria === 'Postres' ? 'parpadeo' : ''
-          }`}
-          onClick={() => handleOpenComplementos('Postres')}
-        >
-          {selectedSubcategoria === 'Postres' && showComplementModal ? '🔙 Go Back' : '🍰 Sweets'}
-        </button>
-
-        <button
-          className={`complemento-btn ${
-            showComplementModal && selectedSubcategoria === 'Complementos' ? 'parpadeo' : ''
-          }`}
-          onClick={() => handleOpenComplementos('Complementos')}
-        >
-          {selectedSubcategoria === 'Complementos' && showComplementModal
-            ? '🔙 Go Back'
-            : '🍟 Add-ons'}
-        </button>
-      </div>
-
-      {showComplementModal && (
-  <div className="modal-complementos">
-    <div className="modal-content">
-      <h3>Pick Your {selectedSubcategoria}</h3>
-
-      {/* Barra de búsqueda */}
-      <input
-        type="text"
-        placeholder="Buscar..."
-        className="complementos-busqueda"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <ul className="complementos-lista">
-        {filteredComplementos.length === 0 ? (
-          <p className="no-complementos">
-            🤷‍♀️ Sorry, no {selectedSubcategoria} available right now! 😢
-          </p>
-        ) : (
-          filteredComplementos.map((item) => {
-            const cantidadSeleccionada = complementoQuantities[item.id] || 0;
-
-            return (
-              <li
-                key={item.id}
-                className={`complemento-item ${cantidadSeleccionada === 0 ? "error" : ""}`}
-              >
-                <span className="complemento-nombre">
-                  {resaltarCoincidencias(item.producto, searchTerm)} - {item.precio}€
-                </span>
-                <select
-                  className="complemento-cantidad"
-                  value={cantidadSeleccionada}
-                  onChange={(e) => handleLocalQuantityChange(e, item.id)}
-                >
-                  {[...Array(10).keys()].map((num) => (
-                    <option key={num} value={num}>
-                      {num}
-                    </option>
-                  ))}
-                </select>
+              <div className="complementos-section">
                 <button
-                  className="agregar-complemento"
-                  onClick={() => {
-                    if (cantidadSeleccionada === 0) {
-                      // Muestra el error solo si el usuario intenta agregar con cantidad 0
-                      document.getElementById(`error-${item.id}`).style.display = "block";
-                      return;
-                    }
-                    handleAddComplemento(item);
-                    handleCloseModal();
-                  }}
+                  className={`complemento-btn ${
+                    showComplementModal && selectedSubcategoria === 'Bebidas'
+                      ? 'parpadeo'
+                      : ''
+                  }`}
+                  onClick={() => handleOpenComplementos('Bebidas')}
                 >
-                  ✔
+                  {selectedSubcategoria === 'Bebidas' && showComplementModal
+                    ? '🔙 Go Back'
+                    : '🥤 Drinks'}
                 </button>
-                {/* Mensaje de error visible solo si el usuario intenta agregar con cantidad 0 */}
-                <p
-                  id={`error-${item.id}`}
-                  className="error-message"
-                  style={{ display: "none", color: "red", fontSize: "0.9em" }}
+
+                <button
+                  className={`complemento-btn ${
+                    showComplementModal && selectedSubcategoria === 'Postres'
+                      ? 'parpadeo'
+                      : ''
+                  }`}
+                  onClick={() => handleOpenComplementos('Postres')}
                 >
-                  ⚠️ You must select at least 1 unit.
-                </p>
-              </li>
-            );
-          })
-        )}
-      </ul>
-    </div>
-  </div>
-)}
+                  {selectedSubcategoria === 'Postres' && showComplementModal
+                    ? '🔙 Go Back'
+                    : '🍰 Sweets'}
+                </button>
 
+                <button
+                  className={`complemento-btn ${
+                    showComplementModal && selectedSubcategoria === 'Complementos'
+                      ? 'parpadeo'
+                      : ''
+                  }`}
+                  onClick={() => handleOpenComplementos('Complementos')}
+                >
+                  {selectedSubcategoria === 'Complementos' && showComplementModal
+                    ? '🔙 Go Back'
+                    : '🍟 Add-ons'}
+                </button>
+              </div>
 
+              {showComplementModal && (
+                <div className="modal-complementos">
+                  <div className="modal-content">
+                    <h3>Pick Your {selectedSubcategoria}</h3>
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      className="complementos-busqueda"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <ul className="complementos-lista">
+                      {filteredComplementos.length === 0 ? (
+                        <p className="no-complementos">
+                          🤷‍♀️ Sorry, no {selectedSubcategoria} available right now! 😢
+                        </p>
+                      ) : (
+                        filteredComplementos.map((item) => {
+                          const cantidadSeleccionada =
+                            complementoQuantities[item.id] || 0;
+                          return (
+                            <li
+                              key={item.id}
+                              className={`complemento-item ${
+                                cantidadSeleccionada === 0 ? 'error' : ''
+                              }`}
+                            >
+                              <span className="complemento-nombre">
+                                {resaltarCoincidencias(item.producto, searchTerm)} - {item.precio}€
+                              </span>
+                              <select
+                                className="complemento-cantidad"
+                                value={cantidadSeleccionada}
+                                onChange={(e) =>
+                                  handleLocalQuantityChange(e, item.id)
+                                }
+                              >
+                                {[...Array(10).keys()].map((num) => (
+                                  <option key={num} value={num}>
+                                    {num}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                className="agregar-complemento"
+                                onClick={() => {
+                                  if (cantidadSeleccionada === 0) {
+                                    document.getElementById(`error-${item.id}`).style.display = 'block';
+                                    return;
+                                  }
+                                  handleAddComplemento(item);
+                                  handleCloseModal();
+                                }}
+                              >
+                                ✔
+                              </button>
+                              <p
+                                id={`error-${item.id}`}
+                                className="error-message"
+                                style={{
+                                  display: 'none',
+                                  color: 'red',
+                                  fontSize: '0.9em',
+                                }}
+                              >
+                                ⚠️ You must select at least 1 unit.
+                              </p>
+                            </li>
+                          );
+                        })
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              )}
 
-      {(compra?.total_productos > 0 || compra?.venta?.length > 0 || compra?.complementos?.length > 0) && (
-        <div className="totals2">
-          {compra.cupones.map((cupon, index) => (
-            <p key={index}>
-              ✅{' '}
-              {cupon.Descuento ? `${(cupon.Descuento * 100).toFixed(0)}%` : '0%'} de descuento
-              {cupon.quantity_condition > 0
-                ? ` (aplicable a la ${cupon.quantity_condition + 1}ª unidad)`
-                : ''}
-            </p>
-          ))}
-          <div>
-        <p>
-          <b>Amount to Pay:</b> {compra.total_a_pagar_con_descuentos.toFixed(2)}€
-          <span style={{ fontSize: '0.9em', color: '#666' }}> (IVA Included)</span>
-        </p>
-      
-      </div>
-    </div>
-  
-      )}
+              {(compra?.total_productos > 0 ||
+                compra?.venta?.length > 0 ||
+                compra?.complementos?.length > 0) && (
+                <div className="totals2">
+                  {compra.cupones.map((cupon, index) => (
+                    <p key={index}>
+                      ✅{' '}
+                      {cupon.Descuento
+                        ? `${(cupon.Descuento * 100).toFixed(0)}%`
+                        : '0%'}{' '}
+                      de descuento
+                      {cupon.quantity_condition > 0
+                        ? ` (aplicable a la ${
+                            cupon.quantity_condition + 1
+                          }ª unidad)`
+                        : ''}
+                    </p>
+                  ))}
+                  <div>
+                    <p>
+                      <b>Amount to Pay:</b>{' '}
+                      {compra.total_a_pagar_con_descuentos.toFixed(2)}€
+                      <span style={{ fontSize: '0.9em', color: '#666' }}>
+                        {' '}
+                        (IVA Included)
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
 
-        {incentivos?.length > 0 ? (
-            incentivos.map((incentivo) => {
-                // 📌 Detectamos si es el DFP porque modifica el precio del delivery
-                const esDeliveryFreePass = incentivo.incentivo === "Delivery Free Pass";
+              {incentivos?.length > 0 ? (
+                <div className="incentivos-wrapper">
+                  {incentivos.map((incentivo) => {
+                    const esDeliveryFreePass =
+                      incentivo.incentivo === 'Delivery Free Pass';
+                    const montoBaseParaEvaluar = esDeliveryFreePass
+                      ? compra.total_productos + compra.iva
+                      : compra.total_a_pagar_con_descuentos;
+                    const faltante = incentivo.TO_minimo - montoBaseParaEvaluar;
 
-                // 🔹 Si es DFP, excluimos el costo del delivery para evaluar si se alcanza el mínimo
-                // 🔹 Para otros incentivos, usamos el total a pagar incluyendo delivery
-                const montoBaseParaEvaluar = esDeliveryFreePass
-                    ? compra.total_productos + compra.iva  // Excluir delivery
-                    : compra.total_a_pagar_con_descuentos; // Incluir delivery
-
-                const faltante = incentivo.TO_minimo - montoBaseParaEvaluar;
-
-                return (
-                    <div key={incentivo.id} className="incentivo-estado">
+                    return (
+                      <div key={incentivo.id} className="incentivo-estado">
                         {faltante > 0 ? (
-                            <div className="incentivo-faltante">
-                                <p>
-                                    ¡You need <strong>{faltante.toFixed(2)}€</strong> to get {incentivo.incentivo}!
-                                </p>
-                            </div>
+                          <div className="incentivo-faltante">
+                            <p>
+                              ¡You need <strong>{faltante.toFixed(2)}€</strong> to get{' '}
+                              {incentivo.incentivo}!
+                            </p>
+                          </div>
                         ) : compra.total_a_pagar_con_descuentos > 0 ? (
-                            <div className="incentivo-logrado">
-                                <p>
-                                    <span role="img" aria-label="logrado">✅</span>{' '}
-                                    ¡You’ve unlocked <strong>{incentivo.incentivo}</strong>!
-                                </p>
-                            </div>
+                          <div className="incentivo-logrado">
+                            <p>
+                              <span role="img" aria-label="logrado">✅</span>{' '}
+                              ¡You’ve unlocked <strong>{incentivo.incentivo}</strong>!
+                            </p>
+                          </div>
                         ) : null}
-                    </div>
-                );
-            })
-        ) : (
-            <div className="incentivo-estado">
-                <p>🍕 IT'S PIZZA TIME! 🍕</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="incentivos-wrapper">
+                  <div className="incentivo-estado">
+                    <p>🍕 IT'S PIZZA TIME! 🍕</p>
+                  </div>
+                </div>
+              )}
+
+              {compra?.Entrega && (
+                <div className="qr-code-container">
+                  <h4 className="track-title">
+                    Order Track ({compra.id_order})
+                  </h4>
+                  <MiniTvCart
+                    isReadyToPay={isReadyToPay}
+                    compraFinalizada={compraFinalizada}
+                  />
+                </div>
+              )}
+             
             </div>
+
+          
+            <button
+              className="next-button"
+              onClick={handleNext}
+              disabled={isReadyToPay && !metodoEntregaSeleccionado} 
+            >
+              {isReadyToPay ? 'Pay' : 'Next'}
+            </button>
+          </div>
         )}
 
-
-      {compra?.Entrega && (
-        <div className="qr-code-container">
-          <h4 className="track-title">Order Track ({compra.id_order})</h4>
-          <div className="qr-with-text">
-            <span className="vertical-text">Scan the QR code to track your order.</span>
-            <QRCode value={qrData} size={128} />
-          </div>
-        </div>
-      )}
-
-      <button className="next-button" onClick={handleNext}>
-        {isReadyToPay ? 'Pay' : 'Next'}
-      </button>
-    </div>
-  );
-};
-
+      </>
+    );
+  }
 export default FloatingCart;

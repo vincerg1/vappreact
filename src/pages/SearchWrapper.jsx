@@ -44,7 +44,7 @@ export default function SearchWrapper({ onSelectPizza }) {
       <div className="search-wrapper">
         <input
           type="text"
-          placeholder="Buscar por ingrediente..."
+          placeholder="Find ingredients..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="search-input"

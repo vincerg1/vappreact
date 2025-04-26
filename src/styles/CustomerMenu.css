@@ -4,8 +4,8 @@
     justify-content: center;
     gap: 20px;
     padding: 20px;
-  }
-  .menu-item-cm {
+}
+.menu-item-cm {
     background-color: #ffffff;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -14,31 +14,31 @@
     text-align: center;
     padding: 10px;
     transition: transform 0.2s ease-in-out;
-  }
-  .menu-item-cm:hover {
+}
+.menu-item-cm:hover {
     transform: scale(1.05);
-  }
-  .menu-image-cm {
+}
+.menu-image-cm {
     width: 100%;
     height: 200px;
     overflow: hidden;
     border-radius: 10px;
-  }
-  .menu-image-cm img {
+}
+.menu-image-cm img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-  }
-  .menu-details {
+}
+.menu-details {
     padding: 10px;
-  }
-  .menu-details h3 {
+}
+.menu-details h3 {
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 10px;
     color: #333;
-  }
-  .botonSeleccionarMenu {
+}
+.botonSeleccionarMenu {
     background-color: #FFA500;
     border: none;
     color: white;
@@ -50,12 +50,10 @@
     margin: 10px 0;
     cursor: pointer;
     border-radius: 5px;
-  }
-  .botonSeleccionarMenu:hover {
+}
+.botonSeleccionarMenu:hover {
     background-color: #FF8C00;
-  }
-  
-  /* Modal Styles */
+}
 .form-container-cm {
   position: fixed;
   top: 50%;
@@ -70,31 +68,26 @@
   z-index: 1000;
   text-align: center;
 }
-
 .modal-content-cm {
   padding: 10px;
 }
-
 .pizza-description {
   font-size: 16px;
   margin-bottom: 15px;
   color: #555;
 }
-
 .ingredient-description {
   font-size: 15px;
   margin-bottom: 20px;
   font-style: italic;
   color: #777;
 }
-
 label {
   font-weight: bold;
   display: block;
   text-align: left;
   margin-bottom: 5px;
 }
-
 select,
 input[type="number"] {
   width: 100%;
@@ -103,14 +96,12 @@ input[type="number"] {
   border: 1px solid #ddd;
   border-radius: 5px;
 }
-
 .total-price {
   font-weight: bold;
   font-size: 18px;
   color: #333;
   margin-top: 10px;
 }
-
 .close-button-cm {
   background-color: #d75d0b;
   color: white;
@@ -121,12 +112,9 @@ input[type="number"] {
   display: inline-block;
   margin-top: 10px;
 }
-
 .close-button-cm:hover {
   background-color: #f90101;
 }
-
-/* Overlay for Modal Background */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -147,14 +135,11 @@ input[type="number"] {
   cursor: pointer;
   width: 50px;
 }
-
-
 @keyframes parpadeo {
   0% { background-color: #ff3c00; }
   50% { background-color: #ff7800; }
   100% { background-color: #ff3c00; }
 }
-
 .extra-ingredients button {
   background-color: #ff3c00;
   border: none;
@@ -169,21 +154,12 @@ input[type="number"] {
   border-radius: 5px;
   animation: parpadeo 1s infinite;
 }
-
-
-
-/* Estilos generales */
 body {
-  font-family: Arial, sans-serif;
+  font-family: 'Poppins', sans-serif;
   background: #f8f8f8;
   margin: 0;
   padding: 0;
 }
-
-
-
-
-/* Inputs y select */
 input[type="text"],
 input[type="number"],
 select {
@@ -193,8 +169,6 @@ select {
   border: 1px solid #ccc;
   border-radius: 4px;
 }
-
-/* Tamaños y precios */
 .SizeAndPriceSection {
   margin-bottom: 15px;
 }
@@ -240,20 +214,13 @@ select {
   margin-top: 5px;
   display: none; /* Oculto por defecto */
 }
-
-/* Mostrar input de precio cuando el checkbox está activo */
 .size-price.checked .price-input {
   display: block;
 }
-
-
-
-/* Ingredientes */
 .ingredientes-container {
   list-style: none;
   padding: 0;
 }
-
 .ingrediente-container {
   display: flex;
   flex-direction: column;
@@ -262,7 +229,6 @@ select {
   margin-bottom: 10px;
   border-radius: 5px;
 }
-
 .cantidad-container {
   display: flex;
   flex-wrap: wrap; 
@@ -289,9 +255,6 @@ select {
   border: 1px solid #ccc;
   background: white;
 }
-
-
-/* Botones */
 button {
   background-color: #28a745;
   color: white;
@@ -301,19 +264,15 @@ button {
   cursor: pointer;
   margin-top: 10px;
 }
-
 button:hover {
   background-color: #218838;
 }
-
 .add-ingredient-button {
   display: block;
   width: 100%;
   text-align: center;
   font-weight: bold;
 }
-
-/* Imagen de previsualización */
 .image-preview {
   width: 100px;
   height: 100px;
@@ -321,13 +280,6 @@ button:hover {
   margin-top: 10px;
   border-radius: 5px;
   display: block;
-}
-
-/* Responsive */
-@media (max-width: 600px) {
-  .sizes-prices-container {
-    flex-direction: column;
-  }
 }
 .form_crearpizza {
   max-width: 600px;
@@ -364,26 +316,13 @@ button:hover {
   cursor: pointer;
   transition: background 0.3s ease;
 }
-
 .IrMenuOver button:hover {
   background: #218838;
 }
-
-/* 📌 Mantener el diseño responsivo */
-@media (max-width: 768px) {
-  .IrMenuOver {
-    position: static;
-    text-align: right;
-    margin-bottom: 10px;
-  }
-}
-
-
 .updatePizza{
   margin-top: 2rem;
   width: 100%;
 }
-
 h1 {
   text-align: center;
   font-size: 24px;
@@ -391,10 +330,213 @@ h1 {
   margin-bottom: 20px;
   margin-top: 5rem;
 }
-
 .TituloFormCP{
   margin: 0;
   font-size: 1.8rem;
   text-align: left;
   margin-bottom: 20px;
+}
+.ingrediente-sugerencia {
+  margin-top: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: #ff9800;
+}
+.animate-shake-loop {
+  animation: shake 0.4s infinite alternate ease-in-out;
+}
+@keyframes shake {
+  0% { transform: translateX(0px); }
+  100% { transform: translateX(2px); }
+}
+.extra-ingredients-list button {
+  font-family: 'Poppins', sans-serif;
+  background-color: rgb(242, 127, 127);
+  width: 50px;
+  height: 25px;
+}
+.extra-ingredients-list button:hover {
+  background-color: rgb(177, 13, 13);
+}
+.extra-ingredients-list {
+  background-color: #faf6ec;
+  border-radius: 6px;
+  color: rgb(108, 104, 104);
+  font-size: 15px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .sizes-prices-container {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden;
+    background-color: #000; 
+    
+  }
+
+  html, body {
+    height: 100vh;
+    font-family: 'Poppins', sans-serif;
+  }
+  .IrMenuOver {
+    position: static;
+    text-align: right;
+    margin-bottom: 10px;
+  }
+  .pizza-swiper {
+    height: 100dvh;
+    width: 100dvw;
+  }
+  .pizza-slide {
+    position: relative;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+  .pizza-overlay {
+    position: absolute;
+    top: 5%;
+    width: 100%;
+    text-align: center;
+    z-index: 2;
+    color: white;
+    text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
+  }
+  .pizza-overlay h2 {
+    font-size: 2rem;
+    color: white;
+    font-weight: 900;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    
+  }
+  .botonOverlay {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid white;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 16px;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+  }
+  .pizza-slide-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+  .swipe-hint {
+    font-size: 1rem;
+    color: #fff !important;
+    margin-top: 1rem;
+    animation: bounce 2s infinite;
+    opacity: 0.8;
+  }
+  
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+  }
+
+  .pizza-controls {
+    position: absolute;
+    bottom: 8%;
+    width: 100%;
+    text-align: center;
+    z-index: 2;
+  }
+
+
+  .search-float-button {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(6px);
+    color: white;
+    font-size: 22px;
+    border: 1px solid white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px rgba(0,0,0,0.3);
+  }
+  
+  .search-modal {
+    position: fixed;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 20px;
+    z-index: 1001;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  
+  .search-input {
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    outline: none;
+    backdrop-filter: blur(3px);
+  }
+  
+  .search-results {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .search-result-item:hover {
+    background: rgba(255,255,255,0.1);
+  }
+  
+  .search-result-item img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  
+  .search-result-item span {
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
 }

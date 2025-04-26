@@ -227,7 +227,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
     } else {
       // Mostrar cuenta regresiva
       const { hours, minutes, seconds } = calculateTimeLeft(timeLeft);
-      return `Disponible hasta: ${hours}h ${minutes}m ${seconds}s`;
+      return `Available until: ${hours}h ${minutes}m ${seconds}s`;
     }
   };
   const handleParticipation = () => {
@@ -344,6 +344,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                 <strong>Link:</strong>{' '}
                 {dailyChallenge.Instrucciones_Link ? (
                   <a
+                    className='Instrucciones_Link'
                     href={dailyChallenge.Instrucciones_Link}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -358,10 +359,10 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
               {/* Contenedor de detalles del challenge */}
               <div className="challenge-details">
                 <p>
-                  <strong>Instrucciones:</strong> {dailyChallenge.Additional_Instructions}
+                  <strong>How it works:</strong> {dailyChallenge.Additional_Instructions}
                 </p>
                 <p>
-                  <strong>Rango de Descuento:</strong>{' '}
+                  <strong>Savings Range:</strong>{' '}
                   {dailyChallenge.Min_Descuento_Percent}% -{' '}
                   {dailyChallenge.Max_Descuento_Percent}%
                 </p>
@@ -369,11 +370,11 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                   <strong>Cupon_Id:</strong> {dailyChallenge.Codigo_Oferta}
                 </p>
                 <p>
-                  <strong>Cupones Disponibles:</strong>{' '}
+                  <strong>Coupons Available:</strong>{' '}
                   {dailyChallenge.Cupones_Disponibles}
                 </p>
                 <p>
-                  <strong>Precio_cupon:</strong> 
+                  <strong>Price_cupon:</strong> 
                   {dailyChallenge.Precio_Cupon === 0 ? ' Today Free' : `${dailyChallenge.Precio_Cupon}€`}
                 </p>
               </div>
@@ -389,7 +390,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                   (dailyChallenge && dailyChallenge.Cupones_Disponibles === 0)
                 }
               >
-                {showParticipationForm ? 'Ocultar Participación' : 'Participa'}
+                {showParticipationForm ? 'Hide Entry' : 'Take part'}
               </button>
   
               {/* Formulario de participación */}
@@ -398,7 +399,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                   <ul className="participation-list">
                     <li>
                       <label className="input-label">
-                        Usuario:
+                        User:
                       </label>
                       <input
                         type="text"
@@ -411,7 +412,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                     </li>
                     <li>
                       <label className="input-label">
-                        Link de la Publicación:
+                        Post URL:
                       </label>
                       <input
                         type="text"
@@ -428,7 +429,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
                     onClick={handleParticipation}
                     disabled={isSubmitting}
                   >
-                    Enviar Participación
+                    Submit Entry
                   </button>
                 </div>
               )}
@@ -438,7 +439,7 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
             <div className="claim-coupon-container">
               ⚠️{' '}
               <button onClick={handleClaimCouponWrapper}>
-                Reclamar Cupón
+               Claim Coupon
               </button>{' '}
               ⚠️
             </div>
@@ -447,9 +448,9 @@ const DailyChallengeCard = ({ closeDailyChallenge, setCompra, compra }) => {
           {showFinalModal && (
             <div className="modal">
               {isConfettiVisible && <Confetti />}
-              <h2>¡Felicidades!</h2>
-              <p>Has obtenido un descuento del {discount}%</p>
-              <button onClick={closeAllModals}>Cerrar</button>
+              <h2>Well done!</h2>
+              <p>You've received a{discount}%</p>
+              <button onClick={closeAllModals}>Exit </button>
             </div>
           )}
         </>

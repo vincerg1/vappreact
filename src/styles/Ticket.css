@@ -1,140 +1,133 @@
-/* Ticket general */
-.ticket {
-  background-color: #fff;
-  color: #000;
-  width: 200px;
-  padding: 20px;
-  margin: 0 auto;
-  border: 2px dashed #000;
-  font-family: 'Arial', sans-serif;
-  line-height: 1.5;
-}
-
-/* Timestamp section */
-.timestamp {
-  text-align: center;
-  font-size: 14px;
-  border-bottom: 1px dashed #000;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-}
-
-/* Detalles de la compra */
-.details {
-  margin-bottom: 10px;
-}
-
-.details h3 {
-  font-size: 16px;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.details ul {
-  list-style-type: none;
-  padding: 0;
-}
-
-.details ul li {
-  font-size: 14px;
-  margin-bottom: 5px;
-  text-align: left;
-}
-
-.details p {
-  text-align: right;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-/* QR Code */
-.qr-code {
-  text-align: center;
-  border-top: 1px dashed #000;
-  border-bottom: 1px dashed #000;
-  padding: 10px 0;
-  margin: 10px 0;
-}
-
-.qr-code p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-/* Ticket Express y Número de Compras */
-.express-info {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  margin: 10px 0;
-  text-align: center;
-}
-
-.express-info p {
-  width: 48%;
-  text-align: center;
-  border: 1px solid #000;
-  padding: 5px 0;
-}
-
-/* Información de la empresa */
-.company-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 10px;
-}
-
-.company-info img {
-  max-width: 100%;  
-  /* border-radius: 10px;   */
-  filter: grayscale(100%);
-  transform: rotate(-2.5deg);
-  margin-bottom: 25px;
-}
-
-.timestamp p {
-  margin: 0;
-  line-height: 1.2;  /* Ajusta el valor según lo que necesites */
-}
-.day-and-date {
+.ticket-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 5px; /* Espacio entre el día y la fecha */
+  padding: 1rem;
+  height: 100%;
+  width: 100%;
 }
 
-/* Opcionalmente, puedes ajustar el tamaño de fuente o el espaciado */
-.day-and-date p {
+
+.ticket {
+  width: 58mm;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.5;
+  text-align: center;
+  color: #000;
+  background: #fff;
+}
+
+/* Todo el contenido del ticket */
+.ticket * {
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  color: #000 !important;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Listas limpias */
+.ticket ul {
+  list-style: none;
+  padding: 0;
   margin: 0;
 }
 
+/* Secciones separadas con espacio, no con líneas */
+.ticket .section {
+  margin: 6px 0;
+  padding: 0 2px;
+  position: relative;
+}
+
+.section:not(:last-child)::after {
+  content: "-------------------";
+  display: block;
+  margin: 2px auto;
+  font-size: 10px;
+  text-align: center;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* Productos */
 .producto-item {
-  padding: 10px 0; /* Espacio alrededor de cada elemento */
-  border-bottom: 1px solid #ccc; /* Línea divisoria */
+  margin-bottom: 5px;
 }
 
-.producto-item:last-child {
-  border-bottom: none; /* Quitar la línea del último elemento */
+/* Código QR */
+.qr-code img {
+  width: 90px;
+  height: 90px;
 }
 
-.details {
-  line-height: 1.2; /* Ajusta el interlineado a 1.2 para reducir el espacio entre líneas */
-  margin-bottom: 10px; /* Espaciado inferior si es necesario */
+/* Caja doble (express + incentivos) */
+.express-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 4px;
+}
+.express-info p {
+  width: 48%;
+  border: 1px solid #000;
+  padding: 2px 0;
 }
 
-.producto-item {
-  margin-bottom: 5px; /* Espaciado entre cada producto */
+/* Logo */
+.company-info img {
+  max-width: 80%;
+  max-height: 30px;
+  margin: 6px auto;
+  filter: grayscale(100%);
 }
-
-.company-info {
-  line-height: 1.2; /* Ajusta el interlineado para que sea más compacto */
-  margin-top: 15px; 
+.modal-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
 }
-
-.company-info p {
-  margin: 2px 0; 
-  font-size: 12px;
+/* Ocultar pie de impresión */
+footer {
+  display: none !important;
 }
+@media print {
+  @page {
+    size: 160px auto;
+    margin: 0;
+   
+  }
 
+  body * {
+    visibility: hidden;
+  }
 
+  .ticket, .ticket * {
+    visibility: visible;
+  }
+
+  .ticket {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 160px !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 40px auto 0 auto !important;
+    background: #fff !important;
+    page-break-after: avoid;
+    page-break-before: avoid;
+    page-break-inside: avoid;
+  }
+}

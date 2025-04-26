@@ -1,14 +1,14 @@
 .FormIS-login,
 .FormIS-register {
     width: 100%;
-    max-width: 400px;
+    max-width: 350px;
     height: auto;
     margin: 0 auto;
     padding: 20px;
     background-color: #ffffff; 
     border: 1px solid #ddd; 
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); 
-    margin-top: 5rem;
+    margin-top: 3rem;
 }
 .FormIS-form-header {
     display: flex;
@@ -16,10 +16,11 @@
     margin-bottom: 20px;
 }
 .FormIS-form-tab:hover {
-  color: #ffffff;
-  background-color: #fedb88; 
+  opacity: 0.75;
+  background-color: #fedb88;
+  color: rgb(255, 157, 0);
 }
-  .FormIS-form-tab {
+.FormIS-form-tab {
     color: #000000;
     flex: 1;
     text-align: center;
@@ -30,19 +31,18 @@
     border: none;
     border-bottom: 2px solid rgb(5, 1, 1);
     margin-bottom: 2rem;
-  }
-  .FormIS-hidden-input input,
-  .FormIS-underline-input input {
+}
+.FormIS-hidden-input input,
+.FormIS-underline-input input {
     border-radius: 0 !important;
-  }
-  .FormIS-form-tab.active {
+}
+.FormIS-form-tab.active {
     border-bottom: 2px solid rgb(5, 1, 1);
     font-weight: bold;
     background-color: #f4f4f4;
     color: #333;
-  }
-  
-  .FormIS-botonAcceso {
+}
+.FormIS-botonAcceso {
     width: 100%;
     padding: 10px;
     font-size: 16px;
@@ -53,53 +53,45 @@
     border: none;
     cursor: pointer;
     margin-top: 4rem;
-  }
-  
-  .FormIS-botonAcceso:hover {
+}
+.FormIS-botonAcceso:hover {
+    opacity: 0.75;
     background-color: #fedb88;
-  }
-  
-  .FormIS-linkIS p {
+    color: rgb(255, 157, 0);
+}
+.FormIS-linkIS p {
     text-align: center;
     margin-top: 10px;
     font-size: 14px;
     color: #666;
-  }
-  
-
-  .terms-checkbox {
+}
+.terms-checkbox {
     display: flex;
     align-items: flex-start;
     margin-top: 40px;
     margin-bottom: -40px;
-  }
-  
-  .terms-checkbox input {
+}
+.terms-checkbox input {
     margin-right: 5px;
     transform: scale(1);
-  }
-  
-  .terms-checkbox label {
+} 
+.terms-checkbox label {
     font-size: 0.65rem;
     color: #333;
     font-weight: 100;
-  }
-  
-  .terms-checkbox a {
+}
+.terms-checkbox a {
     color: #007bff;
     text-decoration: none;
-  }
-  
-  .terms-checkbox a:hover {
+} 
+.terms-checkbox a:hover {
     text-decoration: underline;
-  }
-  
-  .tooltip-container {
+}
+.tooltip-container {
     position: relative;
     display: inline-block;
-  }
-  
-  .tooltip {
+}
+.tooltip {
     visibility: hidden;
     background-color: black;
     color: #fff;
@@ -114,10 +106,167 @@
     white-space: nowrap;
     opacity: 0;
     transition: opacity 0.3s;
-  }
-  
-  .tooltip-container:hover .tooltip {
+}
+.tooltip-container:hover .tooltip {
     visibility: visible;
     opacity: 1;
+}
+.FormIS-suggestions {
+    background: #e0e0e0;
+    border: 1px solid #ccc;
+    list-style: none;
+    margin-top: 0;
+    padding-left: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 4px;
+    position: absolute;
+    width: 15%;
+    z-index: 10;
+}
+.FormIS-suggestions li {
+    padding: 8px;
+    cursor: pointer;
+}
+.FormIS-suggestions li:hover {
+    background-color: #a5a5a5;
+}
+.highlight-suffix {
+    background-color: #fedb88;
+    color: #a5a5a5;
+    padding: 1px 2px;
+    border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  body {
+    background-color: #f3eee2 !important;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .FormIS-Container {
+    padding: 1rem 1rem;
+    padding-top: 3rem;
+  }
+
+  .FormIS-inner {
+    max-width: 350px;
+    margin: 0 auto;
+  }
+
+  .FormIS-title-wrapper {
+    text-align: center;
+    margin-bottom: .5rem;
+  }
+
+  .FormIS-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #d49d00;
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    background: linear-gradient(90deg, #fedb88, #fbb003 );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .FormIS-login,
+  .FormIS-register {
+    width: 100%;
+    padding: 28px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    background-color: #f7f6f3;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+  }
+
+  .FormIS-login label,
+  .FormIS-register label {
+    color: #000;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .FormIS-underline-input {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .FormIS-underline-input input,
+  .FormIS-hidden-input input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    font-size: 15px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border 0.2s ease;
+  }
+
+  .FormIS-underline-input input:focus {
+    border-color: #000;
+  }
+
+  .FormIS-suggestions {
+    position: absolute;
+    width: 100%;
+    left: 0;
+    top: 100%;
+    background-color: #e0e0e0;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    overflow-y: auto;
+    max-height: 160px;
+    z-index: 100;
+  }
+
+  .FormIS-suggestions li {
+    padding: 10px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .FormIS-suggestions li:hover {
+    background-color: #ccc;
+  }
+
+  .highlight-suffix {
+    background-color: #fedb88;
+    color: #a5a5a5;
+    padding: 1px 3px;
+    border-radius: 3px;
+  }
+
+  .terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 12px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .terms-checkbox label {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .FormIS-title-wrapper {
+    max-width: 350px; 
+    margin: 0 auto 1.5rem auto;
+    text-align: center;
   }
   
+  .FormIS-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fedb88;
+    font-family: 'Poppins', sans-serif;
+  }
+}

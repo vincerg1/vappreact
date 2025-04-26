@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { PizzaProvider } from '../src/pages/_PizzaContext.jsx';
+import { PurchaseProvider  } from '../src/pages/PurchaseContext.jsx';
 import Footer from './components/Footer.jsx';
 import Inicio from './pages/_Inicio';
 import InicioSesion from './pages/_Inicio_sesion';
@@ -11,7 +13,6 @@ import _Menu_p1 from '../src/pages/_Menu_p1.jsx';
 import CreateMenuForm from '../src/pages/_Menu_p2_crearMenu.jsx';
 import MenuOverview from '../src/pages/_MenuOverview.jsx';
 import EditarPizza from '../src/pages/_EditarPizza.jsx';
-import { PizzaProvider } from '../src/pages/_PizzaContext.jsx';
 import _InvIngDB from '../src/pages/_InvIngDB.jsx';
 import _ListaIngredientes from '../src/pages/_ListaIngredientes.jsx';
 import ActualizaStock from './pages/ActualizaStock.jsx';
@@ -21,7 +22,6 @@ import OrderNow from './pages/OrderNow.jsx';
 import CustomerMenu from './pages/CustomerMenu.jsx';
 import DetallesLote from './pages/DetallesLote.jsx';
 import FormularioPizza from './pages/FormularioPizza.jsx';
-import CartComponent from './pages/CartComponent.jsx';
 import PartnerCreator from './pages/PartnerCreator.jsx';
 import EditarPartner from './pages/EditarPartner.jsx';
 import SimuladorVentas from './pages/SimuladorVentas.jsx';
@@ -71,6 +71,7 @@ function App() {
 
   return (
     <PizzaProvider>
+      <PurchaseProvider>
       <BrowserRouter>
         <Routes>
         <Route path="/control-horario" element={<ControlHorarioIndex />} />
@@ -125,7 +126,6 @@ function App() {
           <Route path="/SimuladorVentas" element={<SimuladorVentas />} />
           <Route path="/editarPartner/:partnerId" element={<EditarPartner />} />
           <Route path="/PartnerCreator" element={<PartnerCreator />} />
-          <Route path="/CartComponent" element={<CartComponent />} />
           <Route path="/FormularioPizza" element={<FormularioPizza />} />
           <Route path="/DetallesLote" element={<DetallesLote />} />
           <Route path="/_Inicio/" element={<Inicio />} />
@@ -150,6 +150,7 @@ function App() {
         </Routes>
         <Footer />
       </BrowserRouter>
+      </PurchaseProvider>
     </PizzaProvider>
   );
 }

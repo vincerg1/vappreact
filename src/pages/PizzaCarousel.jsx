@@ -1,7 +1,7 @@
 import Slider from 'react-slick';
 import React, { useContext, useState, useEffect } from 'react';
 import { _PizzaContext } from './_PizzaContext';
-import '../styles/CustomerPage.css';
+import '../styles/CustomerPage.css'; // tu CSS unificado
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
@@ -47,12 +47,11 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
 
         // Determinar el Top 3 de pizzas más vendidas en la última semana
         const top3 = Object.entries(ventasUltimaSemana)
-          .sort((a, b) => b[1] - a[1]) // Ordenar por cantidad vendida en la última semana
-          .slice(0, 3) // Tomar las 3 más vendidas
-          .map(([id_pizza]) => parseInt(id_pizza)); // Convertir a número
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([id_pizza]) => parseInt(id_pizza));
 
         setTop3Tendencia(top3);
-        
       } catch (error) {
         console.error('Error obteniendo ventas:', error);
       }
@@ -72,7 +71,7 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
     .map((pizza) => ({
       ...pizza,
       ventas_historicas: ventasPorPizza[pizza.id] || 0,
-      esTendencia: top3Tendencia.includes(pizza.id) // Verifica si está en el Top 3 de la última semana
+      esTendencia: top3Tendencia.includes(pizza.id)
     }))
     .sort((a, b) => b.ventas_historicas - a.ventas_historicas)
     .slice(0, 5);
@@ -81,20 +80,20 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
     dots: true,
     infinite: true,
     speed: 500,
-    slidesToShow: 3,
+    slidesToShow: 3, // En escritorio: 3 pizzas a la vez
     slidesToScroll: 1,
     autoplay: true,
     autoplaySpeed: 3000,
     responsive: [
       {
-        breakpoint: 1024,
+        breakpoint: 1024, // tablets -> 2 pizzas
         settings: {
           slidesToShow: 2,
           slidesToScroll: 1
         }
       },
       {
-        breakpoint: 600,
+        breakpoint: 600, // móvil -> 1 pizza
         settings: {
           slidesToShow: 1,
           slidesToScroll: 1
@@ -108,7 +107,11 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
       <h2>😍 Top 5 Best Sellers 😍</h2>
       <Slider {...settings}>
         {top5BestSellers.map((pizza, index) => (
-          <div key={pizza.id} onClick={() => onPizzaSelect(pizza)} className="carousel-item">
+          <div
+            key={pizza.id}
+            onClick={() => onPizzaSelect(pizza)}
+            className="carousel-item"
+          >
             <div className="carousel-image-container">
               <img
                 src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
@@ -117,9 +120,9 @@ const PizzaCarousel = ({ onPizzaSelect }) => {
               />
             </div>
             <div className="carousel-details">
-              <h3 style={{ fontWeight: '500', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px' }}>
-                <b>{pizza.nombre}</b> - {pizza.ventas_historicas}Sold {rankingIcons[index]}
-                {pizza.esTendencia ? "🔥Trend" : "↗️Rise!"} 
+              <h3>
+                <b>{pizza.nombre}</b> - {pizza.ventas_historicas} Sold {rankingIcons[index]}{" "}
+                {pizza.esTendencia ? "🔥Trend" : "↗️Rise!"}
               </h3>
             </div>
           </div>

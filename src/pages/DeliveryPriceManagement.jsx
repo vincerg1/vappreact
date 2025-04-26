@@ -1,63 +1,116 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-// import '../styles/DeliveryPriceManagement.css';
 
 const DeliveryPriceManagement = ({ showModal, onClose }) => {
-  const [price, setPrice] = useState('');
+  const [priceKm, setPriceKm] = useState('');        // "precio" en la DB
+  const [basePrice, setBasePrice] = useState('');    // "precioBase"
+  const [over23hFee, setOver23hFee] = useState('');
+  const [weekendFee, setWeekendFee] = useState('');
+  const [weatherFee, setWeatherFee] = useState('');
 
   useEffect(() => {
     if (showModal) {
-      // Fetch current price from the database
-      fetchPrice();
+      fetchDeliveryData();
     }
   }, [showModal]);
 
-  const fetchPrice = async () => {
+  const fetchDeliveryData = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/delivery/price`);
-      setPrice(response.data.precio);
-    } catch (error) {
-      console.error('Error fetching delivery price:', error);
-    }
-  };
+      const data = response.data;
 
-  const handleInputChange = (e) => {
-    setPrice(e.target.value);
+      // Rellenamos los states con lo que viene de la DB:
+      setPriceKm(data.precio || '');
+      setBasePrice(data.precioBase || '');
+      setOver23hFee(data.over23hFee || '');
+      setWeekendFee(data.weekendFee || '');
+      setWeatherFee(data.weatherFee || '');
+    } catch (error) {
+      console.error('Error fetching delivery data:', error);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/precio-delivery`, { precio: price }); // Cambio aquí para que coincida con el backend
-      fetchPrice(); // Refresh the price after updating
-      onClose(); // Close modal after updating
+      // Hacemos POST con los 5 campos
+      await axios.post(`${process.env.REACT_APP_API_URL}/precio-delivery`, {
+        precio: parseFloat(priceKm) || 0,
+        precioBase: parseFloat(basePrice) || 0,
+        over23hFee: parseFloat(over23hFee) || 0,
+        weekendFee: parseFloat(weekendFee) || 0,
+        weatherFee: parseFloat(weatherFee) || 0
+      });
+
+      onClose();  // Cerrar modal
     } catch (error) {
-      console.error('Error updating delivery price:', error);
+      console.error('Error updating delivery data:', error);
     }
   };
 
-  if (!showModal) {
-    return null;
-  }
+  if (!showModal) return null;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <button className="close-button" onClick={onClose}>X</button>
-        <h2>Gestión de Precio de Delivery</h2>
+        <h2>Gestión de Tarifas de Delivery</h2>
+
         <form onSubmit={handleSubmit} className="delivery-price-form">
           <div className="form-group">
-            <label htmlFor="precio">Precio (€):</label>
+            <label>Precio por km (€/km):</label>
             <input
               type="number"
-              id="precio"
-              name="precio"
-              value={price}
-              onChange={handleInputChange}
+              step="0.01"
+              value={priceKm}
+              onChange={(e) => setPriceKm(e.target.value)}
               required
             />
           </div>
-          <button type="submit" className="update-price-button">Actualizar Precio</button>
+
+          <div className="form-group">
+            <label>Precio base (€/envío):</label>
+            <input
+              type="number"
+              step="0.01"
+              value={basePrice}
+              onChange={(e) => setBasePrice(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Recargo después de 23h (€/envío):</label>
+            <input
+              type="number"
+              step="0.01"
+              value={over23hFee}
+              onChange={(e) => setOver23hFee(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Recargo fin de semana (€/envío):</label>
+            <input
+              type="number"
+              step="0.01"
+              value={weekendFee}
+              onChange={(e) => setWeekendFee(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Recargo por clima (€/envío):</label>
+            <input
+              type="number"
+              step="0.01"
+              value={weatherFee}
+              onChange={(e) => setWeatherFee(e.target.value)}
+            />
+          </div>
+
+          <button type="submit" className="update-price-button">
+            Actualizar Tarifas
+          </button>
         </form>
       </div>
     </div>

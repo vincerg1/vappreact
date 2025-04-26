@@ -1,40 +1,38 @@
 /* DeliveryForm.css */
-
-/* Estilos generales del formulario */
 .delivery-form-container {
     padding: 20px;
     background-color: #f9f9f9;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     max-width: 500px;
-    margin: 20px auto;
-  }
-  
-  .delivery-form-title {
+    margin: auto;
+    max-height: 95vh;         
+    overflow-y: auto;        
+    scroll-behavior: smooth;  
+    border: none;
+}
+.delivery-form-title {
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 15px;
     text-align: center;
-  }
-  
-  .delivery-form-label {
+}
+.delivery-form-label {
     display: block;
     font-size: 14px;
     margin-bottom: 5px;
     font-weight: bold;
-  }
-  
-  .delivery-form-input {
+}
+.delivery-form-input {
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
-    border-radius: 4px;
+    border-radius: 10px;
     border: 1px solid #ccc;
     font-size: 16px;
-  }
-  
-  .delivery-form-button {
-    background-color: #4CAF50;
+}
+.delivery-form-button {
+    background-color: #d61acc;
     color: white;
     padding: 10px 15px;
     border: none;
@@ -42,40 +40,70 @@
     cursor: pointer;
     width: 100%;
     font-size: 16px;
-  }
-  
-  .delivery-form-button:hover {
-    background-color: #45a049;
-  }
-  
-  /* Estilos para el toggle de delivery o pickup */
-  .toggle-options {
+}
+.delivery-form-button:hover {
+    background-color: rgb(6, 162, 21);
+}
+.toggle-options {
     display: flex;
-    justify-content: space-around;
-    margin-bottom: 15px;
-  }
-  
-  .toggle-button {
-    padding: 10px 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    flex-direction: column;
+    align-items: center;
+}
+.toggle-button {
+    background-color: black;
+    color: #fefefe;
+    margin: 10px;
+    border: none;
+    border-radius: 10px;
     cursor: pointer;
-    background-color: #ddd;
-  }
-  
-  .toggle-button.active {
-    background-color: #4CAF50;
-    color: white;
-  }
-  
-  /* Error message styles */
-  .error-message {
+    font-size: 20px;
+    font-weight: 900;
+    width: 250px;
+    height: 100px;
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+.toggle-button:hover {
+    background-color: #fedb88;
+    color: rgb(255, 157, 0);
+    font-weight: bold;
+    transition: all 0.3s ease-in-out;
+    transform: scale(1.05);   
+}
+.selected-option-info button{
+background-color: #000000;
+border-radius: 10px;
+cursor: pointer;
+display: block;
+  margin: 0 auto;
+}
+.selected-option-info button:hover {
+  background-color: #fedb88;
+  color: rgb(255, 157, 0);
+}
+.error-message {
     color: red;
-    font-size: 12px;
-    margin-top: -10px;
-    margin-bottom: 10px;
-  }
-  @keyframes blink {
+    margin-top: 0.5rem;
+    font-weight: bold;
+}
+.error-button {
+    background-color: #ff3333 !important; /* un rojo de alerta */
+}
+.error-button:hover {
+    background-color: #cc0000 !important;
+}
+.button-error {
+    background-color: #ff4d4d !important;
+    border: 2px solid #cc0000 !important;
+    color: white !important;
+}
+.button-error:hover {
+    background-color: #cc0000 !important;
+}
+@keyframes blink {
     0% {
       opacity: 1;
     }
@@ -85,25 +113,23 @@
     100% {
       opacity: 1;
     }
-  }
-  
-  .blink-button {
+} 
+.blink-button {
     animation: blink 1.5s infinite;
-  }
-  .confirmed-message p {
+}
+.confirmed-message p {
     font-size: 20px;
     font-weight: bold;
-    background-color: rgb(29, 244, 183);
-    color: rgb(80, 80, 80);
-    padding: 5px;
+    background-color: #50bf39;
+    color: rgb(30, 255, 0);
+    padding: 15px;
+    border-radius: 10px;
     text-align: center;
     margin-top: 10px;
     margin-bottom: 10px;
     border-radius: 5px;
-  }
-
-
-  /* Estilos específicos para el modal de observaciones */
+    width:450px;
+}
 .observation-modal-overlay {
   position: fixed;
   top: 0;
@@ -116,81 +142,311 @@
   justify-content: center;
   z-index: 1000;
 }
-
 .observation-modal-content {
   background: #fff;
   padding: 20px;
   border-radius: 8px;
-  max-width: 400px; /* Tamaño más pequeño y más manejable */
+  max-width: 400px; 
   width: 90%;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+.modal-content {
+  width: 90vw;
+  max-width: 360px;
+  margin: 0 auto;
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 24px 20px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+  text-align: left;
+}
 
-.observation-modal-actions {
-  margin-top: 20px;
+.modal-content h3 {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.modal-content label {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-content input {
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.button-group-mod {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-.observation-modal-actions button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.observation-modal-actions button:first-child {
-  background-color: #28a745;
-  color: #fff;
-}
-
-.observation-modal-actions button:last-child {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-.ticket-express-section {
-  background-color: #0ee90e;
-  font-style: italic;
-  border-radius: 10px;
-  animation: blink 1s infinite;
+.save-button-mod,
+.close-button-mod {
+  flex: 1;
   padding: 10px;
-  line-height: 1.2;
+  font-size: 15px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background-color: #28a745;
+  color: white;
 }
 
+.close-button-mod {
+  background-color: #999;
+}
 
+.save-button-mod:hover {
+  background-color: #218838;
+}
 
-@keyframes blink {
+.close-button-mod:hover {
+  background-color: #777;
+}
+@keyframes softPulseBackground {
   0% {
-    background-color: #3cf33c;
+    background-color: #f14e3cd5;
   }
   50% {
-    background-color: #4ee064;
+    background-color: #f332c9;
   }
   100% {
-    background-color: #9aeb9a;
+    background-color: #f14e3cd5;
+  }
+}
+.ticket-express-section-df {
+  position: relative;
+  background-color: #e01a048d;
+  font-style: italic;
+  border-radius: 10px;
+  animation: softPulseBackground 2s infinite;
+  padding: 10px;
+  line-height: 1.2;
+  margin-top: 0.5rem;
+  overflow: hidden; /* Para evitar que el ::before se salga del contenedor */
+  z-index: 0;
+}
+.ticket-express-section-df::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.1));
+  z-index: 1;
+  pointer-events: none;
+  mix-blend-mode: overlay; /* Para que se combine con el fondo animado */
+  border-radius: 10px;
+}
+.ticket-express-section-df p {
+  color: rgb(255, 255, 255);
+  margin: 5px 0; 
+  text-align: center; 
+
+}
+.input-error {
+  border: 2px solid red !important;
+  outline: none;
+}
+.button-group-mod {
+  display: flex;
+  justify-content: center; 
+  gap: 10px; 
+  margin-top: 20px;
+}
+.button-group-mod button {
+  background-color: #000000;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  width: 40%;
+  border: none;
+  cursor: pointer;
+}
+.button-group-mod button:hover{
+  background-color: #989898;
+}
+.add-address-button,
+.manual-address-button {
+  flex: 1; 
+  background-color: #000000;
+  font-weight: bold;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 2rem;
+}
+.add-address-button:hover{
+  background-color:  rgb(6, 162, 21);
+  color: rgb(255, 255, 255);
+}
+.manual-address-button:hover {
+  background-color:  rgb(6, 162, 21);
+}
+.map-container{
+  margin-top: .5rem;
+  margin-bottom: .5rem;
+}
+.save-button {
+  background-color: #000000; 
+  width: 100%;
+  color: #fff;
+  border-radius: 10px;
+  padding: 15px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+.save-button:hover{
+  width: 100%;
+  background-color: rgb(6, 162, 21);
+  transition: all 0.3s ease-in-out;
+  transform: scale(1.05);   
+}
+.form-success-message {
+  padding: 50px;
+  width: 500px;
+  border: 2px solid #00c851;
+  border-radius: 10px;
+  background-color: #eaffea;
+  text-align: center;
+  animation: fadeIn 0.6s ease-in-out;
+  margin: 5rem auto 0 auto; 
+  padding: 16px;
+  text-align: center;
+}
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-50px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(10px);
+  }
+  80% {
+    transform: scale(0.95) translateY(-5px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+.form-success-message h2 {
+  color: #007e33;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  text-shadow: 1px 1px 3px rgba(51, 255, 0, 0.963);
+  animation: bounceIn 0.8s ease-out;
+}
+.form-success-message .message-content {
+  font-size: 1.3rem; /* Aumentamos el tamaño */
+  color: #333;
+  line-height: 1.8;
+  white-space: pre-line; /* Para respetar los saltos de línea si fueran necesarios */
+}
+.emoji {
+  font-size: 3rem; /* solo emojis grandes */
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  /* CONTENEDOR PRINCIPAL */
+  .delivery-form-container {
+    position: relative;
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    max-height: 100vh;
+    overflow-y: auto;
+    margin: auto;
+    scroll-behavior: smooth;
+    border: none;
+  }
+
+  /* ENCABEZADO PEGAJOSO */
+  .delivery-form-sticky-top {
+    position: sticky;
+    top: -20px;                     /* cubre el padding superior */
+    z-index: 20;
+    margin: -20px -20px 0 -20px;    /* cubre padding izq/der */
+    background: #f9f9f9;
+    padding: 20px 0;
+    text-align: center;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+  }
+
+  /* BOTÓN DE CAMBIO DE MÉTODO */
+  .change-delivery-method {
+    width: 100%;
+    max-width: 200px;
+  }
+
+  /* CAMPOS, SELECTS Y SECCIONES */
+  .delivery-form-container input,
+  .delivery-form-container select,
+  .delivery-form-container .ticket-express-section-df,
+  .delivery-form-container .form-success-message {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* MENSAJE DE ÉXITO */
+  .form-success-message {
+    padding: 16px;
+    width: 300px;
+    margin: 5rem auto 0;
+    border: 2px solid #00c851;
+    border-radius: 10px;
+    background: #eaffea;
+    text-align: center;
+  }
+
+  .form-success-message h2 { font-size: 20px; margin-bottom: 10px; }
+  .form-success-message .message-content { font-size: 16px; line-height: 1.4; }
+
+  /* BOTONES DE DIRECCIÓN */
+  .add-address-button,
+  .manual-address-button {
+    flex: 1;
+    background: #000;
+    font-weight: bold;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: .5rem;
+  }
+
+  /* CONFIRMACIÓN DE DIRECCIÓN */
+  .confirmed-message p {
+    font-size: 20px;
+    font-weight: bold;
+    background: #50bf39;
+    color: #1eff00;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    margin: 10px 0;
+    width: 350px;
   }
 }
 
-.ticket-express-section p {
-  color: #2b2963;
-  margin: 5px 0; /* Reduce el margen entre líneas */
-  text-align: center; /* Centrar el texto */
 
-}
-
-
-.input-error {
-  border: 2px solid red;
-}
-
-.button-group  {
-  display: flex;
-  gap: 10px; /* Espacio entre los botones */
-  margin-top: -15px;
-}
-
-.add-address-button,
-.manual-address-button {
-  flex: 1; /* Hace que ambos botones tengan el mismo ancho */
-}

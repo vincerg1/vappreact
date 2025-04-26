@@ -53,10 +53,10 @@ const ReviewForm = ({ email, onClose }) => {
           maxLength="255" 
           required 
         />
-        <p>{255 - review.length} caracteres restantes</p>
+        <p>{255 - review.length} Remaining characters</p>
       </div>
       <div>
-        <label>Puntuación:</label>
+        <label>Rating:</label>
         <select value={rating} onChange={(e) => setRating(e.target.value)} required>
           {[1, 2, 3, 4, 5].map(num => (
             <option key={num} value={num}>{num}</option>
@@ -64,7 +64,7 @@ const ReviewForm = ({ email, onClose }) => {
         </select>
       </div>
       {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
-      <button type="submit">Enviar Review</button>
+      <button type="submit">Post</button>
     </form>
   );
 };

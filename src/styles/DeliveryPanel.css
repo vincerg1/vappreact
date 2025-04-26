@@ -1,273 +1,589 @@
-/* Contenedor principal */
-.wallet-modal {
-  width: 100%;
-  margin: 0 ;   
-  padding: 20px ;
-  
-}
-
-/* Contenedor de columnas */
-.wallet-columns {
-  display: flex;
-  flex-wrap: wrap;         
-  justify-content: space-between;
-  gap: 20px;            
-}
-
-/* Cada columna ~33% */
-.wallet-column {
-  flex: 1 1 30%;            
-  min-width: 280px;         
-  max-width: 33%;           
-  box-sizing: border-box;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background-color: #f9f9f9;
-  overflow-x: auto;
-}
-
-/* Ajuste de tablas */
-.tabla-pedidos {
-  width: 100%;
-  table-layout: auto; /* O fixed, según prefieras */
-}
-
-/* Contenedor del gráfico (columna 2) */
-.chart-container {
-  width: 100%;
-  height: 425px;
-  margin-bottom: 20px;
-}
-
-/* Botón de la columna 2 */
-.wallet-column2-button {
-  width: 100%;
-  margin-top: 20px;
-  padding: 20px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 16px;
-  cursor: pointer;
-  text-align: center;
-}
-
-.wallet-column2-button:hover {
-  background-color: #218838;
-}
-
-/* Financial container (columna 3) */
-.financial-container {
+.delivery-panel-container {
+  height: 100vh; /* Ocupa toda la altura de la pantalla */
+  width: 100vw; /* Ocupa todo el ancho visible */
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  align-items: center; 
-  justify-content: center; 
-  width: 100%;
-  height: 100%;
+  background-color: #1e1e1e;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", sans-serif;
 }
 
-/* Bloques de resumen financiero */
-.financial-item {
-  width: 100%;
-  max-width: 300px;
-  padding: 75px;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background-color: #ece2e2;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin: 1px;
-}
-.financial-item h3 {
-  margin-bottom: 10px;
-}
-.financial-item p {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #333;
+/* Header */
+.header-container {
+  flex-shrink: 0;
+  padding: 12px;
+  background-color: #2a2a2a;
+  display: flex;
+  justify-content: space-around;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
-/* Estilo general de los botones */
-button {
-  padding: 10px 20px;
+.header-button {
+  background-color: #444;
   border: none;
-  border-radius: 5px;
-  background-color: #28a745;
-  color: white;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  width: auto;
+}
+.header-button:hover {
+  background-color: #666;
+}
+
+/* Fila de sumatoria de pedidos */
+.stats-row {
+  flex-shrink: 0;
+  background-color: #2a2a2a;
+  padding: 8px 0;
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.stats-item {
+  font-size: 14px;
+  color: #fff;
+}
+
+.carousel-container {
+  margin-top: auto;
+  flex-grow: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 12px;
+  padding-bottom: 8px;
+  overflow: hidden;
+  width: 400px;
+}
+.carousel-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: pan-y; 
+}
+.carousel-card {
+  height: auto; 
+  max-height: auto;
+  width: 90%;
+  max-width: 360px;
+  margin: 0;
+  background-color: #2c2c2c;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+} 
+
+
+.progress-container {
+  height: 25px;
+  background-color: #555353;
+  border-radius: 10px;
+  overflow: hidden; /* importante */
+  position: relative;
+}
+.progress-bar {
+  height: 100%;
+  width: 0%; 
+  background: linear-gradient(to right, #00cc88, #06f2cf) ; 
+  transition: width 0.5s ease;
+  border-radius: 10px;
+  position: relative;
+}
+.progress-label {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: bold;
+  color: #555353;
+  pointer-events: none;
+}
+.my-progress-container {
+  height: 25px;
+  background-color: #555353;
+  border-radius: 10px;
+  overflow: hidden; /* importante */
+  position: relative;
+}
+.my-progress-bar {
+  height: 100%;
+  width: 0%; 
+  background: linear-gradient(to right, #00cc88, #06f2cf) ; 
+  transition: width 0.5s ease;
+  border-radius: 10px;
+  position: relative;
+}
+.my-progress-label {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  font-weight: bold;
+  color: #555353;
+  pointer-events: none;
+}
+.header-card {
+  padding: 8px;
+  border-bottom: 1px solid #444;
+  display: flex;
+  justify-content: flex-end;
+}
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.status-pendiente {
+  background-color: #ffcc00;
+  color: #000;
+}
+.status-asignado {
+  background-color: #00c8ff;
+  color: #000;
+}
+.status-entregado {
+  background-color: #00cc88;
+  color: #fff;
+}
+
+/* Contenido de la tarjeta */
+.card-content {
+  padding: 10px 16px;
+}
+.card-content h4 {
+  margin: 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.card-content p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.carousel-local-buttons {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.mini-arrow {
+  background: #444;
+  border: none;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 20px;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.mini-arrow:hover {
+  background: #666;
+  transform: scale(1.1);
+}
+/* Botones inferiores en la tarjeta */
+.actions-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+  gap: 12px;
+}
+.main-actions {
+  display: flex;
+  gap: 12px;
+}
+.action-button {
+  all: unset;                          /* 🔥 Elimina todos los estilos por defecto (importante para <a>) */
+  background-color: #444;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 100px;
   display: inline-block;
-}
-button:hover {
-  background-color: #218838;
-}
-
-/* Responsivo: pantallas pequeñas */
-@media (max-width: 768px) {
-  .wallet-column {
-    flex: 1 1 100%;
-    max-width: 100%;
-  }
+  text-align: center;
+  text-decoration: none;              /* Asegura que <a> no tenga subrayado */
+  border: none;                       /* Asegura que <button> no tenga borde */
+  transition: background-color 0.2s ease;
 }
 
-
-/*segunda etapa*/
-.pedidos-completados-scroll {
-  max-height: 400px; 
-  overflow-y: auto; 
-  width: 1100px;
-  border: 1px solid #ccc;
-  padding: 15px; 
+.action-button:hover {
+  background-color: #555;
 }
-.modal-rutas {
+
+/* Flechas del carrusel */
+.carousel-button {
+  position: absolute;
+  top: 60%;
+  transform: translateY(-50%);
+  font-size: 32px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+  z-index: 10;
+  width: 48px;
+  height: 48px;
+}
+.carousel-button:hover {
+  opacity: 1;
+}
+.prev-button { left: 0; }
+.next-button { right: 0; }
+
+/* Dots de posición */
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+  gap: 6px;
+  z-index: 5;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #444;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.dot.active {
+  background-color: #fff;
+}
+
+/* Wallet Modal (Opcional) */
+.wallet-modal {
+  margin: 10px;
+  padding: 10px;
+  background-color: #333;
+  border: 1px solid #666;
+  border-radius: 8px;
+  color: #fff;
+  text-align: center;
+}
+
+.estado-button {
+  background-color: #333;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: white;
+  margin-left: 8px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px; 
+  line-height: normal; 
+}
+.estado-button.activo {
+  background: linear-gradient(to right, #00cc88, #06f2cf);
+  color: #333;
+}
+.estado-button.inactivo {
+  background-color: #d63031;
+}
+.daily-summary-wrapper {
+
+  margin: 1rem 0;
+  width: 250px;
+  border: 1px solid #444;
+  border-radius: 10px;
+  background-color: #1f1f1f;
+  overflow: hidden;
+}
+.daily-summary-header {
+  cursor: pointer;
+  padding: 1rem;
+  background-color: #2c2c2c;
+  color: #00e6b8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.daily-summary-details {
+  line-height: 1;
+  color: #fff;
+  font-size: 0.95rem;
+}
+.daily-summary-details p:last-child {
+  margin-bottom: 1rem;
+}
+.arrow-icon {
+  font-size: 1.2rem;
+  margin-left: 1rem;
+  color: #00e6b8;
+}
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.6);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 .modal-content {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-}
-.close-button {
-  background-color: red;
-  color: #fff;
-  border: none;
-  padding: 5px 10px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.blinking {
-  animation: blinkingAnimation 1s infinite;
-}
-@keyframes blinkingAnimation {
-  0% { background-color: #f2df08; }
-  50% { background-color: #ffcc00; }
-  100% { background-color: #f2df08; }
-}
-
-/* Contenedor general de botones */
-.buttons-container {
-  display: flex;
-  justify-content: center; 
-  align-items: center; 
-  flex-wrap: wrap; /* Permite que los elementos se acomoden en múltiples líneas si es necesario */
-  gap: 15px;
-  margin: 40px 0;
-  text-align: center; 
-  padding: 10px 20px;
-}
-.status-text {
-  text-align: center; 
-  color: rgb(0, 0, 0);
-  margin-top: -2rem;
-  font-style: italic;
-}
-.buttons-container button, .delivery-button {
-  width: 200px; 
-  height: 50px;
-  padding: 12px 18px; 
-  font-size: 18px; 
-  font-weight: bold; 
-  color: #ffffff; 
-  background-color: #000000; 
-  border: none; 
-  border-radius: 8px; 
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); 
-  transition: all 0.3s ease;
-  text-transform: uppercase; 
-  display: flex; 
-  align-items: center;
-  justify-content: center;
-}
-.buttons-container button, .delivery-button {
-  width: 200px; 
-  height: 50px; 
-  padding: 0; 
-  font-size: 18px; 
-  font-weight: bold;
-  color: #ffffff; 
-  background-color: #000000; 
-  border: none; 
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); 
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  display: flex; 
-  align-items: center;
-  justify-content: center;
-}
-.buttons-container button:hover, .delivery-button:hover {
-  background-color: #505050; 
-  transform: scale(1.05); 
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); 
-}
-.delivery-button.activo {
-  background-color: green; 
-}
-.delivery-button.inactivo {
-  background-color: red; 
-}
-button:disabled {
-  background-color: #d3d3d3;
-  color: #a9a9a9;
-  cursor: not-allowed;
-}
-
-/*FORMULARIO DE INICIO DE SESION*/
-.login-container3{
-  width: 100%;
-  max-width: 600px;
-  margin: 50px auto;
-  padding: 30px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
   text-align: center;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
-.login-title{
-  font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 20px;
+.modal-content h2 {
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
-.login-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #28a745;
+.modal-content p {
+  font-size: 1rem;
+  color: #333;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-content button {
+  background-color: #4CAF50;
   border: none;
   color: white;
-  font-size: 16px;
-  border-radius: 5px;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  font-size: 1rem;
   cursor: pointer;
-  transition: 0.3s ease;
-  margin-top: 1.5rem;
+  align-self: center;
+  transition: background-color 0.2s ease;
 }
-.tituloDEL {
-  text-align: center; /* Centra el texto horizontalmente */
-  margin: 10px auto; /* Ajusta el margen para mejor distribución */
-  font-size: 18px; /* Ajusta el tamaño del texto si es necesario */
-  font-weight: bold; /* Hace que el título resalte más */
+.modal-content button:hover {
+  background-color: #43a047;
 }
-.tablaPedidosPendientes {
-  max-width: 95%;
-  margin: 0 auto; 
-  padding: 10px;
-  justify-content: center; 
+
+.route-direcciones {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #bbb;
 }
-.tablaPedidosPendientes th {
-background-color: #777672;
+
+.route-direcciones strong {
+  color: #999;
+}
+
+.route-direccion-item {
+  display: block; /* esto agrega salto de línea */
+  font-size: 12px;
+  line-height: 1.3;
+  color: #bbb;
+}
+
+.noOrdersYet span {
+  display: block;
+  font-size: 80px;
+  margin: 1rem auto;
+  text-align: center;
+}
+/* Contenedor general */
+.nodos-conectados {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* Línea vertical continua */
+.eje-vertical {
+  position: relative;
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-right: 4px;
+}
+
+.eje-vertical::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background-color: gray;
+}
+
+/* Ramal horizontal con flechita */
+.ramal-horizontal {
+  position: relative;
+  height: 50px;
+  width: 100%;
+}
+
+.ramal-horizontal::after {
+  content: "→"; /* ← aquí está la flechita */
+  position: absolute;
+  top: 50%;
+  right: 0;
+  font-size: 16px;
+  transform: translateY(-50%);
+  color: gray;
+  padding-left: 4px;
+}
+
+/* Línea horizontal detrás de la flecha */
+.ramal-horizontal::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  width: 14px;
+  height: 2px;
+  background-color: gray;
+  transform: translateY(-50%);
+}
+
+/* Nodos visuales */
+.contenedor-nodos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nodo-ruta {
+  background: #fff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.15);
+}
+
+.contenido-nodo {
+  background: #1af406;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.numero-nodo {
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+.texto-nodo {
+  flex: 1;
+}
+.ticket-express-badge {
+  color: #f05024;
+  background-color: #f9f9f9; 
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 0.9em;
+  width: 90%;
+  text-align: center;
+}
+
+/*formulario incio de sesion deliveryPanel*/
+
+.login-wrapper {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #1a1a1a; 
+}
+.login-container3 {
+  background-color: #333;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 350px; 
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.form-login-dp {
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: #333;
+}
+.login-title {
+  text-align: center;
+  color: #4d4d4d;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+.login-container3 label {
+  color: #00e6b8;
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+}
+.login-container3 input[type="text"],
+.login-container3 input[type="password"] {
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 1rem;
+}
+.login-button {
+  background: linear-gradient(to right, #00cc88, #06f2cf);
+  border: none;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  padding: 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  margin-top: 1rem;
+  
+}
+.login-button:hover {
+  transform: scale(1.03);
+}
+
+
+.wallet-button{
+  background: linear-gradient(to right, #00cc88, #06f2cf);
+  border: none;
+  color: white;
+  font-weight: bold;
+  font-size: .75rem;
+  padding: .75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }

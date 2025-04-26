@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import '../styles/DeliveryForm.css';
 
 const AddressFormModal = ({ onClose, onSave }) => {
   const [street, setStreet] = useState('');
@@ -45,10 +46,10 @@ const AddressFormModal = ({ onClose, onSave }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <h3>Agregar Dirección</h3>
+        <h3>Set delivery address</h3>
 
         <label style={{ display: 'block', marginBottom: '10px' }}>
-          Rúa/Calle:
+          Street:
           <input
             type="text"
             value={street}
@@ -59,7 +60,7 @@ const AddressFormModal = ({ onClose, onSave }) => {
         </label>
 
         <label style={{ display: 'block', marginBottom: '10px' }}>
-          Portal:
+         Entrance:
           <input
             type="text"
             value={portal}
@@ -70,7 +71,7 @@ const AddressFormModal = ({ onClose, onSave }) => {
         </label>
 
         <label style={{ display: 'block', marginBottom: '10px' }}>
-          Número de Piso/Casa:
+          Apartment / Floor / House #:
           <input
             type="text"
             value={floor}
@@ -81,7 +82,7 @@ const AddressFormModal = ({ onClose, onSave }) => {
         </label>
 
         <label style={{ display: 'block', marginBottom: '10px' }}>
-          Ciudad:
+          City:
           <input
             type="text"
             value={city}
@@ -92,7 +93,7 @@ const AddressFormModal = ({ onClose, onSave }) => {
         </label>
 
         <label style={{ display: 'block', marginBottom: '10px' }}>
-          Código Postal:
+        Postal Code:
           <input
             type="text"
             value={postalCode}
@@ -102,12 +103,12 @@ const AddressFormModal = ({ onClose, onSave }) => {
           />
         </label>
 
-        <div className="button-group" style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-          <button onClick={handleSave} className="save-button">
-            Guardar Dirección
+        <div className="button-group-mod" >
+          <button onClick={handleSave} className="save-button-mod">
+            Save
           </button>
-          <button onClick={onClose} className="close-button">
-            Cerrar
+          <button onClick={onClose} className="close-button-mod">
+            Exit
           </button>
         </div>
       </div>

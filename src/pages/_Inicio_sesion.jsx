@@ -14,7 +14,21 @@ const InicioSesion = () => {
   const { updateSessionData } = useContext(_PizzaContext);
   const [registerTermsAccepted, setRegisterTermsAccepted] = useState(false); 
   const [activeTab, setActiveTab] = useState('login');
-  const handleEmailChange = (e) => setEmail(e.target.value);
+  const [emailSuggestions, setEmailSuggestions] = useState([]);
+  const emailDomains = ['gmail.com', 'icloud.com', 'hotmail.com', 'yahoo.com'];
+  const handleEmailChange = (e) => {
+    const input = e.target.value;
+    setEmail(input);
+  
+    if (!input.includes('@') && input.length > 0) {
+      setEmailSuggestions(emailDomains.map(domain => `${input}@${domain}`));
+    } else {
+      setEmailSuggestions([]);
+    }
+  };
+  
+ 
+ 
   const handlePasswordChange = (e) => setPassword(e.target.value);
   const navigate = useNavigate();
 
@@ -126,10 +140,20 @@ const InicioSesion = () => {
   const handleGoogleFailure = () => {
     setErrorMessage('Google login failed. Please try again.');
   };
+  const handleSuggestionClick = (suggestion) => {
+    setEmail(suggestion);
+    setEmailSuggestions([]);
+  };
   
   return (
     <GoogleOAuthProvider clientId={CLIENT_ID}>
       <div className="FormIS-Container">
+
+      <div className="FormIS-inner">
+    <div className="FormIS-title-wrapper">
+      <h2 className="FormIS-title">VoltaPizzaApp</h2>
+    </div>
+
         {activeTab === 'login' && (
           <form className="FormIS-login" onSubmit={handleLoginOrRememberMe}>
             <div className="FormIS-form-header">
@@ -159,7 +183,9 @@ const InicioSesion = () => {
                 onChange={handleEmailChange}
                 required
               />
+                
             </div>
+
             <div className="FormIS-underline-input">
               <label htmlFor="password">Password</label>
               <input
@@ -215,6 +241,20 @@ const InicioSesion = () => {
                 onChange={handleEmailChange}
                 required
               />
+               {emailSuggestions.length > 0 && (
+                  <ul className="FormIS-suggestions">
+                  {emailSuggestions.map((suggestion, index) => {
+                    const prefix = email; 
+                    const suffix = suggestion.replace(prefix, ''); 
+                
+                    return (
+                      <li key={index} onClick={() => handleSuggestionClick(suggestion)}>
+                        <strong>{prefix}</strong><span className="highlight-suffix">{suffix}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                )}
             </div>
             <div className="FormIS-underline-input">
               <label htmlFor="register-password">Password</label>
@@ -266,6 +306,7 @@ const InicioSesion = () => {
             </div>
           </form>
         )}
+      </div>
       </div>
     </GoogleOAuthProvider>
   );

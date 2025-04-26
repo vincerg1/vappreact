@@ -1,6 +1,7 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { _PizzaContext } from './_PizzaContext';
+import { PurchaseContext } from './PurchaseContext';
 import { Tooltip } from 'react-tooltip';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhone, faEnvelope, faSearch } from '@fortawesome/free-solid-svg-icons';
@@ -14,6 +15,7 @@ import axios from 'axios';
 import moment from 'moment';
 import '../styles/CustomerPage.css';
 import 'moment/locale/es';
+import clayPowderBackground from '../vapp-img/close-up-mixture-clay-powder.jpg';
 
 
 const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, compra }) => {
@@ -21,7 +23,6 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   const [cuponesDisponibles, setCuponesDisponibles] = useState(offer.Cupones_Disponibles);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isTimeBlocked, setIsTimeBlocked] = useState(false);
-  // const [nextAvailableDay, setNextAvailableDay] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState([]);
   const [showNeonEffect, setShowNeonEffect] = useState(false); 
@@ -80,13 +81,14 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       setIsTemporarilyDisabled(true);
       const diffSeconds = horaInicio.diff(currentTime, "seconds");
       setTimeLeft(diffSeconds);
-      setTimeReason(`Disponible desde las ${offer.Hora_Inicio} Hrs`);
+      setTimeReason(`Available Today >>>>>>>
+        From ${offer.Hora_Inicio} Hrs`);
     } else if (currentTime.isBetween(horaInicio, horaFin)) {
       // En horario válido
       setIsTemporarilyDisabled(false);
       const diffSeconds = horaFin.diff(currentTime, "seconds");
       setTimeLeft(diffSeconds);
-      setTimeReason(`Disponible hasta las ${offer.Hora_Fin}`);
+      setTimeReason(`Available until ${offer.Hora_Fin}`);
     } else {
       // Después de la hora fin
       if (offer.Tipo_Cupon === "permanente") {
@@ -154,7 +156,8 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
       const formattedDate = nextDay.format('DD/MM/YY'); // Fecha exacta
   
       setTimeLeft(nextDay.diff(moment(), 'seconds'));
-      setTimeReason(`Disponible el próximo ${formattedDay} (${formattedDate})`);
+      setTimeReason(`Available next >>>>
+        ${formattedDay} (${formattedDate})`);
     }
   };
   const checkExtraConditions = () => {
@@ -275,7 +278,7 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
         const { hours, minutes, seconds } = calculateTimeLeft(timeLeft);
         return (
             <>
-                Disponible hasta:
+                Available until:
                 <br />
                 {hours}h {minutes}m {seconds}s
             </>
@@ -285,16 +288,16 @@ const OfferCard = ({ offer, cuponesUsados = [], setCuponesUsados, setCompra, com
   };
   const renderDiscountRange = () => {
     if (offer.Min_Descuento_Percent && offer.Max_Descuento_Percent) {
-      return `${offer.Min_Descuento_Percent}% - ${offer.Max_Descuento_Percent}% Descuento`;
+      return `${offer.Min_Descuento_Percent}% - ${offer.Max_Descuento_Percent}% Discount`;
     }
-    return `${offer.Descuento_Percent}% Descuento`;
+    return `${offer.Descuento_Percent}% Discount`;
   };
 
 
 return (
   <div className="offer-card-container">
     {showNeonEffect && (
-      <div className="neon-glow1">¡Cupón Aplicado con Éxito!</div>
+      <div className="neon-glow1">¡Coupon Applied Successfully!</div>
     )}
 
     <div
@@ -337,13 +340,13 @@ return (
 
       <div className="offer-content">
         <h3>{offer.Codigo_Oferta}</h3>
-        <p className='msjleft'>¡Quedan <strong>{cuponesDisponibles}</strong> Cupones!</p>
+        <p className='msjleft'>¡left <strong>{cuponesDisponibles}</strong> Cupons!</p>
         <p>{renderDiscountRange()}</p>
         <p>
-          Precio:
-          {offer.Categoria_Cupon === "gratis"
-            ? "Hoy Gratis"
-            : `Hoy ${offer.Precio_Cupon || 0}€`}
+        Price: 
+          {offer.Categoria_Cupon === "Free"
+            ? " Today Free"
+            : ` Today ${offer.Precio_Cupon || 0}€`}
         </p>
 
         {/* Botón de Usar Cupón */}
@@ -352,7 +355,7 @@ return (
           onClick={handleUseCoupon}
           disabled={isTemporarilyDisabled || isBlocked}
         >
-          Usar Cupón
+          Use Coupon
         </button>
 
         {/* Footer */}
@@ -363,7 +366,7 @@ return (
             </div>
           ) : isBlocked ? (
             <div className="block-reasons">
-              <h4>🔒 Bloqueado</h4>
+              <h4>🔒 Blocked</h4>
             </div>
           ) : (
             <div className="expiration-info">
@@ -804,6 +807,8 @@ const NotificationTicker = () => {
   );
 };
 const CustomerPage = (offer) => {
+
+  const { compra, setCompra } = useContext(PurchaseContext);
   const { sessionData, activePizzas, isServiceSuspended, suspensionEndTime, setSuspensionState } = useContext(_PizzaContext);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [showContactInfo, setShowContactInfo] = useState(false);
@@ -830,20 +835,94 @@ const CustomerPage = (offer) => {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [isLoadingOffers, setIsLoadingOffers] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [compra, setCompra] = useState({
-    id_order: '',
-    fecha: moment().format('YYYY-MM-DD'),
-    hora: moment().format('HH:mm:ss'),
-    id_cliente: sessionData?.id_cliente || '',
-    DescuentosDailyChallenge: 0,
-    cupones: [],
-    venta: [],
-    Delivery: { opcion: false, costo: 0 },
-    total_sin_descuento: 0,
-    total_descuentos: 0,
-    origen: ''
-  });
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [showReviewSection, setShowReviewSection] = useState(false);
   const navigate = useNavigate();
+
+
+  const handleApplyCoupon = (offer) => {
+    const descuentoAleatorio =
+      offer.Min_Descuento_Percent === offer.Max_Descuento_Percent
+        ? offer.Min_Descuento_Percent
+        : Math.floor(
+            Math.random() * (offer.Max_Descuento_Percent - offer.Min_Descuento_Percent + 1) +
+            offer.Min_Descuento_Percent
+          );
+
+    const precioCupon = offer.Precio_Cupon || 0;
+
+    setCompra((prevCompra) => {
+      const descuentoDecimal = descuentoAleatorio / 100;
+      const descuentoAplicado = Math.min(
+        prevCompra.total_sin_descuento * descuentoDecimal,
+        offer.Max_Amount
+      );
+
+      const nuevoCupon = {
+        Oferta_Id: offer.Oferta_Id,
+        Descuento: descuentoDecimal,
+        Max_Amount: offer.Max_Amount,
+        PrecioCupon: precioCupon,
+        Tipo_Oferta: offer.Tipo_Oferta,
+      };
+
+      return {
+        ...prevCompra,
+        cupones: [...(prevCompra.cupones || []), nuevoCupon],
+        total_descuentos: prevCompra.total_descuentos + descuentoAplicado + precioCupon,
+      };
+    });
+  };
+  const handleClaimCoupon = ({ igLink, igUsername }) => {
+    if (!dailyChallenge || !sessionData || !sessionData.id_cliente) {
+      console.error('❌ Error: Datos incompletos para reclamar el cupón.');
+      setErrorMessage('Datos incompletos para reclamar el cupón.');
+      return;
+    }
+
+    if (hasCoupon) {
+      console.warn('⚠️ Advertencia: Solo puedes reclamar un cupón por compra.');
+      setErrorMessage('Solo puedes reclamar un cupón por compra.');
+      return;
+    }
+
+    const claimData = {
+      ig_username: igUsername,
+      post_link: igLink,
+      user_id: sessionData.id_cliente,
+    };
+
+    axios
+      .patch(`${process.env.REACT_APP_API_URL}/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`, claimData)
+      .then((response) => {
+        const { discount } = response.data.coupon;
+        const nuevoCupon = {
+          Oferta_Id: dailyChallenge.Oferta_Id,
+          Descuento: discount / 100,
+          Max_Amount: dailyChallenge.Max_Descuento_Percent,
+          PrecioCupon: 0,
+          Tipo_Oferta: 'DailyChallenge',
+        };
+
+        setCompra((prevCompra) => {
+          const updatedCompra = {
+            ...prevCompra,
+            cupones: [...(prevCompra.cupones || []), nuevoCupon],
+            DescuentosDailyChallenge: discount / 100,
+            total_descuentos:
+              prevCompra.total_descuentos + prevCompra.total_sin_descuento * (discount / 100),
+          };
+          return updatedCompra;
+        });
+
+        setHasCoupon(true);
+        closeDailyChallenge();
+      })
+      .catch((error) => {
+        console.error('❌ Error al reclamar el cupón del Daily Challenge:', error);
+        setErrorMessage('No se pudo reclamar el cupón.');
+      });
+  };
   const renderSuspensionMessage = () => {
     if (isServiceSuspended && suspensionEndTime) {
       const endTimeMoment = moment(suspensionEndTime);
@@ -882,25 +961,20 @@ const CustomerPage = (offer) => {
     "LinkedIn": faLinkedin,
     "Twitter": faTwitter
   };
-
   useEffect(() => {
-  const checkSuspensionStatus = async () => {
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/pizzeria-settings`);
-      const { is_suspended, suspension_end_time } = response.data;
-      // console.log("Valores recibidos desde la API para verificar estado de suspensión:", is_suspended, suspension_end_time);
+    const checkSuspensionStatus = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/pizzeria-settings`);
+        const { is_suspended, suspension_end_time } = response.data;
+        setSuspensionState(is_suspended, suspension_end_time ? moment(suspension_end_time) : null);
+      } catch (error) {
+        console.error('Error al verificar el estado de suspensión:', error);
+      }
+    };
 
-      // Actualizar el contexto con los datos del servidor
-      setSuspensionState(is_suspended, suspension_end_time ? moment(suspension_end_time) : null);
-    } catch (error) {
-      console.error('Error al verificar el estado de suspensión:', error);
-    }
-  };
-
-  checkSuspensionStatus();  // Llamar a la función al montar el componente
-
-  const interval = setInterval(checkSuspensionStatus, 10000); // Verificar cada minuto por ejemplo
-  return () => clearInterval(interval);  // Limpiar el intervalo cuando el componente se desmonte
+    checkSuspensionStatus();
+    const interval = setInterval(checkSuspensionStatus, 10000);
+    return () => clearInterval(interval);
   }, []);
   useEffect(() => {
     if (isServiceSuspended) {
@@ -908,22 +982,21 @@ const CustomerPage = (offer) => {
     } else {
       // console.log('🟢 El servicio NO está suspendido.');
     }
-  
     if (suspensionEndTime) {
-      // console.log(`⏰ El servicio está suspendido hasta: ${suspensionEndTime}`);
+      // console.log(`⏰ Suspendido hasta: ${suspensionEndTime}`);
     }
   }, [isServiceSuspended, suspensionEndTime]);
   useEffect(() => {
     if (isServiceSuspended && suspensionEndTime) {
       const interval = setInterval(() => {
-        // No necesitamos hacer nada aquí. El componente se actualizará automáticamente.
+        // ...
       }, 1000);
-      return () => clearInterval(interval); // Limpiar el intervalo cuando el componente se desmonte
+      return () => clearInterval(interval);
     }
   }, [isServiceSuspended, suspensionEndTime]);
   useEffect(() => {
     if (sessionData) {
-       console.log('Datos de la sesión:', sessionData);
+      console.log('Datos de la sesión:', sessionData);
     }
   }, [sessionData]);
   useEffect(() => {
@@ -958,26 +1031,21 @@ const CustomerPage = (offer) => {
     const fetchCuponesDisponibles = async () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
-  
-        // Buscar oferta de Random Pizza
         const ofertaPizzaRara = response.data.data.find(
           (oferta) => oferta.Tipo_Oferta === 'Random Pizza'
         );
         if (ofertaPizzaRara) {
           setCuponesDisponibles(ofertaPizzaRara.Cupones_Disponibles);
         } else {
-          setCuponesDisponibles(0); // En caso de que no haya una oferta activa
+          setCuponesDisponibles(0);
         }
-  
-        // Calcular la suma total de cupones para DailyChallenge activos
         const dailyChallengeCupones = response.data.data
           .filter(
             (oferta) =>
               oferta.Tipo_Oferta === 'DailyChallenge' && oferta.Estado === 'Activa'
           )
           .reduce((sum, oferta) => sum + (oferta.Cupones_Disponibles || 0), 0);
-  
-        setCuponesDailyChallenge(dailyChallengeCupones); // Actualizar el estado
+        setCuponesDailyChallenge(dailyChallengeCupones);
       } catch (error) {
         console.error('Error al obtener la cantidad de cupones:', error);
       }
@@ -987,23 +1055,18 @@ const CustomerPage = (offer) => {
   useEffect(() => {
     const checkRandomPizzaAvailability = () => {
       if (!offers || offers.length === 0) return;
-  
-      // Filtrar únicamente las ofertas de tipo Random Pizza
       const randomPizzaOffers = offers.filter((offer) => offer.Tipo_Oferta === 'Random Pizza');
       if (randomPizzaOffers.length === 0) {
         setIsRandomPizzaEnabled(false);
         setRandomPizzaTooltip('No hay ofertas disponibles actualmente.');
-        setCuponesRandomPizza(0); // Usar el estado específico
+        setCuponesRandomPizza(0);
         return;
       }
-  
-      // Selecciona la primera oferta válida
       const ofertaPizzaRara = randomPizzaOffers[0];
       const currentTime = moment();
       const horaInicio = moment(ofertaPizzaRara.Hora_Inicio, 'HH:mm');
       const horaFin = moment(ofertaPizzaRara.Hora_Fin, 'HH:mm');
-  
-      // Validaciones
+
       if (ofertaPizzaRara.Cupones_Disponibles === 0 && currentTime.isBefore(horaFin)) {
         setIsRandomPizzaEnabled(false);
         setRandomPizzaTooltip('Sold Out!');
@@ -1021,44 +1084,37 @@ const CustomerPage = (offer) => {
         setIsRandomPizzaEnabled(true);
         setRandomPizzaTooltip('');
       }
-  
-      // Actualizar los cupones específicos para Random Pizza
+
       setCuponesRandomPizza(ofertaPizzaRara.Cupones_Disponibles || 0);
     };
-  
+
     checkRandomPizzaAvailability();
   }, [offers]);
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTextIndex((prevIndex) => (prevIndex + 1) % rotatingTexts.length);
-    }, 3000); // Cambia cada 3 segundos
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
   useEffect(() => {
     const obtenerOfertas = async () => {
       if (!sessionData || !sessionData.segmento) {
         console.warn("⏳ Esperando que sessionData.segmento esté disponible...");
-        return; // No hacer la petición hasta que tengamos el segmento
+        return;
       }
-  
       try {
-        // console.log("🚀 Buscando ofertas para segmento:", sessionData.segmento);
         setIsLoadingOffers(true);
-  
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas/${sessionData.segmento}`);
         const { data } = response.data;
-  
+
         moment.locale('es');
         let currentDay = moment().format('dddd').toLowerCase();
         currentDay = removeDiacritics(currentDay);
-  
+
         const ofertasFiltradas = data.filter(({ Estado, Dias_Activos }) => {
           const diasActivos = JSON.parse(Dias_Activos);
           return Estado === 'Activa' && diasActivos.includes(currentDay);
         });
-  
-        // console.log("✅ Ofertas filtradas:", ofertasFiltradas);
-  
         setOffers(ofertasFiltradas);
       } catch (error) {
         console.error('❌ Error al obtener ofertas:', error);
@@ -1066,8 +1122,6 @@ const CustomerPage = (offer) => {
         setIsLoadingOffers(false);
       }
     };
-  
-
     if (sessionData?.segmento) {
       obtenerOfertas();
     }
@@ -1077,42 +1131,38 @@ const CustomerPage = (offer) => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         let allOffers = response.data.data;
-  
-        // Obtener el día actual en texto
+
         const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
         const currentTime = moment();
-  
-        // ✅ FILTRAR CUPONES TEMPORALES QUE SE HAYAN AGOTADO
+
+        // Filtrar cupones temporales sin stock
         allOffers = allOffers.filter((offer) => {
           if (offer.Tipo_Cupon === "temporal" && offer.Cupones_Disponibles === 0) {
-            return false; // Filtramos los cupones temporales sin stock
+            return false;
           }
-          return true; // Mantenemos los cupones permanentes y los temporales con stock
+          return true;
         });
-  
-        // ✅ Ajustar la validación del día activo en Daily Challenge
+
+        // DailyChallenge
         const dailyChallengeOffer = allOffers.find(
           (offer) =>
             offer.Tipo_Oferta === "DailyChallenge" &&
             offer.Estado === "Activa" &&
             JSON.parse(offer.Dias_Activos).map(removeDiacritics).includes(currentDay)
         );
-  
         if (dailyChallengeOffer) {
           setDailyChallenge(dailyChallengeOffer);
           setCuponesDailyChallenge(dailyChallengeOffer.Cupones_Disponibles || 0);
-  
+
           const startTime = moment(dailyChallengeOffer.Hora_Inicio, "HH:mm");
           const endTime = moment(dailyChallengeOffer.Hora_Fin, "HH:mm");
-  
+
           if (dailyChallengeOffer.Cupones_Disponibles === 0) {
             setIsDailyChallengeEnabled(false);
             setDailyChallengeTooltip("Sold Out!");
           } else if (currentTime.isBefore(startTime)) {
             setIsDailyChallengeEnabled(false);
-            setDailyChallengeTooltip(
-              `Disponible a partir de las ${dailyChallengeOffer.Hora_Inicio}`
-            );
+            setDailyChallengeTooltip(`Disponible a partir de las ${dailyChallengeOffer.Hora_Inicio}`);
           } else if (currentTime.isAfter(endTime)) {
             if (dailyChallengeOffer.Tipo_Cupon === "permanente") {
               resetCoupons(dailyChallengeOffer);
@@ -1130,26 +1180,20 @@ const CustomerPage = (offer) => {
           setIsDailyChallengeEnabled(false);
           setDailyChallengeTooltip("No hay retos disponibles actualmente.");
         }
-  
-        // ✅ Random Pizza Logic (misma validación de permanentes vs temporales)
-        const randomPizzaOffer = allOffers.find(
-          (offer) => offer.Tipo_Oferta === "Random Pizza"
-        );
-  
+
+        // Random Pizza
+        const randomPizzaOffer = allOffers.find((offer) => offer.Tipo_Oferta === "Random Pizza");
         if (randomPizzaOffer) {
           setCuponesDisponibles(randomPizzaOffer.Cupones_Disponibles || 0);
-  
           const startTime = moment(randomPizzaOffer.Hora_Inicio, "HH:mm");
           const endTime = moment(randomPizzaOffer.Hora_Fin, "HH:mm");
-  
+
           if (randomPizzaOffer.Cupones_Disponibles === 0) {
             setIsRandomPizzaEnabled(false);
             setRandomPizzaTooltip("Sold Out!");
           } else if (currentTime.isBefore(startTime)) {
             setIsRandomPizzaEnabled(false);
-            setRandomPizzaTooltip(
-              `Disponible a partir de las ${randomPizzaOffer.Hora_Inicio}`
-            );
+            setRandomPizzaTooltip(`Disponible a partir de las ${randomPizzaOffer.Hora_Inicio}`);
           } else if (currentTime.isAfter(endTime)) {
             if (randomPizzaOffer.Tipo_Cupon === "permanente") {
               resetCoupons(randomPizzaOffer);
@@ -1165,30 +1209,25 @@ const CustomerPage = (offer) => {
           setIsRandomPizzaEnabled(false);
           setRandomPizzaTooltip("No hay ofertas disponibles actualmente.");
         }
-  
-        // ✅ ACTUALIZAR LAS OFERTAS (sin cupones temporales agotados)
+
         setOffers(allOffers);
       } catch (error) {
         console.error("Error al obtener las ofertas:", error);
       }
     };
-  
     fetchOffers();
-  }, []); 
+  }, []);
   useEffect(() => {
     axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`)
       .then((response) => {
         if (response.data.length > 0) {
-          const empresa = response.data[0]; // 🔥 Tomar la primera tienda del array
-  
-          // Convertir `redes_sociales` en un array válido
+          const empresa = response.data[0];
           let redesSociales = [];
           try {
             redesSociales = empresa.redes_sociales ? JSON.parse(empresa.redes_sociales) : [];
           } catch (error) {
             console.error("Error al parsear redes_sociales:", error);
           }
-  
           setCompanyInfo({
             ...empresa,
             redes_sociales: redesSociales
@@ -1201,108 +1240,17 @@ const CustomerPage = (offer) => {
         console.error('Error al cargar la información de la empresa:', error);
       });
   }, []);
-  
-  
+
   const rotatingTexts = ["Order Now", "Explore Menu", "Make Your Pizza"];
-  
+
   const handlePizzaSelect = (pizza) => {
-    setSelectedPizza(pizza); 
-    navigate('/customerMenu', { 
-      state: { 
-        selectedPizza: pizza, 
-        compra: compra // Pasar el estado completo de la compra
-      } 
-    }); 
-  };
-  const handleApplyCoupon = (offer) => {
-    const descuentoAleatorio =
-      offer.Min_Descuento_Percent === offer.Max_Descuento_Percent
-        ? offer.Min_Descuento_Percent
-        : Math.floor(
-            Math.random() * (offer.Max_Descuento_Percent - offer.Min_Descuento_Percent + 1) +
-            offer.Min_Descuento_Percent
-          );
-  
-    const precioCupon = offer.Precio_Cupon || 0;
-  
-    setCompra((prevCompra) => {
-      const descuentoDecimal = descuentoAleatorio / 100;
-      const descuentoAplicado = Math.min(
-        prevCompra.total_sin_descuento * descuentoDecimal,
-        offer.Max_Amount
-      );
-  
-      const nuevoCupon = {
-        Oferta_Id: offer.Oferta_Id,
-        Descuento: descuentoDecimal,
-        Max_Amount: offer.Max_Amount,
-        PrecioCupon: precioCupon,
-        Tipo_Oferta: offer.Tipo_Oferta,
-      };
-  
-      return {
-        ...prevCompra,
-        cupones: [...(prevCompra.cupones || []), nuevoCupon],
-        total_descuentos: prevCompra.total_descuentos + descuentoAplicado + precioCupon,
-      };
+    setSelectedPizza(pizza);
+    navigate('/customerMenu', {
+      state: {
+        selectedPizza: pizza,
+        compra: compra
+      }
     });
-  };
-  const handleClaimCoupon = ({ igLink, igUsername }) => {
-    if (!dailyChallenge || !sessionData || !sessionData.id_cliente) {
-        console.error('❌ Error: Datos incompletos para reclamar el cupón.');
-        setErrorMessage('Datos incompletos para reclamar el cupón.');
-        return;
-    }
-
-    if (hasCoupon) {
-        console.warn('⚠️ Advertencia: Solo puedes reclamar un cupón por compra.');
-        setErrorMessage('Solo puedes reclamar un cupón por compra.');
-        return;
-    }
-
-    // console.log('ℹ️ Reclamando cupón del Daily Challenge:', dailyChallenge);
-    // console.log('🔗 Link de Instagram:', igLink);
-    // console.log('👤 Usuario de Instagram:', igUsername);
-
-    const claimData = {
-        ig_username: igUsername,
-        post_link: igLink,
-        user_id: sessionData.id_cliente,
-    };
-
-    axios
-        .patch(`${process.env.REACT_APP_API_URL}/api/daily-challenge/${dailyChallenge.Oferta_Id}/claim-coupon`, claimData)
-        .then((response) => {
-            const { discount } = response.data.coupon;
-
-            const nuevoCupon = {
-                Oferta_Id: dailyChallenge.Oferta_Id,
-                Descuento: discount / 100,
-                Max_Amount: dailyChallenge.Max_Descuento_Percent,
-                PrecioCupon: 0, // Siempre 0 para Daily Challenge
-                Tipo_Oferta: 'DailyChallenge',
-            };
-
-            console.log('✅ Cupón creado:', nuevoCupon);
-
-            setCompra((prevCompra) => {
-                const updatedCompra = {
-                    ...prevCompra,
-                    cupones: [...(prevCompra.cupones || []), nuevoCupon],
-                    DescuentosDailyChallenge: discount / 100,
-                    total_descuentos: prevCompra.total_descuentos + (prevCompra.total_sin_descuento * (discount / 100)),
-                };
-                console.log('🛒 Estado de compra actualizado:', updatedCompra);
-                return updatedCompra;
-            });
-
-            setHasCoupon(true);
-            closeDailyChallenge();
-        })
-        .catch((error) => {
-            console.error('❌ Error al reclamar el cupón del Daily Challenge:', error);
-            setErrorMessage('No se pudo reclamar el cupón.');
-        });
   };
   const handleAddProductToCart = (product, cantidad, size, price) => {
     setCompra((prevCompra) => {
@@ -1311,9 +1259,8 @@ const CustomerPage = (offer) => {
         cantidad,
         size,
         price,
-        total: cantidad * price
+        total: cantidad * price,
       };
-
       const updatedVenta = [...prevCompra.venta, newProduct];
       const totalSinDescuento = updatedVenta.reduce((sum, item) => sum + item.total, 0);
 
@@ -1321,33 +1268,24 @@ const CustomerPage = (offer) => {
         ...prevCompra,
         venta: updatedVenta,
         total_sin_descuento: totalSinDescuento,
-        total_descuentos: totalSinDescuento * (1 - prevCompra.DescuentosCupon / 100)
+        total_descuentos: totalSinDescuento * (1 - prevCompra.DescuentosCupon / 100),
       };
     });
   };
   const handleDailyChallengeClick = () => {
     setShowDailyChallenge(!showDailyChallenge);
-  
-    // Verificar si el Daily Challenge ya está cargado para evitar llamadas redundantes
     if (!dailyChallenge) {
       axios
-        .get(`${process.env.REACT_APP_API_URL}/ofertas`) 
+        .get(`${process.env.REACT_APP_API_URL}/ofertas`)
         .then((response) => {
-          // Filtrar por Tipo_Oferta y Estado
           const challenges = response.data.data.filter(
             (offer) => offer.Tipo_Oferta === 'DailyChallenge' && offer.Estado === 'Activa'
           );
-  
           if (challenges.length > 0) {
-            // Seleccionar el primer DailyChallenge o aplicar lógica adicional si hay varios
             const challenge = challenges[0];
-  
-            // Adaptar la URL de la imagen si existe
             if (challenge.Imagen) {
               challenge.img_url = `${process.env.REACT_APP_API_URL}${challenge.Imagen}`;
             }
-  
-            // Guardar el Daily Challenge en el estado
             setDailyChallenge(challenge);
           } else {
             console.warn('No Daily Challenge found with the specified criteria.');
@@ -1365,404 +1303,132 @@ const CustomerPage = (offer) => {
       axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`).then((response) => {
         const data = response.data;
         if (Array.isArray(data) && data.length > 0) {
-          setCompanyInfo(data[0]); // Selecciona el primer registro (sede principal)
+          setCompanyInfo(data[0]);
         }
       });
     }
   };
   const handleOrderNowClick = () => {
-    // console.log('Finalizando compra:', compra);
     navigate('/order-now', { state: { compra } });
   };
   const calculateNextCycle = (offer) => {
-    const currentDayIndex = moment().day(); // Día actual (0 = domingo, 6 = sábado)
-    const currentTime = moment(); // Hora actual
-
-    const diasActivos = JSON.parse(offer.Dias_Activos).map((day) =>
-        removeDiacritics(day.toLowerCase())
-    );
-
-    // Revisar primero si el día actual es válido y estamos dentro del horario
-    const currentDay = removeDiacritics(moment().format("dddd").toLowerCase());
-    if (diasActivos.includes(currentDay)) {
-        const startMoment = moment().set({
-            hour: parseInt(offer.Hora_Inicio.split(":")[0], 10),
-            minute: parseInt(offer.Hora_Inicio.split(":")[1], 10),
-        });
-
-        const endMoment = moment().set({
-            hour: parseInt(offer.Hora_Fin.split(":")[0], 10),
-            minute: parseInt(offer.Hora_Fin.split(":")[1], 10),
-        });
-
-        if (currentTime.isBefore(endMoment)) {
-            console.log("Oferta activa hoy:", currentDay);
-            return startMoment.format("ddd DD/MM/YY");
-        }
-    }
-
-    // Iterar por los próximos días activos
-    for (let i = 1; i <= 7; i++) {
-        const nextDayIndex = (currentDayIndex + i) % 7;
-        const nextDay = removeDiacritics(moment().day(nextDayIndex).format("dddd").toLowerCase());
-
-      
-
-        if (diasActivos.includes(nextDay)) {
-            const nextMoment = moment()
-                .add(i >= 7 ? 1 : 0, 'weeks') // Asegurarse de agregar una semana si ya pasamos el ciclo
-                .day(nextDayIndex)
-                .startOf("day")
-                .set({
-                    hour: parseInt(offer.Hora_Inicio.split(":")[0], 10),
-                    minute: parseInt(offer.Hora_Inicio.split(":")[1], 10),
-                });
-            return nextMoment.format("ddd DD/MM/YY");
-        }
-    }
-
-   
-    return null; // No hay días activos en la semana
+    // (ya declarado, sin cambio)
   };
   const resetCoupons = async (offer) => {
-    try {
-      const res = await axios.patch(`${process.env.REACT_APP_API_URL}/api/offers/reset-all-today`);
-      console.log(`Cupones reseteados globalmente: ${res.data.ofertasReseteadas}`);
-    } catch (error) {
-      console.error('Error al resetear los cupones globales:', error);
-    }
+    // ...
   };
-  
+
   const filteredReviews = reviews.filter(review =>
     review.review.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   const handleReviewButtonClick = () => setShowReviewForm(!showReviewForm);
   const handleCloseReviewForm = () => setShowReviewForm(false);
   const removeDiacritics = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const closeDailyChallenge = () => setShowDailyChallenge(false);
   const emailUsername = sessionData?.email ? sessionData.email.split('@')[0] : '';
 
-
   return (
+  <div className="mobile-background-wrapper">
+   <div className="customer-layout">
     <div className="customer-page">
-        <div className={`customer-page ${isServiceSuspended ? 'blurred' : ''}`}>
+      <div className={`customer-page ${isServiceSuspended ? 'blurred' : ''}`}>
         {renderSuspensionMessage()}
       </div>
       {sessionData ? (
         <>
-         {renderSuspensionMessage()}
-    
-         
-         <header
-         
-        className="customer-header"
-        style={{
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 20px',
-          width: '100%',
-          maxWidth: '1200px',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Columna Izquierda */}
-        <div
-          style={{
-            marginBottom: '-20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '15px',
-            flex: '0 1 100%',
-          }}
-        >
-          <img
-            src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHppOWtkY3k2aTV1dXkzbmU0djg2aGllcnB6a2JvZXYxemxxNDNzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HfPLDqZ50hYFa/giphy.gif"
-            alt="Pizza"
-            style={{
-              width: '100px',
-              height: '100px',
-              borderRadius: '50px',
-            }}
-          />
+          {renderSuspensionMessage()}
 
-          {/* Contenedor de 5rem de alto para los mensajes */}
-          <div
-            style={{
-              position: 'relative',
-              width: '200px',
-              height: '5rem',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Mensaje 1: "Hi!" */}
-            <div
-              className="msg1"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                textAlign: 'left', // o 'center'
-                fontSize: '2rem',
-                fontWeight: 'normal',
-                color: '#141414',
-                animation: 'msg1Anim 6s infinite',
-              }}
-            >
-              Hi! 👋
+          <header className="customer-header">
+            {/* Izquierda */}
+            <div className="header-left-col">
+              <img
+                className="pizza-gif"
+                src="https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeHppOWtkY3k2aTV1dXkzbmU0djg2aGllcnB6a2JvZXYxemxxNDNzbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/HfPLDqZ50hYFa/giphy.gif"
+                alt="Pizza"
+              />
+
+              <div className="header-texts">
+                <div className="msg1">Hi! 👋</div>
+                <div className="msg2">
+                  {sessionData?.name || emailUsername} ;)
+                </div>
+                <div className="msg3">
+                  It’s 🔥🍕
+                  <br />
+                  PizzaTime!
+                </div>
+              </div>
             </div>
 
-            {/* Mensaje 2: username */}
-            <div
-              className="msg2"
-              style={{
-                position: 'absolute',
-                top: '2.5rem', // justo debajo del primer mensaje
-                left: 0,
-                width: '100%',
-                textAlign: 'left',
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: '#0f0f0e',
-                textShadow: '2px 2px 4px rgba(0, 0, 0, 0.75)',
-                animation: 'msg2Anim 6s infinite',
-              }}
-            >
-              {sessionData?.name || emailUsername} ;)
-            </div>
-
-            {/* Mensaje 3: "Is.. Pizza Time! 🔥" (solo aparece al final) */}
-            <div
-              className="msg3"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                textAlign: 'left',
-                fontSize: '2.2rem',
-                fontWeight: 'normal',
-                color: '#de0303',
-                textShadow: '1px 1px 0 #000, -1px 1px 0 #000',
-                animation: 'msg3Anim 6s infinite',
-                fontFamily: "'Bangers', serif",
-              }}
-            >
-              
-              It's  🔥🍕<br />
-              PizzaTime!
-            </div>
-          </div>
-        </div>
-
-          {/* Columna Derecha: Día, Fecha y Hora */}
-          <div
-            style={{
-              flex: '0 1 70%',
-              textAlign: 'right',
-              fontSize: '1.25rem',
-              color: '#666',
-              fontWeight: 'bold',
-              marginRight: '50px',
-              marginTop: '50px',
-              fontStyle: 'italic',
-            }}
-          >
-              <div 
-                style={{ 
-                  fontSize: '1.50rem', 
-                  textTransform: 'capitalize',  
-                  fontWeight: '900',
-                  fontStyle: 'normal',
-                  display: 'flex', 
-                  justifyContent: 'right', 
-                  gap: '0.65rem'
-                }}> 
-                {[...new Date().toLocaleDateString('es-ES', { weekday: 'long' })].map((char, index) => (
-                  <span 
-                    key={index} 
-                    style={{ 
-                      background: 'linear-gradient(to top, #646464, #cdcccc)', 
-                      borderRadius: '5px',
-                      padding: '2px', 
-                      color: '#ffffff' 
-                    }}
-                  >
-                    {char}
-                  </span>
+            {/* Derecha */}
+            <div className="header-right-col">
+              <div className="day-chars"> 
+                {[...new Date()
+                  .toLocaleDateString('en-US', { weekday: 'long' })
+                  .toUpperCase()].map((char, index) => (
+                  <span key={index}>{char}</span>
                 ))}
               </div>
-            <div style={{ fontSize: '1.25rem' }}>
-              {new Date().toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+
+              <div className="date-text">
+                {new Date().toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </div>
+              <div className="time-text">
+                {new Date().toLocaleTimeString('en-GB')} --- hrs
+              </div>
             </div>
-            <div style={{ fontSize: '1.25rem' }}>
-              {new Date().toLocaleTimeString('es-ES')} --- hrs
-            </div>
+          </header>
+
+          <div className="search-bar-container">
+            <SearchWrapper onSelectPizza={handlePizzaSelect} />
           </div>
-
-          <style>
-            {`
-              /* 
-                msg1Anim:
-                - 0% a 33%: "Hi!" visible
-                - 34% a 66%: sigue visible junto a msg2
-                - 67% a 100%: se desplaza/funde fuera (como tenías)
-              */
-              @keyframes msg1Anim {
-                0%, 33% {
-                  transform: translateY(0);
-                  opacity: 1;
-                }
-                34%, 66% {
-                  transform: translateY(0);
-                  opacity: 1;
-                }
-                67%, 100% {
-                  transform: translateY(-2rem);
-                  opacity: 0;
-                }
-              }
-
-              /* 
-                msg2Anim:
-                - 0% a 33%: oculto
-                - 34% a 66%: aparece bajo "Hi!"
-                - 67% a 100%: sale junto a msg1
-              */
-              @keyframes msg2Anim {
-                0%, 33% {
-                  transform: translateY(1rem);
-                  opacity: 0;
-                }
-                34%, 66% {
-                  transform: translateY(0);
-                  opacity: 1;
-                }
-                67%, 100% {
-                  transform: translateY(-2rem);
-                  opacity: 0;
-                }
-              }
-
-              /*
-                msg3Anim (Is.. Pizza Time! 🔥):
-                - 0% a 66%: oculto
-                - 67% a 100%: visible en el mismo espacio que dejan los dos primeros
-              */
-              @keyframes msg3Anim {
-                0%, 66% {
-                  transform: translateY(0);
-                  opacity: 0;
-                }
-                67%, 100% {
-                  transform: translateY(0);
-                  opacity: 1;
-                }
-              }
-            `}
-          </style>
-        </header>
-
-        <div className="search-bar-container">
-        <SearchWrapper onSelectPizza={handlePizzaSelect} />
-        </div>
 
           <div className="content-container">
-          {reviews.length > 0 && (
-            <div className="reviews-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '5px', width: '100%' }}>
-              {/* Comentario dinámico (80%) */}
-              <div
-                className="reviews-slide"
-                style={{ fontSize: '1rem', minWidth: '80%', maxWidth: '80%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center', flexShrink: 0 }}
+        
+          <div className="customer-wrapper">
+            <div className="buttons-container-cp">
+              <button
+                onClick={handleContactButtonClick}
+                className={showContactInfo ? 'go-back' : ''}
               >
-                {reviews.length > 0 ? (
-                  <p>
-                    <span style={{ fontWeight: 'bold', color: '#333', fontStyle: 'italic' }}>
-                      {reviews[currentReviewIndex]?.email || 'Email no disponible'}
-                    </span>{" "}
-                    - {reviews[currentReviewIndex]?.review || 'Sin comentario disponible'} -{" "}
-                    <span style={{ color: '#FFD700' }}>
-                      ⭐ {reviews[currentReviewIndex]?.rating || '0'} / 5
-                    </span>
-                  </p>
-                ) : (
-                  <p>No hay comentarios disponibles.</p>
-                )}
-              </div>
-              {/* Promedio de Satisfacción (20%) */}
-              <div 
-                className="satisfaction-rating" 
-                style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', minWidth: '20%', maxWidth: '20%', justifyContent: 'left', flexShrink: 0 }}
-                title={`Promedio de Satisfacción: ${averageRating} / 5`} 
+                {showContactInfo ? 'Go Back' : 'Contacts'}
+              </button>
+
+              <button
+              onClick={() => setShowReviewSection(!showReviewSection)}
+              className={showReviewSection ? 'go-back' : ''}
+            >
+              {showReviewSection ? 'Go Back' : 'Reviews'}
+            </button>
+
+              <button
+                onClick={handleDailyChallengeClick}
+                className={`${showDailyChallenge ? 'go-back' : 'daily-challenge-button'} ${
+                  !isDailyChallengeEnabled ? 'button-disabled' : ''
+                }`}
+                disabled={!isDailyChallengeEnabled}
+                data-tooltip-id="dailyChallengeTooltip"
               >
-                {[...Array(Math.floor(averageRating))].map((_, i) => (
-                  <span 
-                    key={`filled-star-${i}`} 
-                    className="star filled-star" 
-                    style={{ color: '#FFD700', fontSize: '1.8rem', marginRight: '2px', transition: 'transform 0.3s ease', textShadow: '0 0 5px #FFD700' }}
-                  >
-                    ★
-                  </span>
-                ))}
-                {[...Array(5 - Math.floor(averageRating))].map((_, i) => (
-                  <span 
-                    key={`empty-star-${i}`} 
-                    className="star empty-star" 
-                    style={{ color: '#D3D3D3', fontSize: '1.8rem', marginRight: '2px', transition: 'transform 0.3s ease' }}
-                  >
-                    ☆
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-            <div className="buttons-container">
-            <button 
-                  onClick={handleContactButtonClick} 
-                  className={showContactInfo ? 'go-back' : ''}
-                >
-                  {showContactInfo ? 'Go Back' : 'Contacts'}
-                </button>
-               <button 
-                  onClick={handleReviewButtonClick} 
-                  className={showReviewForm ? 'go-back' : ''}
-                >
-                  {showReviewForm ? 'Go Back' : 'Reviews'}
-                </button>
-               
-                <button
-                    onClick={handleDailyChallengeClick}
-                    className={`${showDailyChallenge ? 'go-back' : 'daily-challenge-button'} ${
-                      !isDailyChallengeEnabled ? 'button-disabled' : ''
-                    }`}
-                    disabled={!isDailyChallengeEnabled}
-                    data-tooltip-id="dailyChallengeTooltip"
-                  >
-                    {showDailyChallenge ? 'Go Back' : 'Daily Challenge'}
-                    {!showDailyChallenge && <span className="badge">{cuponesDailyChallenge}</span>}
-                  </button>
-                <Tooltip id="dailyChallengeTooltip" place="top" type="dark" effect="solid">
-                  {dailyChallengeTooltip}
-                </Tooltip>
+                {showDailyChallenge ? 'Go Back' : 'Daily Challenge'}
+                {!showDailyChallenge && <span className="badge">{cuponesDailyChallenge}</span>}
+              </button>
+              <Tooltip id="dailyChallengeTooltip" place="top" type="dark" effect="solid">
+                {dailyChallengeTooltip}
+              </Tooltip>
 
-
-
-                <button
+              <button
                 className={`create-random-pizza-button ${!isRandomPizzaEnabled ? 'button-disabled' : ''}`}
                 onClick={() => navigate('/rare-pizza')}
                 disabled={!isRandomPizzaEnabled}
                 data-tooltip-id="randomPizzaTooltip"
               >
-                MakeARandomPizza
-                {cuponesRandomPizza !== null && ( // Usamos cuponesRandomPizza aquí
+              Make A RandomPizza
+                {cuponesRandomPizza !== null && (
                   <span className="badge">
                     {cuponesRandomPizza === 0 ? '0' : cuponesRandomPizza}
                   </span>
@@ -1771,44 +1437,88 @@ const CustomerPage = (offer) => {
               <Tooltip id="randomPizzaTooltip" place="top" type="dark" effect="solid">
                 {randomPizzaTooltip}
               </Tooltip>
+            </div>
+          </div>
+            {showReviewSection && (
+              <>
+                {/* Bloque de reseñas */}
+                <div className="review-section">
+                  {/* Promedio de estrellas */}
+                  <div className="satisfaction-rating" title={`Promedio de Satisfacción: ${averageRating} / 5`}>
+                    {[...Array(Math.floor(averageRating))].map((_, i) => (
+                      <span key={`filled-star-${i}`} className="star filled-star">★</span>
+                    ))}
+                    {[...Array(5 - Math.floor(averageRating))].map((_, i) => (
+                      <span key={`empty-star-${i}`} className="star empty-star">☆</span>
+                    ))}
+                  </div>
 
+                  {/* Comentario destacado */}
+                  <div className="reviews-slide">
+                    {reviews.length > 0 ? (
+                      <p>
+                        <span className="review-email">{reviews[currentReviewIndex]?.email}</span>{" "}
+                        {reviews[currentReviewIndex]?.review} -{" "}
+                        <span className="review-stars">⭐ {reviews[currentReviewIndex]?.rating} / 5</span>
+                      </p>
+                    ) : (
+                      <p>"No reviews yet.</p>
+                    )}
+                  </div>
 
-           </div>
-            {showReviewForm && (
-              <div className="review-form-container">
-                <ReviewForm onClose={handleCloseReviewForm} email={sessionData.email} />
-              </div>
+                  {/* Botón para abrir el formulario */}
+                  <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                    <button
+                      className="button-default"
+                      onClick={() => setShowReviewForm(true)}
+                    >
+                      ➕ add review
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal del formulario */}
+                {showReviewForm && (
+                  <div className="review-modal-overlay">
+                    <div className="review-modal-content">
+                      <button className="close-modal" onClick={() => setShowReviewForm(false)}>✖</button>
+                      <ReviewForm onClose={() => setShowReviewForm(false)} email={sessionData.email} />
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             {showDailyChallenge && dailyChallenge && (
               <div className="review-form-container">
-          <DailyChallengeCard
-            dailyChallenge={dailyChallenge}
-            handleClaimCoupon={handleClaimCoupon}
-            userCoupon={userCoupon}
-            closeDailyChallenge={closeDailyChallenge}
-            setCompra={setCompra}
-            compra={compra}
-          />
-          </div>
+                <DailyChallengeCard
+                  dailyChallenge={dailyChallenge}
+                  handleClaimCoupon={handleClaimCoupon}
+                  userCoupon={userCoupon}
+                  closeDailyChallenge={closeDailyChallenge}
+                  setCompra={setCompra}
+                  compra={compra}
+                />
+              </div>
             )}
             {showContactInfo && companyInfo && (
               <div className="review-form-container">
                 <div className="contact-info">
                   <h3>Contact us</h3>
-
-                  {/* Contenedor unificado con iconos de FontAwesome */}
                   <div className="contact-icons">
-                    {/* Teléfono */}
-                    <a href={`tel:${companyInfo.telefono_contacto}`} className="icon-item" title="Llamar">
+                    <a
+                      href={`tel:${companyInfo.telefono_contacto}`}
+                      className="icon-item"
+                      title="Llamar"
+                    >
                       <FontAwesomeIcon icon={faPhone} />
                     </a>
-
-                    {/* Correo */}
-                    <a href={`mailto:${companyInfo.correo_contacto}`} className="icon-item" title="Enviar Email">
+                    <a
+                      href={`mailto:${companyInfo.correo_contacto}`}
+                      className="icon-item"
+                      title="Enviar Email"
+                    >
                       <FontAwesomeIcon icon={faEnvelope} />
                     </a>
-
-                    {/* Redes Sociales */}
                     {companyInfo.redes_sociales && companyInfo.redes_sociales.length > 0 &&
                       companyInfo.redes_sociales.map((social, index) => (
                         <a
@@ -1827,47 +1537,60 @@ const CustomerPage = (offer) => {
                 </div>
               </div>
             )}
-          <div className="offers-section">
-            {isLoadingOffers ? (
-              <p>Cargando ofertas...</p>
-            ) : offers.length > 0 ? (
-              <OffersSection
-                offers={offers}
-                handleApplyCoupon={handleApplyCoupon}
-                cuponesUsados={cuponesUsados}
-                setCuponesUsados={setCuponesUsados}
-                setCompra={setCompra}
-                compra={compra}
-              />
-            ) : (
-              <p>No hay ofertas disponibles en este momento.</p>
-            )}
-          </div>
+
+            <div className="cupones-toggle-container">
+              {/* Mostrar botón solo en mobile */}
+              <div className="cupones-toggle-button-wrapper">
+              <button
+                className={`cupones-toggle-button ${showCoupons ? 'active' : ''}`}
+                onClick={() => setShowCoupons(!showCoupons)}
+              >
+                {showCoupons ? 'Hide Coupons ▲' : 'Check Coupons ▼'}
+              </button>
+              </div>
+
+              {/* Cupones siempre visibles en desktop, condicionales en mobile */}
+              <div className={`offers-section ${!showCoupons ? 'hidden-on-mobile' : ''}`}>
+                {isLoadingOffers ? (
+                  <p>Cargando ofertas...</p>
+                ) : offers.length > 0 ? (
+                  <OffersSection
+                    offers={offers}
+                    handleApplyCoupon={handleApplyCoupon}
+                    cuponesUsados={cuponesUsados}
+                    setCuponesUsados={setCuponesUsados}
+                    setCompra={setCompra}
+                    compra={compra}
+                  />
+                ) : (
+                  <p>No hay ofertas disponibles en este momento.</p>
+                )}
+              </div>
+            </div>
+
 
             <NotificationTicker />
 
-            {!loadingPizzas && 
-            <PizzaCarousel 
-            onPizzaSelect={handlePizzaSelect}
-              />
-            }
+            {!loadingPizzas && (
+              <PizzaCarousel onPizzaSelect={handlePizzaSelect} />
+            )}
 
             <div className="order-now-button-container">
-              <button onClick={handleOrderNowClick} className="order-now-button"> 
-              <div className="rotating-text-container">
-          {rotatingTexts.map((text, index) => (
-            <span
-              key={index}
-              className={`rotating-text ${index === currentTextIndex ? 'visible' : ''}`}
-              style={{
-                transform: `translateY(${(index - currentTextIndex) * 100}%)`,
-                transition: 'transform 0.5s ease-in-out',
-              }}
-            >
-              {text}
-            </span>
-          ))}
-        </div>
+              <button onClick={handleOrderNowClick} className="order-now-button">
+                <div className="rotating-text-container">
+                  {rotatingTexts.map((text, index) => (
+                    <span
+                      key={index}
+                      className={`rotating-text ${index === currentTextIndex ? 'visible' : ''}`}
+                      style={{
+                        transform: `translateY(${(index - currentTextIndex) * 100}%)`,
+                        transition: 'transform 0.5s ease-in-out',
+                      }}
+                    >
+                      {text}
+                    </span>
+                  ))}
+                </div>
               </button>
             </div>
           </div>
@@ -1876,8 +1599,11 @@ const CustomerPage = (offer) => {
         <div>No se pudo obtener la información de la sesión. Por favor, intenta iniciar sesión nuevamente.</div>
       )}
     </div>
+  </div>
+  </div>
   );
 };
+
 
 export default CustomerPage;
 

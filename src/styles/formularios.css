@@ -170,7 +170,7 @@
     margin: 5rem 2rem;
 }
 .Form_info_button  {
-    font-family: poppins;
+    font-family: 'Poppins', sans-serif;
     background-color: blue;
     padding: 1.5rem;
     border-radius: 10px;
@@ -194,7 +194,7 @@ line-height: 3.5rem;
     justify-content: right;
 }
 .MenuOverview {
-    font-family: poppins;
+    font-family: 'Poppins', sans-serif;
     background-color: rgb(179, 194, 65);
     padding: 1.5rem;
     border-radius: 10px;

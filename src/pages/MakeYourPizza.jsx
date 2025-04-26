@@ -4,14 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { Swiper, SwiperSlide } from "swiper/react";
 import DeliveryForm from './DeliveryForm';  
 import _PizzaContext from './_PizzaContext';
+import { PurchaseContext } from './PurchaseContext'; 
 import FloatingCart from './FloatingCart';
 import '../styles/MakeYourPizza.css'; 
 import moment from 'moment';
 import axios from 'axios';
 
 const MakeYourPizza = () => {
-  const navigate = useNavigate();
   const { activePizzas, sessionData } = useContext(_PizzaContext);
+  const { compra, setCompra } = useContext(PurchaseContext);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [sizeSeleccionado, setSizeSeleccionado] = useState('');
   const [ingredientesDisponibles, setIngredientesDisponibles] = useState([]);
   const [ingredientesSeleccionados, setIngredientesSeleccionados] = useState([]);
@@ -20,38 +23,34 @@ const MakeYourPizza = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [editingProductId, setEditingProductId] = useState(null);
-  const location = useLocation();
-  const initialCompra = location.state?.compra || {};
   const [showDeliveryForm, setShowDeliveryForm] = useState(false);
-  const [isChoosingType, setIsChoosingType] = useState(true)
+  const [isChoosingType, setIsChoosingType] = useState(true);
   const [isHalfAndHalf, setIsHalfAndHalf] = useState(false);
   const [leftPizza, setLeftPizza] = useState('');
   const [rightPizza, setRightPizza] = useState('');
-  const [isRandomPizzaDisabled, setIsRandomPizzaDisabled] = useState(true);
   const [ofertas, setOfertas] = useState([]);
-  const [menuPizzas, setMenuPizzas] = useState([]); 
+  const [menuPizzas, setMenuPizzas] = useState([]);
   const [inventario, setInventario] = useState([]);
-  const [compra, setCompra] = useState({
-    observaciones: '',
-    id_order: '',
-    fecha: moment().format('YYYY-MM-DD'),
-    hora: moment().format('HH:mm:ss'),
-    id_cliente: sessionData?.id_cliente || '',
-    DescuentosDailyChallenge: 0,
-    cupones: initialCompra.cupones || [], 
-    venta: initialCompra.venta || [],
-    Entrega: initialCompra.Entrega || {},
-    total_productos: initialCompra.total_productos || 0.0,
-    total_descuentos: initialCompra.total_descuentos || 0.0,
-    total_a_pagar_con_descuentos: initialCompra.total_a_pagar_con_descuentos || 0.0,
-    venta_procesada: 0,
-    origen: '',
-    observaciones: ''
-  });
-
+  const [isRandomPizzaDisabled, setIsRandomPizzaDisabled] = useState(true);
+  const [infoEmpresa, setInfoEmpresa] = useState(null);
+  
+  
+  const safeFixed = (val, digits = 2) =>
+  Number.isFinite(val) ? Number(val).toFixed(digits) : '0.00';
   
   useEffect(() => {
-    console.log('Estado de compra actualizado:', compra);
+    if (location.state?.compra) {
+      setCompra((prev) => ({
+        ...prev,
+        ...location.state.compra,
+      }));
+    }
+  }, [location.state?.compra, setCompra]);
+  useEffect(() => {
+    setCompra((prev) => ({ ...prev, origen: '' })); 
+  }, [setCompra]);
+  useEffect(() => {
+    console.log('Estado de compra (global) en MYPizza:', compra);
   }, [compra]);
   useEffect(() => {
     if (activePizzas && activePizzas.length > 0) {
@@ -92,32 +91,34 @@ const MakeYourPizza = () => {
     }
   }, [activePizzas]);
   useEffect(() => {
+    console.groupCollapsed("🔍 Recalculando Precio Total");
+    console.log("📏 Tamaño seleccionado:", sizeSeleccionado);
+    console.log("📦 Precios base:", preciosBase);
+    console.log("🧾 Ingredientes seleccionados:", ingredientesSeleccionados);
+  
     if (!sizeSeleccionado) {
+      console.warn("⚠️ No hay tamaño seleccionado");
       setTotalPrice(0);
+      console.groupEnd();
       return;
     }
   
     const precioBase = preciosBase[sizeSeleccionado] || 0;
+    console.log("💸 Precio base:", precioBase);
   
-    // Recalcular los precios de los ingredientes seleccionados usando ingredientesExtraPrecios
-    const nuevosIngredientesSeleccionados = ingredientesSeleccionados.map((ing) => {
-      const nuevoPrecio = calcularPrecioIngrediente(sizeSeleccionado);
-      return {
-        ...ing,
-        precio: nuevoPrecio, // Actualizamos el precio del ingrediente
-      };
-    });
-  
-    setIngredientesSeleccionados(nuevosIngredientesSeleccionados);
-  
-    // Calcular el precio total
-    const precioIngredientes = nuevosIngredientesSeleccionados.reduce(
-      (acc, ing) => acc + ing.precio,
+    const precioIngredientes = ingredientesSeleccionados.reduce(
+      (acc, ing) =>
+        acc + (ing.precio ?? calcularPrecioIngrediente(sizeSeleccionado)),
       0
     );
+    console.log("💰 Total ingredientes:", precioIngredientes);
   
-    setTotalPrice(parseFloat((precioBase + precioIngredientes).toFixed(2)));
-  }, [sizeSeleccionado, preciosBase, ingredientesSeleccionados, ingredientesExtraPrecios]);
+    const nuevoTotal = Math.round((precioBase + precioIngredientes) * 100) / 100;
+    console.log("🧮 Total final:", nuevoTotal);
+  
+    setTotalPrice(nuevoTotal);
+    console.groupEnd();
+  }, [sizeSeleccionado, preciosBase, ingredientesSeleccionados, ingredientesExtraPrecios]);  
   useEffect(() => {
     const fetchExtraPrices = async () => {
       try {
@@ -128,7 +129,7 @@ const MakeYourPizza = () => {
         }, {});
         setIngredientesExtraPrecios(preciosExtra);
       } catch (error) {
-        console.error('Error al obtener los precios de los ingredientes extras:', error);
+        console.error('Error al obtener los precios de ingredientes extras:', error);
       }
     };
     fetchExtraPrices();
@@ -138,45 +139,28 @@ const MakeYourPizza = () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/ofertas`);
         console.log("Ofertas recibidas:", response.data);
-        
+
         if (Array.isArray(response.data.data)) {
           setOfertas(response.data.data);
         } else {
           console.error("Error: 'ofertas' no es un array:", response.data);
-          setOfertas([]); // Evita fallos por undefined
+          setOfertas([]);
         }
       } catch (error) {
         console.error("Error al obtener las ofertas:", error);
       }
     };
-  
     fetchOfertas();
   }, []);
   useEffect(() => {
-    if (!Array.isArray(ofertas)) {
-      console.error('La variable "ofertas" no es un array:', ofertas);
-      return;
-    }
-  
+    if (!Array.isArray(ofertas)) return;
     const ofertaRandomPizza = ofertas.find(
       (oferta) => oferta.Tipo_Oferta === 'Random Pizza'
     );
-  
     if (ofertaRandomPizza) {
-      console.log("Oferta Random detectada:", ofertaRandomPizza);
-      
-      const cuponesDisponibles = ofertaRandomPizza.Cupones_Disponibles > 0;
-      const estadoActivo = ofertaRandomPizza.Estado === "Activa";
-      
-      console.log("Cupones disponibles:", cuponesDisponibles);
-      console.log("Estado activo:", estadoActivo);
-  
-      // 🔹 Ahora forzamos el estado con una función para asegurar su actualización correcta
-      setIsRandomPizzaDisabled(prevState => {
-        console.log("Estado anterior de isRandomPizzaDisabled:", prevState);
-        console.log("Nuevo estado:", !(cuponesDisponibles && estadoActivo));
-        return !(cuponesDisponibles && estadoActivo);
-      });
+      const cuponesOk = ofertaRandomPizza.Cupones_Disponibles > 0;
+      const estadoOk = ofertaRandomPizza.Estado === "Activa";
+      setIsRandomPizzaDisabled(!(cuponesOk && estadoOk));
     } else {
       setIsRandomPizzaDisabled(true);
     }
@@ -186,12 +170,11 @@ const MakeYourPizza = () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
         setMenuPizzas(response.data.data);
-        console.log("✅ Pizzas obtenidas:", response.data.data);
+        console.log("✅ menu_pizzas:", response.data.data);
       } catch (error) {
-        console.error("❌ Error al obtener `menu_pizzas`:", error);
+        console.error("❌ Error al obtener menu_pizzas:", error);
       }
     };
-
     fetchMenuPizzas();
   }, []);
   useEffect(() => {
@@ -199,28 +182,14 @@ const MakeYourPizza = () => {
       try {
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/inventario`);
         setInventario(response.data.data);
-        console.log("✅ Inventario obtenido:", response.data.data);
+        console.log("✅ Inventario:", response.data.data);
       } catch (error) {
-        console.error("❌ Error al obtener `inventario`:", error);
+        console.error("❌ Error al obtener inventario:", error);
       }
     };
-
     fetchInventario();
   }, []);
   useEffect(() => {
-    const fetchMenuPizzas = async () => {
-      try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/menu_pizzas`);
-        setMenuPizzas(response.data.data);
-        console.log("✅ Pizzas obtenidas:", response.data.data);
-      } catch (error) {
-        console.error("❌ Error al obtener `menu_pizzas`:", error);
-      }
-    };
-
-    fetchMenuPizzas();
-  }, []);
- useEffect(() => {
     if (!sizeSeleccionado || menuPizzas.length === 0 || inventario.length === 0) {
       setIngredientesDisponibles([]);
       return;
@@ -229,17 +198,15 @@ const MakeYourPizza = () => {
     let allIngredientes = [];
 
     menuPizzas
-      .filter((pizza) => 
-        pizza.categoria !== "Base Pizza" && 
+      .filter((pizza) =>
+        pizza.categoria !== "Base Pizza" &&
         ![101, 102, 103].includes(pizza.id)
       )
       .forEach((pizza) => {
         const ingredientes = JSON.parse(pizza.ingredientes || "[]");
-
         ingredientes.forEach((ing) => {
           const stock = ing.cantBySize?.[sizeSeleccionado] || 0;
           const estadoGEN = inventario.find(inv => inv.IDI === ing.IDI)?.estadoGEN || 0;
-
           if (stock > 0 && estadoGEN === 0) {
             allIngredientes.push({
               nombre: ing.ingrediente,
@@ -250,46 +217,56 @@ const MakeYourPizza = () => {
         });
       });
 
-    // 🔍 Eliminar duplicados
     const uniqueIngredientes = allIngredientes.filter(
-      (ing, index, self) => index === self.findIndex((t) => t.IDI === ing.IDI)
+      (ing, index, self) =>
+        index === self.findIndex((t) => t.IDI === ing.IDI)
     );
 
     setIngredientesDisponibles(uniqueIngredientes);
-    // console.log("✅ Ingredientes disponibles después del filtro:", uniqueIngredientes);
   }, [sizeSeleccionado, menuPizzas, inventario]);
+  useEffect(() => {
+    if (sizeSeleccionado && activePizzas.length > 0) {
+      const pizzasValidas = activePizzas.filter(
+        (pizza) =>
+          pizza.categoria !== "Base Pizza" &&
+          JSON.parse(pizza.selectSize || "[]").includes(sizeSeleccionado)
+      );
   
-  const ofertaRandom = ofertas.find(oferta => oferta.Tipo_Oferta === "Random Pizza");
-  // console.log("Oferta Random encontrada:", ofertaRandom);
-  const cuponesDisponibles = ofertaRandom?.Cupones_Disponibles  > 0;
-  const estadoActivo = ofertaRandom?.Estado === "Activa";
-  // console.log("Cupones disponibles:", cuponesDisponibles);
-  // console.log("Estado Activo:", estadoActivo);
-  const botonDeshabilitado = !(cuponesDisponibles && estadoActivo);
-  // console.log("Botón deshabilitado:", botonDeshabilitado);
+      if (pizzasValidas.length > 0) {
+        setLeftPizza(pizzasValidas[0].id);
+        setRightPizza(pizzasValidas[0].id);
+      }
+    }
+  }, [sizeSeleccionado, activePizzas]);
+  useEffect(() => {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/info-empresa`)
+      .then((res) => {
+        const empresaActiva = res.data.find(e => e.estado === 'activo');
+        if (empresaActiva) setInfoEmpresa(empresaActiva);
+      })
+      .catch((err) => console.error("Error al cargar info de empresa", err));
+  }, []);
 
   const calcularPrecioIngrediente = (size) => {
     return ingredientesExtraPrecios[size] || 0;
   };
+  const enrichIngredient = (ing) => ({
+      ...ing,
+      precio: calcularPrecioIngrediente(sizeSeleccionado),
+  });
   const handleAgregarIngrediente = (ingrediente) => {
     if (!sizeSeleccionado) {
       alert('Debes seleccionar un tamaño antes de agregar ingredientes.');
       return;
     }
-  
     if (ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)) {
-      return; // Evitar duplicados
+      return; 
     }
-  
-    const precioIngrediente = calcularPrecioIngrediente(sizeSeleccionado);
-  
-    const ingredienteConPrecio = {
-      ...ingrediente,
-      precio: precioIngrediente,
-    };
-  
-    setIngredientesSeleccionados((prev) => [...prev, ingredienteConPrecio]);
-  };  
+        setIngredientesSeleccionados((prev) => [
+            ...prev,
+            enrichIngredient(ingrediente),
+          ]);
+  };
   const handleEliminarIngrediente = (IDI) => {
     setIngredientesSeleccionados((prev) =>
       prev.filter((ing) => ing.IDI !== IDI)
@@ -297,168 +274,160 @@ const MakeYourPizza = () => {
   };
   const handleConfirmarPizza = () => {
     if (!sizeSeleccionado) {
-        alert('Por favor selecciona un tamaño.');
-        return;
+      alert('Por favor selecciona un tamaño.');
+      return;
     }
 
-    // Crear el objeto de la pizza personalizada
+    // Crear objeto pizza personalizada
     const nuevaPizza = {
-        id: 101, 
-        nombre: 'PP1',
-        size: sizeSeleccionado,
-        cantidad: 1,
-        total: totalPrice,
-        basePrice: preciosBase[sizeSeleccionado], 
-        extraIngredients: ingredientesSeleccionados.map((ing) => {
-            const matchingIngredient = activePizzas
-                .flatMap(pizza => JSON.parse(pizza.ingredientes)) // Convertimos JSON en array
-                .find(item => item.IDI === ing.IDI); // Buscamos el ingrediente en las pizzas activas
-
-            return {
-                IDI: ing.IDI,
-                nombre: ing.nombre,
-                cantBySize: matchingIngredient?.cantBySize?.[sizeSeleccionado] || 0, // Cantidad por tamaño
-                precio: ing.precio, // Precio ya calculado desde ingredientesExtraPrecios
-            };
-        }),
+      uuid: uuidv4(),
+      id: 101,
+      nombre: 'PP1',
+      size: sizeSeleccionado,
+      cantidad: 1,
+      total: totalPrice,
+      basePrice: preciosBase[sizeSeleccionado],
+      extraIngredients: ingredientesSeleccionados.map((ing) => {
+        const matchingIngredient = activePizzas
+          .flatMap(pizza => JSON.parse(pizza.ingredientes))
+          .find(item => item.IDI === ing.IDI);
+        return {
+          IDI: ing.IDI,
+          nombre: ing.nombre,
+          cantBySize: matchingIngredient?.cantBySize?.[sizeSeleccionado] || 0,
+          precio: ing.precio,
+        };
+      }),
     };
 
-    // Actualizar el estado de la compra
+    // Añadimos la pizza al array `venta` del contexto
     setCompra((prevCompra) => {
-        const nuevaVenta = [...prevCompra.venta, nuevaPizza];
-        const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
-
-        return {
-            ...prevCompra,
-            venta: nuevaVenta,
-            total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
-            total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
-            productos: [
-                ...(prevCompra.productos || []),
-                {
-                    id_pizza: nuevaPizza.id,
-                    cantidad: nuevaPizza.cantidad,
-                    size: nuevaPizza.size,
-                    price: nuevaPizza.basePrice,
-                    extraIngredients: nuevaPizza.extraIngredients.map((ing) => ({
-                        IDI: ing.IDI,
-                        nombre: ing.nombre,
-                        cantBySize: ing.cantBySize, // Incluir el cantBySize en la estructura
-                        precio: ing.precio,
-                    })),
-                    halfAndHalf: {
-                        ...nuevaPizza.halfAndHalf
-                    }
-                },
-            ],
-        };
-    });
-
-    // Reiniciar el estado
-    setSizeSeleccionado('');
-    setIngredientesSeleccionados([]);
-    setTotalPrice(0);
-    handleCloseForm();
-    calcularTotalDescuentos();
-    alert('Pizza añadida al carrito');
-    console.log('Pizza añadida al carrito:', nuevaPizza);
-};
-  const handleEditProduct = (productoEditado) => {
-    setSizeSeleccionado(productoEditado.size);
-    setIngredientesSeleccionados(productoEditado.extraIngredients || []);
-    setTotalPrice(productoEditado.total);
-    setIsEditing(true);
-    setEditingProductId(productoEditado.id);
-  
-    if (productoEditado.halfAndHalf) {
-      setLeftPizza(productoEditado.halfAndHalf.izquierda.id || "");
-      setRightPizza(productoEditado.halfAndHalf.derecha.id || "");
-      setIsHalfAndHalf(true);
-    } else {
-      setIsHalfAndHalf(false);
-    }
-  };
-  const handleUpdateProduct = () => {
-    setCompra((prevCompra) => {
-      const nuevaVenta = prevCompra.venta.map((producto) => {
-        if (producto.id === editingProductId) {
-          // Caso para "Pizza Completa"
-          if (!producto.halfAndHalf) {
-            const precioBase = preciosBase[sizeSeleccionado];
-            const nuevosIngredientes = ingredientesSeleccionados.map((ing) => {
-              const nuevoPrecioIngrediente = parseFloat(
-                (precioBase).toFixed(2)
-              );
-              return {
-                ...ing,
-                precio: nuevoPrecioIngrediente,
-              };
-            });
-  
-            const nuevoTotal = parseFloat(
-              (
-                precioBase +
-                nuevosIngredientes.reduce((acc, ing) => acc + ing.precio, 0)
-              ).toFixed(2)
-            );
-  
-            return {
-              ...producto,
-              size: sizeSeleccionado,
-              basePrice: precioBase,
-              total: nuevoTotal,
-              extraIngredients: nuevosIngredientes,
-            };
-          }
-  
-          // Caso para "Mitad y Mitad"
-          const leftPizzaData = activePizzas.find((pizza) => pizza.id === leftPizza);
-          const rightPizzaData = activePizzas.find((pizza) => pizza.id === rightPizza);
-  
-          const precioMitadIzquierda = leftPizzaData
-            ? parseFloat(
-                JSON.parse(leftPizzaData.PriceBySize || "{}")[sizeSeleccionado] / 2
-              ) || 0
-            : 0;
-  
-          const precioMitadDerecha = rightPizzaData
-            ? parseFloat(
-                JSON.parse(rightPizzaData.PriceBySize || "{}")[sizeSeleccionado] / 2
-              ) || 0
-            : 0;
-  
-          // Declarar y asignar `totalPrecio`
-          const totalPrecio = parseFloat(
-            (precioMitadIzquierda + precioMitadDerecha).toFixed(2)
-          );
-  
-          return {
-            ...producto,
-            size: sizeSeleccionado,
-            total: totalPrecio,
-            halfAndHalf: {
-              izquierda: {
-                id: leftPizzaData?.id || producto.halfAndHalf.izquierda.id,
-                nombre:
-                  leftPizzaData?.nombre || producto.halfAndHalf.izquierda.nombre,
-                precio: precioMitadIzquierda,
-              },
-              derecha: {
-                id: rightPizzaData?.id || producto.halfAndHalf.derecha.id,
-                nombre:
-                  rightPizzaData?.nombre || producto.halfAndHalf.derecha.nombre,
-                precio: precioMitadDerecha,
-              },
-            },
-          };
-        }
-        return producto;
-      });
-  
+      const nuevaVenta = [...prevCompra.venta, nuevaPizza];
       const nuevoTotalProductos = nuevaVenta.reduce(
         (acc, item) => acc + item.total,
         0
       );
+      return {
+        ...prevCompra,
+        venta: nuevaVenta,
+        total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
+        total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
+      };
+    });
+
+    // Limpiar estado local
+    setSizeSeleccionado('');
+    setIngredientesSeleccionados([]);
+    setTotalPrice(0);
+    setIsEditing(false);
+    setEditingProductId(null);
+    alert('Pizza añadida al carrito');
+    console.log('Pizza añadida al carrito:', nuevaPizza);
+  };
+  const handleEditProduct = (productoEditado) => {
+    console.groupCollapsed("🛠️ handleEditProduct");
+    console.log("🍕 Producto Editado:", productoEditado);
+    console.log("➡️ Tamaño:", productoEditado.size);
+    console.log("➡️ Ingredientes recibidos:", productoEditado.extraIngredients);
+  
+    // ✅ Establecemos primero el tamaño
+    setSizeSeleccionado(productoEditado.size);
+  
+    // ✅ Enriquecemos con el tamaño explícito
+    const enrichWithSize = (ing, size) => ({
+      ...ing,
+      precio: calcularPrecioIngrediente(size),
+    });
+  
+    const enriquecidos = (productoEditado.extraIngredients || []).map((ing) =>
+      enrichWithSize(ing, productoEditado.size)
+    );
+    console.log("✅ Ingredientes enriquecidos:", enriquecidos);
+  
+    setIngredientesSeleccionados(enriquecidos);
+  
+    // 🔁 Podrías omitir setTotalPrice y dejar que el useEffect lo calcule automáticamente
+    // setTotalPrice(productoEditado.total);
+  
+    setIsEditing(true);
+    setEditingProductId(productoEditado.uuid || productoEditado.id); // usa uuid si está disponible
+  
+    if (productoEditado.halfAndHalf) {
+      console.log("🌓 Modo Half & Half");
+      setLeftPizza(productoEditado.halfAndHalf.izquierda.id || "");
+      setRightPizza(productoEditado.halfAndHalf.derecha.id || "");
+      setIsHalfAndHalf(true);
+    } else {
+      console.log("🍕 Modo Pizza Completa");
+      setIsHalfAndHalf(false);
+    }
+  
+    console.groupEnd();
+  };  
+  const handleUpdateProduct = () => {
+    setCompra((prevCompra) => {
+      const nuevaVenta = prevCompra.venta.map((producto) => {
+        const esProductoEditado = (producto.uuid && producto.uuid === editingProductId) || producto.id === editingProductId;
+  
+        if (!esProductoEditado) return producto;
+  
+        if (!producto.halfAndHalf) {
+          const precioBase = preciosBase[sizeSeleccionado];
+          const nuevosIngredientes = ingredientesSeleccionados.map(enrichIngredient);
+          const precioExtras = nuevosIngredientes.reduce((acc, ing) => acc + ing.precio, 0);
+          const nuevoTotal = Math.round((precioBase + precioExtras) * 100) / 100;
+  
+          return {
+            ...producto,
+            size: sizeSeleccionado,
+            basePrice: precioBase,
+            total: nuevoTotal,
+            extraIngredients: nuevosIngredientes,
+          };
+        }
+  
+        // Caso Half and Half
+        const leftPizzaData = activePizzas.find(
+          (pizza) =>
+            pizza.id === leftPizza &&
+            JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado)
+        );
+  
+        const rightPizzaData = activePizzas.find(
+          (pizza) =>
+            pizza.id === rightPizza &&
+            JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado)
+        );
+  
+        if (!leftPizzaData || !rightPizzaData) {
+          alert("Por favor selecciona ambas mitades antes de confirmar.");
+          return producto;
+        }
+  
+        const precioMitadIzquierda = parseFloat(JSON.parse(leftPizzaData.PriceBySize || "{}")[sizeSeleccionado] / 2) || 0;
+        const precioMitadDerecha = parseFloat(JSON.parse(rightPizzaData.PriceBySize || "{}")[sizeSeleccionado] / 2) || 0;
+        const totalPrecio = parseFloat((precioMitadIzquierda + precioMitadDerecha).toFixed(2));
+  
+        return {
+          ...producto,
+          size: sizeSeleccionado,
+          total: totalPrecio,
+          halfAndHalf: {
+            izquierda: {
+              id: leftPizzaData?.id || producto.halfAndHalf.izquierda.id,
+              nombre: leftPizzaData?.nombre || producto.halfAndHalf.izquierda.nombre,
+              precio: precioMitadIzquierda,
+            },
+            derecha: {
+              id: rightPizzaData?.id || producto.halfAndHalf.derecha.id,
+              nombre: rightPizzaData?.nombre || producto.halfAndHalf.derecha.nombre,
+              precio: precioMitadDerecha,
+            },
+          },
+        };
+      });
+  
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
   
       return {
         ...prevCompra,
@@ -468,7 +437,7 @@ const MakeYourPizza = () => {
       };
     });
   
-    // Limpieza del estado de edición
+    // Limpieza
     setSizeSeleccionado("");
     setIngredientesSeleccionados([]);
     setLeftPizza("");
@@ -478,168 +447,48 @@ const MakeYourPizza = () => {
     setEditingProductId(null);
     alert("Pizza actualizada correctamente.");
   };
+  
   const handleCloseForm = () => {
     setSizeSeleccionado('');
     setIngredientesSeleccionados([]);
     setTotalPrice(0);
     setIsEditing(false);
     setEditingProductId(null);
-    // Aquí puedes ocultar el formulario o panel adicional
   };
   const handleNextStep = () => {
     if (compra.venta.length === 0) {
       alert('Debes añadir al menos una pizza al carrito antes de continuar.');
       return;
     }
-    setShowDeliveryForm(true); // Cambiar a la vista de DeliveryForm
-  };
-  const calcularTotalDescuentos = () => {
-    console.log("Iniciando cálculo de total con descuentos...");
-  
-    let totalDescuentos = 0;
-  
-    // Calcular el total de productos
-    let totalProductos = compra.venta.reduce((acc, item) => acc + (item.total || 0), 0);
-    console.log("Total de productos (sin costos adicionales):", totalProductos);
-  
-    // Calcular costos adicionales
-    let costoDelivery = compra.Entrega?.Delivery?.costo || 0;
-    console.log("Costo inicial del Delivery:", costoDelivery);
-  
-    if (compra.incentivos?.some((incentivo) => incentivo.incentivo === "Delivery Free Pass")) {
-      console.log("Aplicando Delivery Free Pass...");
-      costoDelivery = 0; // Si hay Delivery Free Pass, anular costo
-    }
-  
-    const costoTicketExpress =
-      (compra.Entrega?.Delivery?.costoTicketExpress || 0) +
-      (compra.Entrega?.PickUp?.costoTicketExpress || 0);
-    console.log("Costo Ticket Express:", costoTicketExpress);
-  
-    const costoCupon = compra.cupones.reduce((acc, cupon) => acc + (cupon.PrecioCupon || 0), 0);
-    console.log("Costo de cupones:", costoCupon);
-  
-    // Agregar costos adicionales al total de productos
-    totalProductos += costoDelivery + costoTicketExpress + costoCupon;
-    console.log("Total de productos (con costos adicionales):", totalProductos);
-  
-    // Calcular los descuentos aplicados
-    if (compra.cupones.length > 0 && totalProductos > 0) {
-      compra.cupones.forEach((cupon) => {
-        const descuentoAplicado = totalProductos * (cupon.Descuento || 0);
-        const descuentoFinal = Math.min(descuentoAplicado, cupon.Max_Amount || 0);
-        totalDescuentos += descuentoFinal;
-  
-        console.log(
-          `Cupón aplicado (ID: ${cupon.id}): Descuento calculado: ${descuentoAplicado.toFixed(
-            2
-          )}, Descuento final: ${descuentoFinal.toFixed(2)}`
-        );
-      });
-    }
-  
-    console.log("Total descuentos aplicados:", totalDescuentos);
-  
-    // Calcular el total con descuentos
-    let totalConDescuento = totalProductos - totalDescuentos;
-    if (totalConDescuento < 0) totalConDescuento = 0; // No permitir totales negativos
-    console.log("Total con descuentos:", totalConDescuento);
-  
-    // Actualizar el estado de compra
-    setCompra((prevCompra) => ({
-      ...prevCompra,
-      total_productos: parseFloat(totalProductos.toFixed(2)),
-      total_descuentos: parseFloat(totalDescuentos.toFixed(2)),
-      total_a_pagar_con_descuentos: parseFloat(totalConDescuento.toFixed(2)),
-    }));
-  
-    console.log("Estado de compra actualizado:", {
-      total_productos: totalProductos,
-      total_descuentos: totalDescuentos,
-      total_a_pagar_con_descuentos: totalConDescuento,
-    });
+    setShowDeliveryForm(true);
   };
   const handleConfirmHalfAndHalf = () => {
+
     if (!sizeSeleccionado) {
       alert("Debes seleccionar el tamaño antes de confirmar.");
       return;
     }
-  
-    console.log("Tamaño seleccionado:", sizeSeleccionado);
-    console.log("Left Pizza ID seleccionada:", leftPizza);
-    console.log("Right Pizza ID seleccionada:", rightPizza);
-  
-    // Buscar pizzas predeterminadas que sean válidas para el tamaño seleccionado
-    const leftPizzaDefault =
-      activePizzas.find((pizza) => {
-        const priceBySize = JSON.parse(pizza.PriceBySize || '{}');
-        return JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado) && priceBySize[sizeSeleccionado];
-      }) || { id: null, nombre: 'Mitad predeterminada', PriceBySize: '{}' };
-  
-    const rightPizzaDefault =
-      activePizzas.find((pizza) => {
-        const priceBySize = JSON.parse(pizza.PriceBySize || '{}');
-        return JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado) && priceBySize[sizeSeleccionado];
-      }) || { id: null, nombre: 'Mitad predeterminada', PriceBySize: '{}' };
-  
-    console.log("Left Pizza Default:", leftPizzaDefault);
-    console.log("Right Pizza Default:", rightPizzaDefault);
-  
-    // Verificar las pizzas seleccionadas por el usuario
-    const leftPizzaData =
-      activePizzas.find(
-        (pizza) =>
-          pizza.id === leftPizza &&
-          JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado)
-      ) || leftPizzaDefault;
-  
-    const rightPizzaData =
-      activePizzas.find(
-        (pizza) =>
-          pizza.id === rightPizza &&
-          JSON.parse(pizza.selectSize || '[]').includes(sizeSeleccionado)
-      ) || rightPizzaDefault;
-  
-    console.log("Left Pizza Data encontrada:", leftPizzaData);
-    console.log("Right Pizza Data encontrada:", rightPizzaData);
-  
-    if (!leftPizzaData || !rightPizzaData) {
-      alert("No se encontraron pizzas válidas para el tamaño seleccionado.");
-      return;
-    }
-  
-    // Calcular precios de las mitades
-    const precioMitadIzquierda = (() => {
-      try {
-        const priceBySize = JSON.parse(leftPizzaData.PriceBySize || '{}');
-        return parseFloat(priceBySize[sizeSeleccionado] || 0) / 2;
-      } catch (error) {
-        console.error("Error al calcular el precio de la mitad izquierda:", error);
-        return 0;
-      }
-    })();
-  
-    const precioMitadDerecha = (() => {
-      try {
-        const priceBySize = JSON.parse(rightPizzaData.PriceBySize || '{}');
-        return parseFloat(priceBySize[sizeSeleccionado] || 0) / 2;
-      } catch (error) {
-        console.error("Error al calcular el precio de la mitad derecha:", error);
-        return 0;
-      }
-    })();
-  
-    console.log("Precio Mitad Izquierda:", precioMitadIzquierda);
-    console.log("Precio Mitad Derecha:", precioMitadDerecha);
-  
+    const leftPizzaData = activePizzas.find((pz) => pz.id === leftPizza);
+    const rightPizzaData = activePizzas.find((pz) => pz.id === rightPizza);
+
+    const precioMitadIzquierda = leftPizzaData
+      ? parseFloat(
+          JSON.parse(leftPizzaData.PriceBySize || '{}')[sizeSeleccionado] / 2
+        ) || 0
+      : 0;
+
+    const precioMitadDerecha = rightPizzaData
+      ? parseFloat(
+          JSON.parse(rightPizzaData.PriceBySize || '{}')[sizeSeleccionado] / 2
+        ) || 0
+      : 0;
+
     const totalPrecio = parseFloat(
       (precioMitadIzquierda + precioMitadDerecha).toFixed(2)
     );
-  
-    console.log("Total Precio Mitad y Mitad:", totalPrecio);
-  
-    // Crear el objeto de la pizza mitad y mitad
+
     const nuevaPizza = {
+      uuid: uuidv4(),
       id: 102,
       nombre: "PP2",
       size: sizeSeleccionado,
@@ -647,80 +496,77 @@ const MakeYourPizza = () => {
       total: totalPrecio,
       halfAndHalf: {
         izquierda: {
-          id: leftPizzaData.id || null,
-          nombre: leftPizzaData.nombre || "Mitad vacía",
+          id: leftPizzaData?.id || null,
+          nombre: leftPizzaData?.nombre || "Mitad vacía",
           precio: precioMitadIzquierda,
         },
         derecha: {
-          id: rightPizzaData.id || null,
-          nombre: rightPizzaData.nombre || "Mitad vacía",
+          id: rightPizzaData?.id || null,
+          nombre: rightPizzaData?.nombre || "Mitad vacía",
           precio: precioMitadDerecha,
         },
       },
     };
-  
-    console.log("Nueva Pizza Mitad y Mitad:", nuevaPizza);
-  
-    // Actualizar el estado del carrito
-    setCompra((prevCompra) => {
-      const nuevaVenta = [...prevCompra.venta, nuevaPizza];
-      const nuevoTotalProductos = nuevaVenta.reduce(
-        (acc, item) => acc + item.total,
-        0
-      );
-  
-      console.log("Nueva Venta:", nuevaVenta);
-  
+    console.log('🍕 Pizza mitad y mitad creada:', {
+      sizeSeleccionado,
+      leftPizzaData,
+      rightPizzaData,
+      precioMitadIzquierda,
+      precioMitadDerecha,
+    });
+    setCompra((prev) => {
+      const nuevaVenta = [...prev.venta, nuevaPizza];
+      const nuevoTotalProductos = nuevaVenta.reduce((acc, item) => acc + item.total, 0);
       return {
-        ...prevCompra,
+        ...prev,
         venta: nuevaVenta,
         total_productos: parseFloat(nuevoTotalProductos.toFixed(2)),
         total_a_pagar_con_descuentos: parseFloat(nuevoTotalProductos.toFixed(2)),
       };
     });
-  
-    // Limpiar el formulario de "Mitad y Mitad"
+    console.log("✅ ConfirmHalfAndHalf ejecutado");
+console.log("leftPizza:", leftPizza);
+console.log("rightPizza:", rightPizza);
+
     setSizeSeleccionado("");
     setLeftPizza("");
     setRightPizza("");
-  
     alert("Pizza Mitad y Mitad añadida al carrito.");
   };
   const handleRarePizzaNavigation = () => {
-    console.log("Estado de isRandomPizzaDisabled en el momento de click:", isRandomPizzaDisabled);
-    
     if (isRandomPizzaDisabled) {
       alert('No hay cupones disponibles para Pizza Random o la oferta está inactiva.');
       return;
     }
-  
     navigate('/rare-pizza');
   };
-  
-  
+
+  // -----------------------------------------------------------------------
+  //  Render principal
+  // -----------------------------------------------------------------------
   return (
     <div className="make-your-pizza-container">
-     
       <FloatingCart
-        compra={compra}
+        compra={compra}     
         setCompra={setCompra}
         handleEditProduct={handleEditProduct}
-        handleNextStep={() => setShowDeliveryForm(true)} // Cambiar a DeliveryForm desde el botón "Siguiente" en el FC
+        handleNextStep={() => setShowDeliveryForm(true)}
       />
-  
+
       {showDeliveryForm ? (
-        // Formulario de entrega
-        <DeliveryForm compra={compra} setCompra={setCompra} />
+        <DeliveryForm
+          compra={compra}
+          setCompra={setCompra}
+        />
       ) : isChoosingType ? (
-        // Antesala para elegir el tipo de pizza
         <div className="choose-type-container">
-          <h2>Elige el tipo de pizza</h2>
+          <h2>Choose the type</h2>
           <div className="options">
             <button
               className="option-button"
-              onClick={() => setIsChoosingType(false)} // Accede a crear pizza completa
+              onClick={() => setIsChoosingType(false)} // Ir a crear pizza completa
             >
-              Pizza Completa
+              Full Pizza
             </button>
             <button
               className="option-button"
@@ -729,25 +575,14 @@ const MakeYourPizza = () => {
                 setIsHalfAndHalf(true);
               }}
             >
-              Pizza Mitad y Mitad
+              Half and Half Pizza
             </button>
-            {/* <button
-            className="option-button"
-            onClick={handleRarePizzaNavigation}
-            disabled={isRandomPizzaDisabled}  // 🔍 Ahora sí depende del estado actualizado
-          >
-            Pizza Random
-          </button> */}
           </div>
         </div>
-
-
-
       ) : isHalfAndHalf ? (
-
         <div className="half-and-half-container">
-          <h2>Selecciona las dos mitades de tu pizza</h2>
-  
+          <h2>Choose your two pizza halves</h2>
+
           {/* Dropdown para seleccionar el tamaño */}
           <div className="size-selection">
             <select
@@ -756,7 +591,7 @@ const MakeYourPizza = () => {
               className="size-dropdown"
             >
               <option value="" disabled>
-                Seleccione el tamaño
+                Select the size
               </option>
               {Array.from(
                 new Set(
@@ -772,207 +607,226 @@ const MakeYourPizza = () => {
             </select>
           </div>
           <div className="halves-container">
-              {/* Lado izquierdo */}
-              <div className="half-section">
-                <Swiper
-                  direction="vertical"
-                  slidesPerView={1}
-                  navigation
-                  onSlideChange={(swiper) => {
-                    const selectedPizza = activePizzas
-                      .filter(
-                        (pizza) =>
-                          pizza.categoria !== "Base Pizza" && // Excluir la Base Pizza
-                          JSON.parse(pizza.selectSize || "[]").includes(sizeSeleccionado)
-                      )[swiper.activeIndex];
-                    console.log("Pizza seleccionada izquierda:", selectedPizza);
+          <div className="half-section">
+            <h4 className="half-label">Half 1</h4>
+            {activePizzas.filter(
+              (pz) =>
+                pz.categoria !== "Base Pizza" &&
+                JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+            ).length === 0 ? (
+              <div className="empty-pizza-placeholder">
+                  <img
+                    src={infoEmpresa?.logo_url || "/default-logo.png"}
+                    alt="Logo Pizzería"
+                    className="pizza-placeholder-logo"
+                  />
+                </div>
+            ) : (
+              <Swiper
+                direction="vertical"
+                slidesPerView={1}
+                navigation
+                onSlideChange={(swiper) => {
+                  const filteredPizzas = activePizzas.filter(
+                    (pz) =>
+                      pz.categoria !== "Base Pizza" &&
+                      JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+                  );
+                  if (filteredPizzas.length > 0 && swiper.activeIndex < filteredPizzas.length) {
+                    const selectedPizza = filteredPizzas[swiper.activeIndex];
                     setLeftPizza(selectedPizza?.id || "");
-                  }}
-                  className="swiper-container"
-                >
-                  {activePizzas
-                    .filter(
-                      (pizza) =>
-                        pizza.categoria !== "Base Pizza" && // Excluir la Base Pizza
-                        JSON.parse(pizza.selectSize || "[]").includes(sizeSeleccionado)
-                    )
-                    .map((pizza, index) => (
-                      <SwiperSlide key={index}>
-                        <div className="pizza-slide">
-                          <img
-                            src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
-                            alt={pizza.nombre}
-                            className="pizza-image"
-                          />
-                          <p>{pizza.nombre}</p>
-                          <p>
-                            ({sizeSeleccionado}) -{" "}
-                            {(
-                              JSON.parse(pizza.PriceBySize)?.[sizeSeleccionado] / 2
-                            ).toFixed(2)}
-                            €
-                          </p>
-                        </div>
-                      </SwiperSlide>
-                    ))}
-                </Swiper>
-              </div>
+                  }
+                }}
+                className="swiper-container"
+              >
+                {activePizzas
+                  .filter(
+                    (pz) =>
+                      pz.categoria !== "Base Pizza" &&
+                      JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+                  )
+                  .map((pizza, index) => (
+                    <SwiperSlide key={index}>
+                      <div className="pizza-slide">
+                        <img
+                          src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
+                          alt={pizza.nombre}
+                          className="pizza-image"
+                        />
+                        <p>{pizza.nombre}</p>
+                        <p>
+                          ({sizeSeleccionado}) -{" "}
+                          {safeFixed(
+                           JSON.parse(pizza.PriceBySize || '{}')[sizeSeleccionado] / 2
+                          )}€
+                        </p>
+                      </div>
+                    </SwiperSlide>
+                  ))}
+              </Swiper>
+            )}
+          </div>
 
-              {/* Lado derecho */}
-              <div className="half-section">
-                <Swiper
-                  direction="vertical"
-                  slidesPerView={1}
-                  navigation
-                  onSlideChange={(swiper) => {
-                    const selectedPizza = activePizzas
-                      .filter(
-                        (pizza) =>
-                          pizza.categoria !== "Base Pizza" && // Excluir la Base Pizza
-                          JSON.parse(pizza.selectSize || "[]").includes(sizeSeleccionado)
-                      )[swiper.activeIndex];
-                    console.log("Pizza seleccionada derecha:", selectedPizza);
-                    setRightPizza(selectedPizza?.id || "");
-                  }}
-                  className="swiper-container"
-                >
-                  {activePizzas
-                    .filter(
-                      (pizza) =>
-                        pizza.categoria !== "Base Pizza" && // Excluir la Base Pizza
-                        JSON.parse(pizza.selectSize || "[]").includes(sizeSeleccionado)
-                    )
-                    .map((pizza, index) => (
-                      <SwiperSlide key={index}>
-                        <div className="pizza-slide">
-                          <img
-                            src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
-                            alt={pizza.nombre}
-                            className="pizza-image"
-                          />
-                          <p>{pizza.nombre}</p>
-                          <p>
-                            ({sizeSeleccionado}) -{" "}
-                            {(
-                              JSON.parse(pizza.PriceBySize)?.[sizeSeleccionado] / 2
-                            ).toFixed(2)}
-                            €
-                          </p>
-                        </div>
-                      </SwiperSlide>
-                    ))}
-                </Swiper>
+  <div className="half-section">
+    <h4 className="half-label">Half 2</h4>
+    {activePizzas.filter(
+      (pz) =>
+        pz.categoria !== "Base Pizza" &&
+        JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+    ).length === 0 ? (
+      <div className="empty-pizza-placeholder">
+        <img
+          src={infoEmpresa?.logo_url}
+          alt="Logo Pizzería"
+          className="pizza-placeholder-logo"
+        />
+      </div>
+    ) : (
+      <Swiper
+        direction="vertical"
+        slidesPerView={1}
+        navigation
+        onSlideChange={(swiper) => {
+          const filteredPizzas = activePizzas.filter(
+            (pz) =>
+              pz.categoria !== "Base Pizza" &&
+              JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+          );
+          if (filteredPizzas.length > 0 && swiper.activeIndex < filteredPizzas.length) {
+            const selectedPizza = filteredPizzas[swiper.activeIndex];
+            setRightPizza(selectedPizza?.id || "");
+          }
+        }}
+        className="swiper-container"
+      >
+        {activePizzas
+          .filter(
+            (pz) =>
+              pz.categoria !== "Base Pizza" &&
+              JSON.parse(pz.selectSize || "[]").includes(sizeSeleccionado)
+          )
+          .map((pizza, index) => (
+            <SwiperSlide key={index}>
+              <div className="pizza-slide">
+                <img
+                  src={`${process.env.REACT_APP_API_URL}/${pizza.imagen}`}
+                  alt={pizza.nombre}
+                  className="pizza-image"
+                />
+                <p>{pizza.nombre}</p>
+                <p>
+                  ({sizeSeleccionado}) -{" "}
+                  {(JSON.parse(pizza.PriceBySize)?.[sizeSeleccionado] / 2).toFixed(2)}€
+                </p>
               </div>
-            </div>
+            </SwiperSlide>
+          ))}
+      </Swiper>
+    )}
+  </div>
+</div>
+
+
           <button
             className="confirm-button"
             onClick={isEditing ? handleUpdateProduct : handleConfirmHalfAndHalf}
             disabled={!sizeSeleccionado}
           >
-            {isEditing ? "Editar Pizza" : "Confirmar y Añadir al Carrito"}
+            {isEditing ? "Edit Pizza" : "Add to Cart"}
           </button>
         </div>
-
-        
       ) : (
+        <>
+          <h2>Create Your Pizza</h2>
 
-      <>
-        <h2>Crea tu Pizza</h2>
+          {/* Selección de tamaño */}
+          <div className="size-selection">
+            <h3>Select the size:</h3>
+            <select
+              value={sizeSeleccionado}
+              onChange={(e) => setSizeSeleccionado(e.target.value)}
+            >
+              <option value="">size</option>
+              {Object.keys(preciosBase).map((size) => (
+                <option key={size} value={size}>
+                  {size} - {safeFixed(preciosBase[size])}€
+                </option>
+              ))}
+            </select>
+          </div>
 
-        {/* Selección de tamaño */}
-        <div className="size-selection">
-          <h3>Selecciona el tamaño:</h3>
-          <select
-            value={sizeSeleccionado}
-            onChange={(e) => setSizeSeleccionado(e.target.value)}
-          >
-            <option value="">Selecciona un tamaño</option>
-            {Object.keys(preciosBase).map((size) => (
-              <option key={size} value={size}>
-                {size} - {preciosBase[size].toFixed(2)}€
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Mostrar solo si el tamaño ha sido seleccionado */}
-        {sizeSeleccionado && (
-          <>
-            {/* Panel de ingredientes */}
-            <div className="ingredientes-panel">
-              <h3>Selecciona tus ingredientes:</h3>
-              <div className="ingredientes-grid">
-                {ingredientesDisponibles.map((ingrediente) => (
-                  <button
-                    key={ingrediente.IDI}
-                    className={`ingrediente-boton ${
-                      ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)
-                        ? "seleccionado"
-                        : ""
-                    }`}
-                    onClick={() => handleAgregarIngrediente(ingrediente)}
-                  >
-                    <span>{ingrediente.nombre}</span>
-                    <span>
-                      (
-                      {sizeSeleccionado && ingredientesExtraPrecios[sizeSeleccionado]
-                        ? `${ingredientesExtraPrecios[sizeSeleccionado].toFixed(2)}€`
-                        : "0.00€"}
-                      )
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Ingredientes seleccionados */}
-            <div className="ingredientes-seleccionados-contenedor">
-              <h4>Ingredientes seleccionados:</h4>
-              <div className="ingredientes-horizontales">
-                {/* Base de la pizza siempre va primero */}
-                <div className="ingrediente-cuadro">
-                  <span>
-                    Base de Pizza <br />
-                    ({sizeSeleccionado}) ➡️{" "}
-                    {preciosBase[sizeSeleccionado]?.toFixed(2)}€
-                  </span>
+          {sizeSeleccionado && (
+            <>
+              <div className="ingredientes-panel">
+                <h3>Choose your toppings:</h3>
+                <div className="ingredientes-grid">
+                  {ingredientesDisponibles.map((ingrediente) => (
+                    <button
+                      key={ingrediente.IDI}
+                      className={`ingrediente-boton ${
+                        ingredientesSeleccionados.some((ing) => ing.IDI === ingrediente.IDI)
+                          ? "seleccionado"
+                          : ""
+                      }`}
+                      onClick={() => handleAgregarIngrediente(ingrediente)}
+                    >
+                      <span>{ingrediente.nombre}</span>
+                      <span>
+                        (
+                        {sizeSeleccionado && ingredientesExtraPrecios[sizeSeleccionado]
+                          ? `${safeFixed(ingredientesExtraPrecios[sizeSeleccionado])}€`
+                          : "0.00€"}
+                        )
+                      </span>
+                    </button>
+                  ))}
                 </div>
-
-                {/* Agregar el separador después de la base de pizza si hay ingredientes */}
-                {ingredientesSeleccionados.length > 0 && <span className="separador">➕</span>}
-
-                {/* Renderizar los ingredientes con separadores solo entre ellos */}
-                {ingredientesSeleccionados.map((ing, index) => (
-                  <React.Fragment key={ing.IDI}>
-                    <div className="ingrediente-cuadro">
-                      <span>{ing.nombre}</span>
-                      <span>({ing.precio.toFixed(2)}€)</span>
-                      <button
-                        className="boton-eliminar"
-                        onClick={() => handleEliminarIngrediente(ing.IDI)}
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-
-                    {/* Agregar separador después de cada ingrediente, excepto después del último */}
-                    {index < ingredientesSeleccionados.length - 1 && (
-                      <span className="separador">➕</span>
-                    )}
-                  </React.Fragment>
-                ))}
               </div>
-            </div>
 
-            {/* Precio total y botón de añadir */}
-            <h3>Precio Total: {totalPrice.toFixed(2)}€</h3>
-            <button onClick={isEditing ? handleUpdateProduct : handleConfirmarPizza}>
-              {isEditing ? "Editar Pizza" : "Añadir al Carrito"}
-            </button>
-          </>
-        )}
-      </>
+              <div className="ingredientes-seleccionados-contenedor">
+                <h4>Choose your toppings:</h4>
+                <div className="ingredientes-horizontales">
+                  {/* Base de la pizza */}
+                  <div className="ingrediente-cuadro">
+                    <span>
+                      Base de Pizza <br />
+                      ({sizeSeleccionado}) ➡️ {safeFixed(preciosBase[sizeSeleccionado])}€
+                    </span>
+                  </div>
 
+                  {/* Separador si hay ingredientes */}
+                  {ingredientesSeleccionados.length > 0 && (
+                    <span className="separador">➕</span>
+                  )}
+
+                  {/* Render de ingredientes seleccionados */}
+                  {ingredientesSeleccionados.map((ing, index) => (
+                    <React.Fragment key={ing.IDI}>
+                      <div className="ingrediente-cuadro">
+                        <span>{ing.nombre}</span>
+                        <span>({safeFixed(ing.precio)}€)</span>
+                        <button
+                          className="boton-eliminar"
+                          onClick={() => handleEliminarIngrediente(ing.IDI)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      {index < ingredientesSeleccionados.length - 1 && (
+                        <span className="separador">➕</span>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <h3>Total: {safeFixed(totalPrice)}€</h3>
+              <button className= "myp_fp_button" onClick={isEditing ? handleUpdateProduct : handleConfirmarPizza}>
+                {isEditing ? "Edit Pizza" : "Add to Cart"}
+              </button>
+            </>
+          )}
+        </>
       )}
     </div>
   );
